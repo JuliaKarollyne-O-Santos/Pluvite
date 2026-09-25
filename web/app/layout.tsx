@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavbarWrapper from "./components/NavbarWrapper";
+import AlertaPopup from "./components/AlertaPopup";
 import "./globals.css";
 import Navbar from "./components/navbar";
 
@@ -35,6 +36,8 @@ export default function RootLayout({
           <NavbarWrapper />
         </div>
         <main>{children}</main>
+        {/* Pop-up de emergencia em tempo real (WebSocket) - vale para todas as paginas */}
+        <AlertaPopup />
       </body>
     </html>
   );

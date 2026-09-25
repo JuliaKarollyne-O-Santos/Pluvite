@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Login from './src/pages/login/page';
 import Cadastro from './src/pages/cadastro/page';
 import TabNavigator from './src/navigation/TabNavigator';
+import { AlertaProvider } from './src/context/AlertaContext';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -18,6 +19,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
+      {/* Alertas de emergencia: push (FCM/APNs) + WebSocket + consulta ao abrir */}
+      <AlertaProvider>
       <NavigationContainer>
         <StatusBar style="auto" />
         <Stack.Navigator
@@ -32,6 +35,7 @@ export default function App() {
           <Stack.Screen name="MainTabs" component={TabNavigator} />
         </Stack.Navigator>
       </NavigationContainer>
+      </AlertaProvider>
     </SafeAreaProvider>
   );
 }

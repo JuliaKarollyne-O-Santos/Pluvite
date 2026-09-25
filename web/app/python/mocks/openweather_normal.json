@@ -1,0 +1,10 @@
+{
+  "_comentario": "Tempo bom: nenhum alerta deve ser disparado (weather[0].id = 800).",
+  "coord": { "lon": -45.5553, "lat": -23.0264 },
+  "weather": [{ "id": 800, "main": "Clear", "description": "ceu limpo", "icon": "01d" }],
+  "main": { "temp": 27.3, "feels_like": 27.0, "temp_min": 21.1, "temp_max": 29.4, "humidity": 48 },
+  "wind": { "speed": 2.1, "deg": 130 },
+  "clouds": { "all": 0 },
+  "name": "Taubate",
+  "cod": 200
+}

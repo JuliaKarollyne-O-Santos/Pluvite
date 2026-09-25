@@ -1,0 +1,12 @@
+# Backend de alertas do Pluvite
+# Instalacao:  pip install -r requirements.txt
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+python-dotenv>=1.0
+supabase>=2.10
+pydantic>=2.8
+websockets>=13.0
+
+# Opcional: usado apenas por notificacao_popup/popups.py --janela
+# pyautogui>=0.9.54

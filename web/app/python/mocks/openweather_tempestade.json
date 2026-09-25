@@ -1,0 +1,31 @@
+{
+  "_comentario": "Resposta simulada do OpenWeather /data/2.5/weather. Codigo 212 = trovoada intensa -> gera alerta CRITICA. Troque weather[0].id para testar outras severidades (502 = chuva forte/ALTA, 781 = tornado/CRITICA, 800 = ceu limpo/nenhum alerta).",
+  "coord": { "lon": -45.5553, "lat": -23.0264 },
+  "weather": [
+    {
+      "id": 212,
+      "main": "Thunderstorm",
+      "description": "tempestade com trovoadas intensas",
+      "icon": "11d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 21.4,
+    "feels_like": 22.1,
+    "temp_min": 20.2,
+    "temp_max": 23.8,
+    "pressure": 1006,
+    "humidity": 94
+  },
+  "visibility": 3000,
+  "wind": { "speed": 19.5, "deg": 210, "gust": 27.3 },
+  "rain": { "1h": 42.6 },
+  "clouds": { "all": 100 },
+  "dt": 1758800000,
+  "sys": { "type": 2, "country": "BR", "sunrise": 1758790000, "sunset": 1758834000 },
+  "timezone": -10800,
+  "id": 3444924,
+  "name": "Taubate",
+  "cod": 200
+}

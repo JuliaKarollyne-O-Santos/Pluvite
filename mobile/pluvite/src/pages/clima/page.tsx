@@ -12,6 +12,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, MapPin, CloudRain, Sun, Wind, Droplets } from "lucide-react-native";
 
+// Alerta de emergencia: card em destaque + modal na tela inicial
+import { useAlerta } from "../../context/AlertaContext";
+import AlertaDestaqueCard from "../../components/AlertaDestaqueCard";
+import AlertaEmergenciaModal from "../../components/AlertaEmergenciaModal";
+
 interface DadosClima {
   temperatura: number;
   tempMax: number;
@@ -59,6 +64,9 @@ function getDiaSemana(dataStr: string) {
 }
 
 export default function Clima() {
+  // Alerta vindo do push, do WebSocket ou da consulta feita ao abrir o app
+  const { alerta, ultimoAlerta, dispensar, reabrir } = useAlerta();
+
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [cidadeAtual, setCidadeAtual] = useState("Taubaté");
@@ -179,6 +187,9 @@ export default function Clima() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Emergencia em andamento - fica no topo enquanto o alerta vale */}
+        <AlertaDestaqueCard alerta={ultimoAlerta} aoTocar={reabrir} />
+
         {/* Barra de busca */}
         <View style={styles.searchBar}>
           <TextInput
@@ -297,6 +308,9 @@ export default function Clima() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Modal com o resumo da emergencia */}
+      <AlertaEmergenciaModal alerta={alerta} aoFechar={dispensar} />
     </SafeAreaView>
   );
 }

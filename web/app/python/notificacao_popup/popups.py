@@ -1,62 +1,62 @@
-import os
-import pyautogui
-from dotenv import load_dotenv
-from supabase import create_client, Client
+"""Pop-up de desktop do Pluvite (ferramenta local de conferencia).
 
-# Carrega as variáveis do arquivo .env
-load_dotenv()
+O FORMATO da mensagem definido aqui originalmente virou o padrao do sistema
+inteiro: hoje ele mora em `backend/alerta.py` e alimenta os 3 canais
+(pop-up do site via WebSocket, WhatsApp e push no app mobile).
 
-# Puxa as credenciais com segurança
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+Este script continua util para olhar rapidamente o ultimo alerta do banco
+sem subir o front:
 
-def buscar_ultimo_alerta():
-    try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        
-        # Busca o alerta mais recente da tabela alertas_tempo_real
-        resposta = supabase.table('alertas_tempo_real').select('*').order('criado_em', desc=True).limit(1).execute()
-        
-        if resposta.data:
-            return resposta.data[0]
+    cd web/app/python
+    python -m notificacao_popup.popups          # imprime no terminal
+    python -m notificacao_popup.popups --janela  # abre a janela do pyautogui
+"""
+
+from __future__ import annotations
+
+import asyncio
+import sys
+from pathlib import Path
+
+# Permite rodar o arquivo direto, fora da raiz web/app/python
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Formatador oficial do backend - fonte unica da verdade do layout
+from backend.alerta import montar_payload  # noqa: E402
+from backend.supabase_client import ultimo_alerta  # noqa: E402
+
+
+def buscar_ultimo_alerta() -> dict | None:
+    """Ultimo registro de `alertas_tempo_real`, ja no formato unificado."""
+    registro = asyncio.run(ultimo_alerta())
+    if not registro:
         return None
-    except Exception as e:
-        print(f"Erro ao conectar com o Supabase: {e}")
-        return None
+    return montar_payload(registro, origem="banco")
 
-def mostrar_popup():
+
+def mostrar_popup(usar_janela: bool = False) -> None:
     alerta = buscar_ultimo_alerta()
 
     if alerta:
-        # Puxando os dados da sua tabela
-        tipo = alerta.get('tipo', 'Alerta')
-        prioridade = str(alerta.get('prioridade', 'Desconhecida')).upper()
-        municipio = alerta.get('municipio', 'Local não especificado')
-        endereco = alerta.get('endereco', 'Endereço não informado')
-        descricao = alerta.get('descricao', 'Sem detalhes adicionais.')
-        status = alerta.get('statusatual', 'Ativo')
-
-        # Montando o título da janela e o corpo da mensagem
-        titulo = f"[{prioridade}] Alerta de {tipo} - {municipio}"
-        mensagem = (
-            f"⚠️ ATENÇÃO: {tipo.upper()} ⚠️\n\n"
-            f"📍 Localização: {municipio}\n"
-            f"📌 Endereço/Região: {endereco}\n"
-            f"🚨 Nível de Prioridade: {prioridade}\n"
-            f"🔄 Status Atual: {status}\n\n"
-            f"ℹ️ Descrição do Ocorrido:\n{descricao}\n\n"
-            f"Por favor, mantenha-se em segurança e siga as orientações locais."
-        )
-
-        # Exibindo o pop-up com as informações
-        pyautogui.alert(text=mensagem, title=titulo, button='Estou Ciente')
+        titulo = alerta["titulo"]
+        mensagem = alerta["mensagem"]
+        botao = alerta["botao"]
     else:
-        # Mensagem caso o banco esteja vazio ou não retorne nada
-        pyautogui.alert(
-            text="Nenhum alerta recente registrado no sistema no momento.", 
-            title="Pluvite - Monitoramento", 
-            button='Fechar'
-        )
+        titulo = "Pluvite - Monitoramento"
+        mensagem = "Nenhum alerta recente registrado no sistema no momento."
+        botao = "Fechar"
+
+    if usar_janela:
+        import pyautogui  # import tardio: o servidor nao precisa dessa dependencia
+
+        pyautogui.alert(text=mensagem, title=titulo, button=botao)
+    else:
+        print("=" * 60)
+        print(titulo)
+        print("=" * 60)
+        print(mensagem)
+        print("=" * 60)
+
 
 if __name__ == "__main__":
-    mostrar_popup()
+    mostrar_popup(usar_janela="--janela" in sys.argv)

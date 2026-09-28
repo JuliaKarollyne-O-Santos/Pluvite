@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"node app/backend/server.js\"",
+    "dev": "concurrently -k \"next dev\" \"node app/backend/server.js\" \".\\app\\python\\.venv\\Scripts\\python.exe -m uvicorn backend.main:app --app-dir app/python --reload --host 0.0.0.0 --port 8000\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

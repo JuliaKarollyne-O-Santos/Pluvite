@@ -58,6 +58,8 @@ _ultimos_disparos: dict[tuple[str, str], float] = {}
 
 def _carregar_mock() -> dict[str, Any]:
     caminho = Path(config.MOCK_OPENWEATHER_ARQUIVO)
+    if not caminho.is_absolute():
+        caminho = config.RAIZ_PYTHON / caminho
     log.warning("MOCK_OPENWEATHER ativo - lendo %s", caminho)
     return json.loads(caminho.read_text(encoding="utf-8"))
 

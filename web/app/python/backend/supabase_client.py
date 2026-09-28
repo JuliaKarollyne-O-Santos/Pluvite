@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import unicodedata
 from typing import Any
 
 from supabase import Client, create_client
@@ -17,6 +18,28 @@ from . import config
 log = logging.getLogger("pluvite.supabase")
 
 _cliente: Client | None = None
+
+
+def _normalizar_municipio(valor: Any) -> str:
+    texto = unicodedata.normalize("NFD", str(valor or "").strip().casefold())
+    return "".join(caractere for caractere in texto if unicodedata.category(caractere) != "Mn")
+
+
+def _filtrar_por_municipio(
+    linhas: list[dict[str, Any]], municipio: str | None, campo: str
+) -> list[dict[str, Any]]:
+    alvo = _normalizar_municipio(municipio)
+    if not alvo:
+        return linhas
+
+    com_municipio = [
+        (linha, _normalizar_municipio(linha.get(campo)))
+        for linha in linhas
+        if _normalizar_municipio(linha.get(campo))
+    ]
+    if not com_municipio:
+        return linhas
+    return [linha for linha, nome in com_municipio if nome == alvo]
 
 
 def cliente() -> Client | None:
@@ -81,12 +104,7 @@ def _telefones_sync(municipio: str | None) -> list[str]:
     consulta = sb.table("cidadao").select("telefone,cidade").not_.is_("telefone", "null")
     resposta = consulta.execute()
     linhas = resposta.data or []
-    if municipio:
-        alvo = municipio.strip().lower()
-        filtradas = [l for l in linhas if str(l.get("cidade") or "").strip().lower() == alvo]
-        # Se ninguem tem a cidade preenchida, avisa todo mundo (melhor pecar pelo excesso)
-        if filtradas:
-            linhas = filtradas
+    linhas = _filtrar_por_municipio(linhas, municipio, "cidade")
     return [str(l["telefone"]) for l in linhas if l.get("telefone")]
 
 
@@ -110,11 +128,7 @@ def _push_tokens_sync(municipio: str | None) -> list[str]:
         .execute()
     )
     linhas = resposta.data or []
-    if municipio:
-        alvo = municipio.strip().lower()
-        filtradas = [l for l in linhas if str(l.get("municipio") or "").strip().lower() == alvo]
-        if filtradas:
-            linhas = filtradas
+    linhas = _filtrar_por_municipio(linhas, municipio, "municipio")
     return [str(l["push_token"]) for l in linhas if l.get("push_token")]
 
 

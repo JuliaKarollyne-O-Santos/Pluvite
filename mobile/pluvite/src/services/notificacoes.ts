@@ -95,12 +95,17 @@ export async function registrarParaPush(opcoes?: {
       projectId ? { projectId } : undefined,
     );
 
-    await registrarDispositivo({
+    const registrado = await registrarDispositivo({
       push_token: token,
       plataforma: Platform.OS,
       auth_id: opcoes?.authId ?? null,
       municipio: opcoes?.municipio ?? null,
     });
+
+    if (!registrado) {
+      console.warn("[push] Token gerado, mas o backend não confirmou o registro.");
+      return null;
+    }
 
     console.log("[push] Token registrado:", token);
     return token;

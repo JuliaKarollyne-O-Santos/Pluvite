@@ -64,13 +64,10 @@ Copie `.env.example` para `.env` (se ainda não existir) e preencha ao menos
 push podem ficar vazias por enquanto — o canal simplesmente reporta
 "não configurado" e os outros dois continuam funcionando.
 
-Suba o servidor:
+O backend é iniciado junto com o site no passo 0.3. Não inicie outro Uvicorn
+manualmente, pois ele tentará usar a mesma porta 8000.
 
-```powershell
-uvicorn backend.main:app --reload --port 8000
-```
-
-Você deve ver:
+Ao iniciar o projeto, você deve ver:
 
 ```
 Monitor OpenWeather ativo - cidades: Taubate, Sao Jose dos Campos | intervalo: 600s
@@ -82,13 +79,17 @@ com `navegadores_conectados: 0`.
 
 ### 0.3 Site (Next.js)
 
-Em outro terminal:
+Na raiz do repositório:
 
 ```powershell
 cd web
 npm install
 npm run dev
 ```
+
+Esse comando inicia Next.js, Express e Uvicorn. O Uvicorn escuta em
+`0.0.0.0:8000` para permitir conexões do app na rede local. Confira
+<http://localhost:8000/api/status>.
 
 Se o backend Python não estiver em `http://localhost:8000`, crie
 `web/.env.local`:
@@ -128,7 +129,8 @@ MOCK_OPENWEATHER_ARQUIVO=mocks/openweather_tempestade.json
 MONITOR_CIDADES=Taubate
 ```
 
-Salve — o `--reload` do uvicorn reinicia sozinho. No log deve aparecer:
+Depois de alterar `.env`, pare e reinicie `npm run dev`; o Uvicorn não recarrega
+automaticamente mudanças nesse arquivo. No log deve aparecer:
 
 ```
 WARNING | pluvite.openweather | MOCK_OPENWEATHER ativo - lendo ...openweather_tempestade.json
@@ -339,7 +341,7 @@ WHATSAPP_PHONE_NUMBER_ID=123456789012345
 WHATSAPP_NUMEROS_TESTE=5512974075279   # seu número, com DDI, só dígitos
 ```
 
-6. Reinicie o uvicorn.
+6. Pare e reinicie `npm run dev` para aplicar as credenciais.
 
 > **Token permanente:** para não renovar a cada 24h, crie um *System User* em
 > **Configurações do Negócio → Usuários do sistema**, dê a ele a permissão
@@ -401,7 +403,7 @@ O formato do telefone é livre — `normalizar_numero()` converte
 | `(#131030) Recipient phone number not in allowed list` | Número não verificado na conta de teste | Cadastre-o no passo 4.1.4 |
 | `(#131047) Re-engagement message` | Passou das 24h desde a última mensagem do usuário | Mande "oi" de novo, ou configure um template (`WHATSAPP_TEMPLATE_NOME`) |
 | `(#190) Access token has expired` | Token de 24h venceu | Gere um token permanente (System User) |
-| `WhatsApp nao enviado: WHATSAPP_TOKEN/... ausentes` | `.env` incompleto | Preencha e reinicie o uvicorn |
+| `WhatsApp nao enviado: WHATSAPP_TOKEN/... ausentes` | `.env` incompleto | Preencha e reinicie `npm run dev` |
 
 ### 4.5 Alternativa self-hosted (Evolution API)
 
@@ -545,7 +547,7 @@ Dá para validar toda a parte visual sem Firebase, porque o app também recebe
 pelo **WebSocket** e consulta `/api/alertas/ultimo` ao abrir:
 
 1. Garanta que o celular e o PC estão na **mesma rede Wi-Fi**.
-2. Suba o backend ouvindo a rede toda (já é o padrão: `--host 0.0.0.0`).
+2. Suba o projeto com `npm run dev`; o backend já escuta na rede toda.
 3. Se o app não achar o backend sozinho, fixe o IP em `app.json`:
 
 ```json
@@ -567,7 +569,7 @@ New-NetFirewallRule -DisplayName "Pluvite API" -Direction Inbound -LocalPort 800
 Cenário final de homologação:
 
 1. **Prepare o ambiente:**
-   - backend Python rodando;
+   - site, Express e backend Python iniciados com `npm run dev`;
    - site aberto em uma aba (pontinho verde);
    - app aberto no celular, na aba Clima;
    - celular com WhatsApp e o número de teste já "aquecido" (passo 4.2.1).

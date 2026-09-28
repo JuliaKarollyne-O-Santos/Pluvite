@@ -79,7 +79,9 @@ export async function registrarDispositivo(dados: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dados),
     });
-    return resposta.ok;
+    if (!resposta.ok) return false;
+    const corpo = (await resposta.json()) as { ok?: boolean };
+    return corpo.ok === true;
   } catch (erro) {
     console.warn("[alertas] falha ao registrar dispositivo:", erro);
     return false;

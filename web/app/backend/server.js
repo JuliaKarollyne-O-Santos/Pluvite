@@ -1,16 +1,14 @@
 import express from 'express';
 import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase.js';
+import rotasRouter from './routes/rotas.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Credenciais do seu Supabase
-const SUPABASE_URL = "https://qhughmeaxbyupuglpvud.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodWdobWVheGJ5dXB1Z2xwdnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMjc4MzAsImV4cCI6MjA5NDYwMzgzMH0.lrvg087MamSPfBkhfwt0bkFuBtdZOVWO7lOq1OKrQg8";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Rotas seguras: grafos viários por município, cálculo de trajeto e ocorrências do Feed na rota
+app.use('/api/rotas', rotasRouter);
 
 // Histórico em memória (não usa o banco de dados)
 let historicoMemoriaLocal = [];
@@ -128,8 +126,8 @@ app.post('/api/historico', (req, res) => {
   return res.status(201).json(novoLog);
 });
 
-// Inicialização do Servidor na porta 3001
-const PORT = 3001;
+// Inicialização do Servidor (PORT é definida pelo host em produção, ex.: Render)
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor operacional rodando na porta http://localhost:${PORT}`);
 });

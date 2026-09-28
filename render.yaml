@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: pluvite-backend
+    runtime: node
+    plan: free
+    rootDir: web/app/backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      # Pasta com os grafos viários (Rotas/*.json). Ainda não decidido onde hospedá-los
+      # em produção — ver ROADMAP.md. Sem isso, /api/rotas fica sem dados.
+      - key: ROTAS_DIR
+        sync: false

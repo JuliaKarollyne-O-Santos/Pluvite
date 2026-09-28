@@ -1,1 +1,14 @@
 node_modules
+# Cache HTTP do OSMnx e tiles de elevação SRTM (gerados por Rotas/gerar_grafos.py)
+cache/
+# Segredos do backend e dos scripts Python (web/.gitignore já cobre o app Next).
+# A service_role do Supabase ignora RLS: nunca pode ser commitada.
+.env*
+!.env.example
+# Grafos viários são gerados localmente e permanecem fora do Git.
+Rotas/*_graph.json
+# Prints que o usuario manda para o Claude durante o desenvolvimento
+Print pro Claude/
+*.png
+!web/public/**/*.png
+!mobile/**/*.png

@@ -55,13 +55,15 @@ export default function CadastroCidadao() {
   };
 
   // Cadastro/Login Social via OAuth
+  // Vai pro /auth/callback com intent=cadastro: aqui a intenção é criar conta
+  // mesmo, então o callback nunca desloga, só manda pro /Mapa.
   const handleSocialLogin = async (provedor: "google" | "facebook") => {
     setCarregando(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: provedor,
         options: {
-          redirectTo: `${window.location.origin}/Mapa`,
+          redirectTo: `${window.location.origin}/callback?intent=cadastro`,
         },
       });
 
@@ -73,13 +75,13 @@ export default function CadastroCidadao() {
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center -mt-15 bg-slate-50 p-4 sm:p-8 md:p-12 font-sans antialiased relative overflow-hidden">
+    <main className="min-h-screen w-full flex items-center justify-center -mt-15 bg-slate-50 p-4 sm:p-6 md:p-7 font-sans antialiased relative overflow-hidden">
       {/* BOTÃO VOLTAR */}
       <Link
         href="/"
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#0f35a0] bg-white/80 hover:bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-sm transition-all"
+        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#0f35a0] bg-white/80 hover:bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-sm transition-all"
       >
-        <ArrowLeft size={16} />
+        <ArrowLeft size={15} />
         Voltar ao início
       </Link>
       {/* Elementos Visuais de Fundo */}
@@ -92,28 +94,28 @@ export default function CadastroCidadao() {
       <div className="absolute top-8 right-5 w-16 h-16 bg-[#1447f2]/6 rounded-full pointer-events-none z-0" />
       <div className="absolute bottom-5 right-1/3 w-28 h-28 bg-[#1447c4]/3 rounded-full blur-md pointer-events-none" />
 
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative z-10">
+      <div className="w-full max-w-[58rem] grid grid-cols-1 md:grid-cols-2 gap-7 items-center relative z-10">
         {/* Textos Informativos Laterais */}
-        <div className="text-slate-900 space-y-6 pr-0 md:pr-8 text-center md:text-left flex flex-col items-center md:items-start">
-          <h1 className="text-5xl uppercase lg:text-6xl font-black tracking-tight leading-tight text-black">
+        <div className="text-slate-900 space-y-5 pr-0 md:pr-7 text-center md:text-left flex flex-col items-center md:items-start">
+          <h1 className="text-[2.4rem] uppercase lg:text-[3.15rem] font-black tracking-tight leading-tight text-black">
             Plataforma
             <div className="flex flex-row">
               <img
                 src="/pluvite-xl.png"
                 alt="Pluvite"
-                className="w-15 h-15 -ml-3 mt-2 -mr-2 rounded-xl select-none object-cover flex-row flex"
+                className="w-[3.25rem] h-[3.25rem] -ml-2.5 mt-1.5 -mr-1.5 rounded-xl select-none object-cover flex-row flex"
                 draggable="false"
               />
               luvite
             </div>
           </h1>
 
-          <p className="text-slate-700 text-base sm:text-lg max-w-md font-medium leading-relaxed">
+          <p className="text-slate-700 text-sm sm:text-[17px] max-w-[26rem] font-medium leading-relaxed">
             Monitore, previna e gerencie dados pluviais com precisão em tempo
             real. Apoiando a gestão pública e a segurança do cidadão.
           </p>
 
-          <div className="hidden md:flex items-center gap-4 text-xs text-[#1447c4] font-bold uppercase tracking-wider">
+          <div className="hidden md:flex items-center gap-3.5 text-xs text-[#1447c4] font-bold uppercase tracking-wider">
             <span>• Monitoramento Inteligente</span>
             <span>• Dados Precisos</span>
           </div>
@@ -121,26 +123,26 @@ export default function CadastroCidadao() {
 
         {/* Card do Formulário */}
         <div className="flex justify-center md:justify-end w-full relative z-10">
-          <div className="w-full max-w-[450px] bg-white rounded-2xl shadow-2xl shadow-slate-900/60 border border-slate-200 p-6 sm:p-8 transition-all duration-300">
+          <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-2xl shadow-slate-900/60 border border-slate-200 p-5.5 sm:p-6.5 transition-all duration-300">
             <Link href="/">
               <img
                 src="/PluviteIcon.jpg"
                 alt="Pluvite Icon"
-                className="absolute top-5 right-5 w-11 h-11 rounded-xl object-cover select-none cursor-pointer hover:opacity-90 transition-opacity"
+                className="absolute top-4 right-4 w-10 h-10 rounded-lg object-cover select-none cursor-pointer hover:opacity-90 transition-opacity"
                 draggable="false"
               />
             </Link>
-            <div className="mb-6 text-center md:text-left">
-              <h2 className="text-2xl font-bold text-slate-800">
+            <div className="mb-4.5 text-center md:text-left">
+              <h2 className="text-[1.35rem] font-bold text-slate-800">
                 Crie sua conta
               </h2>
-              <p className="text-sm text-black mt-1">
+              <p className="text-[13px] text-black mt-1">
                 Preencha os campos abaixo para se cadastrar
               </p>
             </div>
 
             {/* Formulário */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               <div className="relative">
                 <input
                   type="text"
@@ -149,7 +151,7 @@ export default function CadastroCidadao() {
                   placeholder="Nome completo"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-3 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
+                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-2.75 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
                 />
               </div>
 
@@ -161,7 +163,7 @@ export default function CadastroCidadao() {
                   placeholder="E-mail institucional ou pessoal"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-3 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
+                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-2.75 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
                 />
               </div>
 
@@ -173,7 +175,7 @@ export default function CadastroCidadao() {
                   placeholder="Criar uma senha"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-3 pr-12 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
+                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-2.75 pr-12 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -193,7 +195,7 @@ export default function CadastroCidadao() {
                   placeholder="Confirmar senha"
                   value={confirmarSenha}
                   onChange={(e) => setConfirmarSenha(e.target.value)}
-                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-3 pr-12 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
+                  className="w-full bg-slate-50 text-sm text-black rounded-xl px-4 py-2.75 pr-12 border border-slate-200 focus:border-blue-900 focus:bg-white outline-none placeholder:text-slate-500 disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -214,7 +216,7 @@ export default function CadastroCidadao() {
               <button
                 type="submit"
                 disabled={carregando}
-                className="w-full bg-[#0d1b54] hover:bg-[#0d163b] active:bg-blue-800 text-white text-sm font-bold py-3 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/10 flex items-center justify-center gap-2"
+                className="w-full bg-[#0d1b54] hover:bg-[#0d163b] active:bg-blue-800 text-white text-sm font-bold py-2.75 rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/10 flex items-center justify-center gap-2"
               >
                 {carregando ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -225,7 +227,7 @@ export default function CadastroCidadao() {
             </form>
 
             {/* Divisor */}
-            <div className="flex items-center gap-3 my-4">
+            <div className="flex items-center gap-3 my-3.5">
               <hr className="flex-1 border-slate-200" />
               <span className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">
                 OU
@@ -239,7 +241,7 @@ export default function CadastroCidadao() {
                 type="button"
                 disabled={carregando}
                 onClick={() => handleSocialLogin("facebook")}
-                className="w-full bg-[#0f35a0] hover:bg-[#091f75] text-white text-[15px] font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full bg-[#0f35a0] hover:bg-[#091f75] text-white text-[14.5px] font-semibold py-2.25 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -251,7 +253,7 @@ export default function CadastroCidadao() {
                 type="button"
                 disabled={carregando}
                 onClick={() => handleSocialLogin("google")}
-                className="w-full mt-3 bg-zinc-200 hover:bg-slate-300 border border-slate-200 text-black text-[15px] font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                className="w-full bg-zinc-200 hover:bg-slate-300 border border-slate-200 text-black text-[14.5px] font-semibold py-2.25 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -276,7 +278,7 @@ export default function CadastroCidadao() {
             </div>
 
             {/* Rodapé */}
-            <div className="text-center mt-5 text-[14px] text-slate-500">
+            <div className="text-center mt-4.5 text-sm text-slate-500">
               Já possui uma conta?{" "}
               <Link
                 href="/login"

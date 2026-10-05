@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+chatbot/.wwebjs_auth/
+chatbot/.wwebjs_cache/

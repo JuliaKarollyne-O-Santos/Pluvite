@@ -81,7 +81,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Push notifications no mobile (`expo-notifications`) respeitando `notif_*` do perfil
 - [ ] Envio de SMS pelo backend via Twilio (portar `python/Sms/app.py`)
 - [x] Protótipo de envio do último alerta por WhatsApp via Twilio (`python/WhatsApp/app.py`)
-- [ ] WhatsApp em produção: remetente aprovado pela Meta + template de mensagem (fora do Sandbox / janela de 24 h) e disparo automático pelo backend
+- [ ] Integrar o chatbot WhatsApp via QR ao disparo de alertas, respeitando a autorização dos cidadãos
 - [ ] 🟡 Envio de e-mail de alerta usando o template `web/email.html`
 - [ ] 🟡 Página "Alertas" para o cidadão com histórico de alertas da sua cidade
 - [ ] 🟢 Integração com fontes oficiais (Defesa Civil SP, CEMADEN, INMET)

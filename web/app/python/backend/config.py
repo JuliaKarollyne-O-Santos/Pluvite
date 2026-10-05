@@ -59,17 +59,8 @@ MOCK_OPENWEATHER_ARQUIVO = os.getenv(
 )
 
 # ── WhatsApp ────────────────────────────────────────────────────────────────
-# "cloud" = WhatsApp Cloud API oficial da Meta (recomendado)
-# "evolution" = Evolution API / Baileys self-hosted
-# "off" = desativa o canal
-WHATSAPP_PROVEDOR = os.getenv("WHATSAPP_PROVEDOR", "cloud").strip().lower()
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-WHATSAPP_API_VERSAO = os.getenv("WHATSAPP_API_VERSAO", "v21.0")
-# Template aprovado para mensagens fora da janela de 24h (opcional)
-WHATSAPP_TEMPLATE_NOME = os.getenv("WHATSAPP_TEMPLATE_NOME", "")
-WHATSAPP_TEMPLATE_IDIOMA = os.getenv("WHATSAPP_TEMPLATE_IDIOMA", "pt_BR")
-# Evolution API
+# "evolution" = Evolution API / Baileys self-hosted; "off" = canal desativado
+WHATSAPP_PROVEDOR = os.getenv("WHATSAPP_PROVEDOR", "off").strip().lower()
 EVOLUTION_URL = os.getenv("EVOLUTION_URL", "")
 EVOLUTION_INSTANCIA = os.getenv("EVOLUTION_INSTANCIA", "")
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "")

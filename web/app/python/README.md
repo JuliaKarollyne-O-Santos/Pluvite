@@ -1,12 +1,13 @@
 # Pluvite — Central de Alertas (backend Python)
 
-Ponto único de disparo dos **3 canais de alerta**. Um evento entra (automático
-pelo OpenWeather ou manual pelo painel) e sai simultaneamente por:
+Ponto único de disparo de alertas. Um evento entra (automático pelo OpenWeather
+ou manual pelo painel) e sai simultaneamente pelo site e pelo app. O envio
+WhatsApp via Evolution API é opcional e fica desativado por padrão:
 
 | Canal | Tecnologia | Arquivo |
 |---|---|---|
 | 🖥️ Pop-up no site | WebSocket | `backend/canais/websocket_hub.py` |
-| 💬 WhatsApp | WhatsApp Cloud API (Meta) ou Evolution API | `backend/canais/whatsapp.py` |
+| 💬 WhatsApp | Evolution API (opcional); chatbot QR independente em `chatbot/` | `backend/canais/whatsapp.py` |
 | 📱 App mobile | Expo Push → FCM/APNs | `backend/canais/push_mobile.py` |
 
 ## Estrutura
@@ -23,9 +24,14 @@ web/app/python/
 ├── notificacao_popup/popups.py   # Pop-up de desktop (usa o mesmo formato)
 ├── mocks/                  # Respostas simuladas do OpenWeather (testes)
 ├── sql/alertas.sql         # Tabelas e políticas do Supabase
+├── chatbot/                # Chatbot WhatsApp via QR (ainda sem integração com alertas)
 ├── requirements.txt
 └── .env.example
 ```
+
+O canal WhatsApp do despachante fica desativado por padrão. A resposta de
+boas-vindas do chatbot via QR funciona separadamente; a integração desse
+chatbot com o envio de alertas ainda precisa ser implementada.
 
 ## Como rodar
 
@@ -63,7 +69,7 @@ Painel web (POST manual)     ─┘         │
                                         ├─ grava em alertas_tempo_real
                                         └─ asyncio.gather:
                                              ├─ WebSocket  -> pop-up no site
-                                             ├─ WhatsApp   -> números do cidadão
+                                             ├─ WhatsApp   -> Evolution API (opcional; desligado por padrão)
                                              └─ Expo Push  -> app mobile
 ```
 

@@ -1,7 +1,7 @@
 # Guia de homologação — Ecossistema de Alertas Pluvite
 
-Roteiro passo a passo para validar os 3 canais de alerta (site, WhatsApp e app
-mobile) depois da refatoração que removeu o SMS.
+Roteiro passo a passo para validar os alertas no site e no app mobile, além do
+chatbot WhatsApp via QR, que ainda funciona separadamente do disparo de alertas.
 
 > Todos os comandos assumem a raiz do repositório (`Pluvite/`) como ponto de
 > partida. No Windows, use o PowerShell.
@@ -13,7 +13,7 @@ mobile) depois da refatoração que removeu o SMS.
 ```
                     ┌──────────────────────────────┐
   OpenWeather ─────►│                              │──► WebSocket  ──► Pop-up no site
-  (rotina 10 min)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► Cloud API (Meta)
+  (rotina 10 min)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► desativado por padrão
   Painel web  ─────►│   (ponto central, asyncio)   │──► Expo Push  ──► FCM/APNs no celular
   (gatilho manual)  └──────────────────────────────┘
                                   │
@@ -306,123 +306,25 @@ Dispare um alerta e observe o objeto chegando com `evento: "alerta_emergencia"`.
 
 ---
 
-## Teste 4 — WhatsApp
+## Teste 4 — Chatbot WhatsApp via QR
 
-### Plataforma recomendada: **WhatsApp Cloud API (Meta)**
+O chatbot Node em `web/app/python/chatbot/` conecta ao WhatsApp Web pelo QR e
+responde à mensagem privada `pluvite` com a apresentação do assistente.
 
-| Critério | Cloud API (Meta) | Evolution API (Baileys) | Twilio Sandbox |
-|---|---|---|---|
-| Custo | Gratuito no volume do projeto (conversas de serviço/utilidade) | Gratuito, mas exige servidor | Trial limitado |
-| Segurança | Oficial, TLS, token revogável | Sessão do WhatsApp no seu servidor | Oficial |
-| Infra | Nenhuma | VPS + Docker | Nenhuma |
-| Risco de bloqueio | Nenhum | Existe (API não oficial) | Nenhum |
-
-**Use a Cloud API.** A Evolution API está implementada como alternativa para
-quem não quiser passar pela verificação da Meta.
-
-### 4.1 Configurar a Cloud API (15 min)
-
-1. Acesse <https://developers.facebook.com> → **Meus Apps** → **Criar app** →
-   tipo **Empresa**.
-2. No painel do app, adicione o produto **WhatsApp**.
-3. Em **WhatsApp → Introdução (API Setup)** você recebe de graça:
-   - um **número de teste** da Meta (remetente);
-   - o **Identificação do número de telefone** (`Phone number ID`);
-   - um **token temporário de 24h** (para começar).
-4. Ainda nessa tela, em **Para**, clique em **Gerenciar lista de números** e
-   cadastre **seu celular** como destinatário de teste (a conta de teste só
-   envia para números verificados). Confirme o código que chega no WhatsApp.
-5. Preencha o `.env` do backend:
-
-```
-WHATSAPP_PROVEDOR=cloud
-WHATSAPP_TOKEN=EAAG...            # token do passo 3
-WHATSAPP_PHONE_NUMBER_ID=123456789012345
-WHATSAPP_NUMEROS_TESTE=5512974075279   # seu número, com DDI, só dígitos
+```powershell
+cd web\app\python\chatbot
+npm install
+node chatbot.js
 ```
 
-6. Pare e reinicie `npm run dev` para aplicar as credenciais.
+Escaneie o QR pelo WhatsApp em **Aparelhos conectados**, envie `pluvite` para
+a conta conectada e confirme a resposta. A sessão fica salva localmente em
+`chatbot/.wwebjs_auth/`; `Ctrl+C` encerra o processo sem desvincular a conta.
 
-> **Token permanente:** para não renovar a cada 24h, crie um *System User* em
-> **Configurações do Negócio → Usuários do sistema**, dê a ele a permissão
-> `whatsapp_business_messaging` e gere um token sem expiração.
-
-### 4.2 Enviar e validar
-
-1. **Importante:** mande qualquer mensagem (ex.: "oi") do seu celular para o
-   número de teste da Meta. Isso abre a **janela de 24h** que autoriza texto
-   livre.
-2. Dispare um alerta (passo 2.2).
-3. Em até 5 segundos a mensagem chega no seu WhatsApp:
-
-```
-🚨 *PLUVITE — ALERTA VERMELHO — Perigo Extremo*
-
-*ENCHENTE*
-📍 Localização: Taubaté
-📌 Endereço/Região: Av. Tiradentes, altura do nº 500
-🚨 Nível de Prioridade: CRITICA
-🔄 Status Atual: Ativo
-
-ℹ️ *Descrição do Ocorrido:*
-Rio Paraíba transbordou. Evacuar imediatamente as margens.
-
-Mantenha-se em segurança e siga as orientações da Defesa Civil.
-```
-
-4. Confira o log do backend:
-
-```
-INFO | pluvite.whatsapp | WhatsApp: 1/1 mensagens aceitas
-```
-
-E o relatório da resposta HTTP do disparo:
-
-```json
-"whatsapp": { "ok": true, "provedor": "cloud", "enviados": 1, "total": 1 }
-```
-
-### 4.3 Enviar para os cidadãos cadastrados
-
-O backend busca os telefones na tabela `cidadao` (coluna `telefone`),
-filtrando pela coluna `cidade` quando ela bate com o município do alerta.
-Para testar:
-
-```sql
-update cidadao set telefone = '(12) 97407-5279', cidade = 'Taubaté'
-where email = 'seu-email@exemplo.com';
-```
-
-O formato do telefone é livre — `normalizar_numero()` converte
-`(12) 97407-5279` em `5512974075279`.
-
-### 4.4 Erros comuns
-
-| Mensagem no log | Causa | Solução |
-|---|---|---|
-| `(#131030) Recipient phone number not in allowed list` | Número não verificado na conta de teste | Cadastre-o no passo 4.1.4 |
-| `(#131047) Re-engagement message` | Passou das 24h desde a última mensagem do usuário | Mande "oi" de novo, ou configure um template (`WHATSAPP_TEMPLATE_NOME`) |
-| `(#190) Access token has expired` | Token de 24h venceu | Gere um token permanente (System User) |
-| `WhatsApp nao enviado: WHATSAPP_TOKEN/... ausentes` | `.env` incompleto | Preencha e reinicie `npm run dev` |
-
-### 4.5 Alternativa self-hosted (Evolution API)
-
-```bash
-docker run -d --name evolution -p 8080:8080 \
-  -e AUTHENTICATION_API_KEY=minha-chave \
-  atendai/evolution-api:latest
-```
-
-Crie a instância, leia o QR Code com o celular e preencha:
-
-```
-WHATSAPP_PROVEDOR=evolution
-EVOLUTION_URL=http://localhost:8080
-EVOLUTION_INSTANCIA=pluvite
-EVOLUTION_APIKEY=minha-chave
-```
-
-O resto do fluxo é idêntico — o `dispatcher` não muda.
+**Limitação atual:** este chatbot ainda não está ligado ao `dispatcher` de
+alertas. O canal WhatsApp do backend Python fica desativado por padrão; enviar
+alertas por ele ainda exige integrar o chatbot ao despachante e aplicar o
+filtro de cidadãos autorizados.
 
 ---
 
@@ -564,7 +466,7 @@ New-NetFirewallRule -DisplayName "Pluvite API" -Direction Inbound -LocalPort 800
 
 ---
 
-## Teste 6 — Validação integrada (os 3 canais de uma vez)
+## Teste 6 — Validação integrada (site e app; chatbot separado)
 
 Cenário final de homologação:
 
@@ -572,7 +474,7 @@ Cenário final de homologação:
    - site, Express e backend Python iniciados com `npm run dev`;
    - site aberto em uma aba (pontinho verde);
    - app aberto no celular, na aba Clima;
-   - celular com WhatsApp e o número de teste já "aquecido" (passo 4.2.1).
+   - o chatbot pode ser testado separadamente conforme o Teste 4.
 
 2. **Dispare** pelo painel do site com prioridade `CRITICA`.
 
@@ -581,7 +483,7 @@ Cenário final de homologação:
    | Canal | Evidência |
    |---|---|
    | 🖥️ Site | Pop-up vermelho sobre a página, sem reload |
-   | 💬 WhatsApp | Mensagem formatada no celular |
+   | 💬 WhatsApp | Fora deste fluxo; chatbot ainda não recebe os alertas |
    | 📱 App | Modal aberto + card no topo da tela inicial |
    | 💾 Banco | Nova linha em `alertas_tempo_real` |
 

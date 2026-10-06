@@ -1,79 +1,78 @@
-# <img src="web/public/Pluvite-png-removebg.png.png" width="25" height="35" style="margin-right:3px;"/>luvite
+# <img src="web/public/Pluvite-png-removebg.png.png" width="35" height="65" style="margin-right:3px;"/>luvite
 
 Pluvite é uma plataforma desenvolvida para monitoramento de riscos climáticos, comunicação de alertas e participação cidadã durante eventos relacionados a desastres naturais.
 O sistema permite que cidadãos acompanhem condições meteorológicas, recebam alertas em tempo real e reportem problemas de infraestrutura urbana, enquanto órgãos públicos podem monitorar ocorrências e gerenciar ações de resposta.
 
----
 
 ## Objetivo
 
 Facilitar a comunicação entre população e prefeitura durante situações de risco, oferecendo informações climáticas, alertas preventivos e um canal para registro de ocorrências.
 
----
 
-## Como Rodar o Projeto 
+## Como Rodar o Projeto
 
-### 🛜Executando a Plataforma Web
+### Executando a Plataforma Web
 
 1. Abra o terminal na pasta raiz do repositório e navegue até a pasta `web`:
- ```bash
- cd web
 
+```bash
+cd web
 ```
-
 
 2. Instale as dependências necessárias:
+
 ```bash
 npm install
-
 ```
 
-
 3. Crie um arquivo `.env.local` na raiz da pasta `web` e adicione as suas credenciais do Supabase:
+
 ```env
 NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase_aqui
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_do_supabase_aqui
-
 ```
-
 
 4. Inicie o servidor de desenvolvimento:
+
 ```bash
 npm run dev
-
 ```
-
 
 Acesse `http://localhost:3000` no seu navegador para visualizar.
 
----
 
-### 📱 Executando o Aplicativo Mobile
+### Executando o Aplicativo Mobile
+
+**Pré-requisitos:** ter o [Android Studio](https://developer.android.com/studio) instalado, com o Android SDK configurado, e um emulador Android criado (ou um celular Android conectado por USB, com a depuração USB ativada).
 
 1. Abra o terminal na pasta raiz do repositório e navegue até a pasta `mobile`:
+
 ```bash
 cd mobile
-
 ```
-
 
 2. Instale as dependências necessárias:
+
 ```bash
 npm install
-
 ```
 
+3. Abra o emulador pelo Android Studio (**Device Manager** → ▶) ou conecte o celular.
 
-3. Inicie o servidor do Expo:
+4. Inicie o servidor do React Native (Metro):
+
 ```bash
-npx expo start
-
+npx react-native start
 ```
 
+5. Em outro terminal, também na pasta `mobile`, instale e abra o aplicativo no emulador ou celular:
 
-Instale o aplicativo **Expo Go** no seu celular (Android ou iOS) e use a câmera para escanear o **QR Code** gerado no terminal do seu computador.
+```bash
+npx react-native run-android
+```
 
----
+Também é possível abrir a pasta `mobile/android` no Android Studio e clicar em **Run ▶**.
+
 
 ## Funcionalidades
 
@@ -108,34 +107,26 @@ Instale o aplicativo **Expo Go** no seu celular (Android ou iOS) e use a câmera
 
 * Visualização de publicações de ocorrências feitas pela população.
 * No **Aplicativo Mobile**, os usuários podem enviar novas ocorrências direto do celular com:
-* Registro de localização atual.
-* **Upload de fotos tiradas na hora** para comprovar o incidente.
-
+  * Registro de localização atual.
+  * **Upload de fotos tiradas na hora** para comprovar o incidente.
 
 Relatos de:
+
 * Alagamentos
 * Buracos em vias públicas
 * Deslizamentos
 * Problemas de infraestrutura
 * Outros incidentes urbanos
 
-
-
-### Recursos Exclusivos do Aplicativo Mobile
-
-* **Página de Perfil:** Gerenciamento dos dados pessoais e configurações de acessibilidade do cidadão.
-* **Página de Rotas:** Traçado de caminhos e rotas para ajudar o usuário a desviar de ruas alagadas ou bloqueadas.
-* **Página de Emergências e Contatos:** Lista de contatos rápidos e botões de discagem para socorro imediato (como Defesa Civil, Bombeiros e SAMU).
-
 ### Painel Administrativo (Web)
 
 * Visualização das ocorrências reportadas
 * Gestão de alertas
 * Acompanhamento de indicadores
-  Alteração de status das ocorrências:
-* Pendente
-* Em andamento
-* Resolvido
+* Alteração de status das ocorrências:
+  * Pendente
+  * Em andamento
+  * Resolvido
 * Remoção automática das ocorrências resolvidas do feed público
 
 ### Dashboard do Servidor Público (Web)
@@ -146,38 +137,55 @@ Relatos de:
 * Indicadores de risco
 * Monitoramento em tempo real
 
----
 
 ## Tecnologias Utilizadas
 
-### Front-end
+<p>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" alt="Next.js" title="Next.js" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" alt="React" title="React" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" alt="TypeScript" title="TypeScript" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" alt="Tailwind CSS" title="Tailwind CSS" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/reactnative/reactnative-original.svg" alt="React Native" title="React Native" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/androidstudio/androidstudio-original.svg" alt="Android Studio" title="Android Studio" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/leaflet" alt="Leaflet" title="Leaflet" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/lucide" alt="Lucide" title="Lucide" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/supabase/supabase-original.svg" alt="Supabase" title="Supabase" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/vercel/8B949E" alt="Vercel" title="Vercel" width="40" height="40"/>&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/render/8B949E" alt="Render" title="Render" width="40" height="40"/>
+</p>
 
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
+### Front-end (Web)
+
+* **Next.js:** projeto organizado e melhor desempenho
+* **React:** criação de componentes reutilizáveis
+* **TypeScript:** desenvolvimento do site evitando erros
+* **Tailwind CSS:** interface moderna e responsiva
 
 ### Mobile (Aplicativo)
 
-* React Native / Expo
-* Lucide React Native (Ícones)
+* **React Native:** criação do aplicativo
+* **Android Studio:** emulação e execução do aplicativo Android
+* **Lucide React Native:** ícones do aplicativo
 
 ### Banco de Dados e Backend
 
-* Supabase (Autenticação, Banco de Dados Relacional e Armazenamento de Fotos)
+* **Supabase:** autenticação, banco de dados relacional e armazenamento de fotos
+
+### Hospedagem
+
+* **Vercel:** hospedagem do site
+* **Render:** hospedagem do banco de dados
 
 ### APIs
 
-* WeatherAPI
+* **WeatherAPI:** dados meteorológicos em tempo real
 
 ### Bibliotecas
 
-* React Leaflet
-* Leaflet
-* Lucide React
-* Concurrently
+* **Leaflet** e **React Leaflet:** criação e design do mapa interativo
+* **Lucide React:** ícones do site
+* **Concurrently:** execução de mais de um processo ao mesmo tempo durante o desenvolvimento
 
----
 
 ## Público-Alvo
 
@@ -185,7 +193,6 @@ Relatos de:
 * Defesa Civil
 * Prefeituras
 
----
 
 ## Principais Módulos
 
@@ -206,8 +213,6 @@ Relatos de:
 * Feed Comunitário (com envio de fotos e localização)
 * Rotas e Navegação
 * Emergências e Contatos Úteis
-
----
 
 ## Equipe
 

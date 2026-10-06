@@ -3,11 +3,17 @@
 Pluvite é uma plataforma desenvolvida para monitoramento de riscos climáticos, comunicação de alertas e participação cidadã durante eventos relacionados a desastres naturais.
 O sistema permite que cidadãos acompanhem condições meteorológicas, recebam alertas em tempo real e reportem problemas de infraestrutura urbana, enquanto órgãos públicos podem monitorar ocorrências e gerenciar ações de resposta.
 
-
 ## Objetivo
 
 Facilitar a comunicação entre população e prefeitura durante situações de risco, oferecendo informações climáticas, alertas preventivos e um canal para registro de ocorrências.
 
+## Objetivos de Desenvolvimento Sustentável (ODS)
+
+O Pluvite está alinhado aos seguintes Objetivos de Desenvolvimento Sustentável da ONU:
+
+* **ODS 9 – Indústria, Inovação e Infraestrutura:** uso de tecnologia para monitorar e comunicar problemas na infraestrutura urbana.
+* **ODS 11 – Cidades e Comunidades Sustentáveis:** fortalece a comunicação entre população e prefeitura, tornando as cidades mais seguras durante desastres.
+* **ODS 13 – Ação Contra a Mudança Global do Clima:** alertas preventivos e monitoramento de riscos climáticos, como enchentes e deslizamentos.
 
 ## Como Rodar o Projeto
 
@@ -40,7 +46,6 @@ npm run dev
 
 Acesse `http://localhost:3000` no seu navegador para visualizar.
 
-
 ### Executando o Aplicativo Mobile
 
 **Pré-requisitos:** ter o [Android Studio](https://developer.android.com/studio) instalado, com o Android SDK configurado, e um emulador Android criado (ou um celular Android conectado por USB, com a depuração USB ativada).
@@ -72,7 +77,6 @@ npx react-native run-android
 ```
 
 Também é possível abrir a pasta `mobile/android` no Android Studio e clicar em **Run ▶**.
-
 
 ## Funcionalidades
 
@@ -137,7 +141,6 @@ Relatos de:
 * Indicadores de risco
 * Monitoramento em tempo real
 
-
 ## Tecnologias Utilizadas
 
 <p>
@@ -186,13 +189,11 @@ Relatos de:
 * **Lucide React:** ícones do site
 * **Concurrently:** execução de mais de um processo ao mesmo tempo durante o desenvolvimento
 
-
 ## Público-Alvo
 
 * Cidadãos
 * Defesa Civil
 * Prefeituras
-
 
 ## Principais Módulos
 
@@ -200,10 +201,13 @@ Relatos de:
 
 * Login e Cadastro
 * Clima
+* Perfil do Usuário
 * Mapa Interativo
 * Feed Comunitário
 * Alertas
 * Dashboard Administrativo
+* Rotas e Navegação
+* Emergências e Contatos Úteis
 
 ### Aplicativo Mobile
 
@@ -211,12 +215,27 @@ Relatos de:
 * Clima
 * Perfil do Usuário
 * Feed Comunitário (com envio de fotos e localização)
+* Alertas
 * Rotas e Navegação
 * Emergências e Contatos Úteis
 
 ## Equipe
 
-Projeto acadêmico da matéria de Projeto Integrador I, desenvolvido para aplicação de:
+| Integrante | Função | GitHub |
+|---|---|---|
+| **Julia Santos** | Scrum Master e Desenvolvedora Front-end | [@JuliaKarollyne-O-Santos](https://github.com/JuliaKarollyne-O-Santos) |
+| **Ana Clara Pereira** | Product Owner e Desenvolvedora Back-end | [@AnaClara-S-Pereira](https://github.com/AnaClara-S-Pereira) |
+| **Cauã Sant'anna** | Developer | [@cauamendrot292](https://github.com/cauamendrot292) |
+| **Quezia Luiz** | Developer | [@QueziaQueren](https://github.com/QueziaQueren) |
+| **Gabrielly Santos** | Developer | [@GabyzGit](https://github.com/GabyzGit) |
+
+- **Orientador: Prof. Me. Gildárcio Souza Gonçalves**
+
+## Projeto Acadêmico
+
+Projeto acadêmico desenvolvido por alunos do **1º AMS** da **Fatec Taubaté (Faculdade de Tecnologia de Taubaté)**, na disciplina de Projeto Integrador I, para fins de estudo e avaliação.
+
+O projeto foi desenvolvido para aplicação de:
 
 * Desenvolvimento Web e Mobile
 * Banco de Dados

@@ -1,7 +1,8 @@
 # Guia de homologação — Ecossistema de Alertas Pluvite
 
-Roteiro passo a passo para validar os alertas no site e no app mobile, além do
-chatbot WhatsApp via QR, que ainda funciona separadamente do disparo de alertas.
+Roteiro passo a passo para validar os alertas nos três canais: pop-up no site,
+WhatsApp (chatbot conectado por QR) e app mobile. Um único `npm run dev` sobe
+tudo, inclusive o chatbot — o alerta disparado no site sai sozinho no WhatsApp.
 
 > Todos os comandos assumem a raiz do repositório (`Pluvite/`) como ponto de
 > partida. No Windows, use o PowerShell.
@@ -13,11 +14,13 @@ chatbot WhatsApp via QR, que ainda funciona separadamente do disparo de alertas.
 ```
                     ┌──────────────────────────────┐
   OpenWeather ─────►│                              │──► WebSocket  ──► Pop-up no site
-  (rotina 10 min)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► desativado por padrão
+  (rotina 10 min)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► chatbot QR (inscritos)
   Painel web  ─────►│   (ponto central, asyncio)   │──► Expo Push  ──► FCM/APNs no celular
-  (gatilho manual)  └──────────────────────────────┘
+  (/Servidor)       └──────────────────────────────┘
                                   │
                                   └──► Supabase: alertas_tempo_real
+
+  WhatsApp: dispatcher ──► chatbot.js (127.0.0.1:3010) ──► quem mandou "pluvite"
 ```
 
 Arquivos principais:
@@ -28,8 +31,9 @@ Arquivos principais:
 | backend python | `web/app/python/backend/openweather.py` | Gatilho automático |
 | backend python | `web/app/python/backend/main.py` | WebSocket + rotas REST |
 | backend python | `web/app/python/backend/canais/*` | Um módulo por canal |
+| chatbot | `web/app/python/chatbot/chatbot.js` | Sessão WhatsApp por QR, inscritos e envio |
 | web | `web/app/components/AlertaPopup.tsx` | Pop-up em tempo real |
-| web | `web/app/page.tsx` | Gatilho manual (painel) |
+| web | `web/app/Servidor/page.tsx` | Gatilho manual (painel) |
 | mobile | `mobile/pluvite/src/services/notificacoes.ts` | Push nativo |
 | mobile | `mobile/pluvite/src/components/AlertaEmergenciaModal.tsx` | Modal na tela inicial |
 
@@ -60,9 +64,25 @@ pip install -r requirements.txt
 ```
 
 Copie `.env.example` para `.env` (se ainda não existir) e preencha ao menos
-`SUPABASE_URL`, `SUPABASE_KEY` e `OPENWEATHER_KEY`. As chaves de WhatsApp e
-push podem ficar vazias por enquanto — o canal simplesmente reporta
-"não configurado" e os outros dois continuam funcionando.
+`SUPABASE_URL`, `SUPABASE_KEY` e `OPENWEATHER_KEY`. Push pode ficar vazio por
+enquanto — o canal reporta "não configurado" e os outros continuam funcionando.
+
+Para o WhatsApp, no mesmo `.env`:
+
+```
+WHATSAPP_PROVEDOR=qr
+CHATBOT_TOKEN=um-texto-secreto-qualquer
+```
+
+E instale as dependências do chatbot (uma vez):
+
+```powershell
+cd web\app\python\chatbot
+npm install
+```
+
+Com `WHATSAPP_PROVEDOR=off`, o chatbot apenas avisa que está desligado e o
+resto do projeto sobe normalmente.
 
 O backend é iniciado junto com o site no passo 0.3. Não inicie outro Uvicorn
 manualmente, pois ele tentará usar a mesma porta 8000.
@@ -87,8 +107,25 @@ npm install
 npm run dev
 ```
 
-Esse comando inicia Next.js, Express e Uvicorn. O Uvicorn escuta em
-`0.0.0.0:8000` para permitir conexões do app na rede local. Confira
+Esse comando inicia, no mesmo terminal, quatro processos:
+
+| Prefixo | Processo |
+|---|---|
+| `[web]` | Next.js em <http://localhost:3000> |
+| `[api]` | Express em `:3001` |
+| `[alertas]` | Uvicorn (backend Python) em `0.0.0.0:8000` |
+| `[whatsapp]` | Chatbot WhatsApp (QR + API local em `127.0.0.1:3010`) |
+
+Na primeira vez o `[whatsapp]` mostra um QR Code: escaneie pelo WhatsApp do
+número que vai **enviar** os alertas (**Aparelhos conectados → Conectar um
+aparelho**). Depois a sessão fica salva e ele conecta sozinho. Espere:
+
+```
+[whatsapp] ✅ Tudo certo! WhatsApp conectado.
+[whatsapp] 📋 Inscritos nos alertas: 0
+```
+
+O que você digitar nesse terminal vai para o chatbot (ex.: `logout`). Confira
 <http://localhost:8000/api/status>.
 
 Se o backend Python não estiver em `http://localhost:8000`, crie
@@ -197,7 +234,7 @@ LIMITE_CHUVA_1H_MM = 0.1     # em vez de 30.0
 
 ### 2.1 Pelo painel do site
 
-1. Abra <http://localhost:3000>.
+1. Abra <http://localhost:3000/Servidor>.
 2. Preencha o formulário **"🚨 Disparar Alerta Meteorológico"**:
    - Tipo: `Enchente`
    - Prioridade: `Crítica`
@@ -211,7 +248,7 @@ O próprio painel mostra o relatório de entrega por canal:
 ```
 Alerta disparado: [CRITICA] Alerta de Enchente - Taubaté
 🖥️ Site: 1 navegador(es) receberam o pop-up
-💬 WhatsApp: 2/2 mensagens enviadas
+💬 WhatsApp: 1/1 mensagens enviadas
 📱 App: 1/1 aparelhos notificados
 💾 Banco: registrado
 ```
@@ -306,25 +343,85 @@ Dispare um alerta e observe o objeto chegando com `evento: "alerta_emergencia"`.
 
 ---
 
-## Teste 4 — Chatbot WhatsApp via QR
+## Teste 4 — WhatsApp automático (chatbot QR)
 
-O chatbot Node em `web/app/python/chatbot/` conecta ao WhatsApp Web pelo QR e
-responde à mensagem privada `pluvite` com a apresentação do assistente.
+**Objetivo:** provar que o alerta disparado no site chega sozinho no WhatsApp
+de quem pediu, sem abrir outro terminal.
 
-```powershell
-cd web\app\python\chatbot
-npm install
-node chatbot.js
+**Quem recebe:** só os contatos que mandaram `pluvite` no privado do WhatsApp
+conectado (mais os números opcionais de `WHATSAPP_NUMEROS_TESTE`). Os
+telefones da tabela `cidadao` **não** são usados nesse modo.
+
+### 4.1 Conectar
+
+Com `npm run dev` rodando (passo 0.3), o `[whatsapp]` deve mostrar
+`✅ Tudo certo! WhatsApp conectado.` Confira em
+<http://localhost:8000/api/status>:
+
+```json
+"whatsapp_provedor": "qr",
+"whatsapp_chatbot": { "online": true, "conectado": true, "inscritos": 0 }
 ```
 
-Escaneie o QR pelo WhatsApp em **Aparelhos conectados**, envie `pluvite` para
-a conta conectada e confirme a resposta. A sessão fica salva localmente em
-`chatbot/.wwebjs_auth/`; `Ctrl+C` encerra o processo sem desvincular a conta.
+### 4.2 Inscrever um celular
 
-**Limitação atual:** este chatbot ainda não está ligado ao `dispatcher` de
-alertas. O canal WhatsApp do backend Python fica desativado por padrão; enviar
-alertas por ele ainda exige integrar o chatbot ao despachante e aplicar o
-filtro de cidadãos autorizados.
+De **outro** celular, mande `pluvite` para o número conectado. Ele recebe a
+apresentação com "✅ A partir de agora você vai receber os alertas do Pluvite
+por aqui" e o terminal mostra:
+
+```
+[whatsapp] ➕ Novo inscrito nos alertas (1 no total)
+```
+
+> Mensagens enviadas pela própria conta conectada são ignoradas. Para testar
+> com um celular só, coloque o seu número em `WHATSAPP_NUMEROS_TESTE`
+> (`5512XXXXXXXXX`) e reinicie o `npm run dev`; o alerta chega na conversa
+> **"Você"** do WhatsApp.
+
+### 4.3 Disparar pelo site (pop-up + WhatsApp juntos)
+
+1. Abra o site em uma aba (pontinho verde = WebSocket conectado).
+2. Em outra aba, abra <http://localhost:3000/Servidor> e dispare um alerta
+   (passo 2.1).
+3. Confira:
+
+| Onde | Evidência |
+|---|---|
+| Aba do site | Pop-up do alerta, sem recarregar |
+| Celular inscrito | Mensagem `🚨 *PLUVITE — ...*` com tipo, local, prioridade e descrição |
+| Terminal | `[whatsapp] 📤 Alerta enviado para 55...@c.us` |
+| Relatório do painel | `💬 WhatsApp: 1/1 mensagens enviadas` |
+
+O alerta automático do OpenWeather (Teste 1) segue o mesmo caminho e também
+chega no WhatsApp.
+
+### 4.4 Teste só do WhatsApp (sem banco, site ou push)
+
+Em outro terminal, com o `npm run dev` rodando:
+
+```powershell
+cd web\app\python
+.\.venv\Scripts\Activate.ps1
+python -m backend.canais.whatsapp
+```
+
+O inscrito recebe "🧪 PLUVITE — TESTE" e a resposta mostra `"enviados": 1`.
+
+### 4.5 Sair e logout
+
+| Ação | Esperado |
+|---|---|
+| Inscrito manda `sair` | Recebe confirmação; `➖ Inscrito saiu` no terminal; não recebe mais alertas |
+| Inscrito manda `pluvite` de novo | Volta a receber (sem duplicar) |
+| `Ctrl+C` e `npm run dev` de novo | Conecta sem QR; a lista de inscritos é mantida |
+| Digitar `logout` no terminal do `npm run dev` | `🧹 Lista de inscritos nos alertas apagada.` e um **QR novo** aparece |
+| Desconectar pelo celular (Aparelhos conectados) | Lista apagada e QR novo no terminal |
+
+A lista fica em `web/app/python/chatbot/inscritos.json` (ignorada pelo git).
+
+> **Atenção:** o envio usa uma sessão do WhatsApp Web (não oficial). Use um
+> número dedicado; envios em massa podem levar a bloqueio. Por isso as
+> mensagens saem uma por vez (`CHATBOT_INTERVALO_SEGUNDOS=2`).
 
 ---
 
@@ -466,15 +563,15 @@ New-NetFirewallRule -DisplayName "Pluvite API" -Direction Inbound -LocalPort 800
 
 ---
 
-## Teste 6 — Validação integrada (site e app; chatbot separado)
+## Teste 6 — Validação integrada (site, WhatsApp e app)
 
 Cenário final de homologação:
 
 1. **Prepare o ambiente:**
-   - site, Express e backend Python iniciados com `npm run dev`;
+   - tudo iniciado com `npm run dev` (`[whatsapp]` conectado);
    - site aberto em uma aba (pontinho verde);
-   - app aberto no celular, na aba Clima;
-   - o chatbot pode ser testado separadamente conforme o Teste 4.
+   - um celular inscrito no WhatsApp (mandou `pluvite`);
+   - app aberto no celular, na aba Clima.
 
 2. **Dispare** pelo painel do site com prioridade `CRITICA`.
 
@@ -483,7 +580,7 @@ Cenário final de homologação:
    | Canal | Evidência |
    |---|---|
    | 🖥️ Site | Pop-up vermelho sobre a página, sem reload |
-   | 💬 WhatsApp | Fora deste fluxo; chatbot ainda não recebe os alertas |
+   | 💬 WhatsApp | Mensagem do alerta no celular inscrito |
    | 📱 App | Modal aberto + card no topo da tela inicial |
    | 💾 Banco | Nova linha em `alertas_tempo_real` |
 
@@ -491,7 +588,7 @@ Cenário final de homologação:
    aparecer com `ok`.
 
 5. **Teste de resiliência:** desligue o WhatsApp (`WHATSAPP_PROVEDOR=off`),
-   reinicie e dispare de novo. Site e app continuam recebendo; o relatório
+   reinicie o `npm run dev` e dispare de novo. Site e app continuam recebendo; o relatório
    mostra apenas o WhatsApp como não enviado. Nenhum canal derruba os outros.
 
 ---
@@ -504,7 +601,12 @@ Cenário final de homologação:
 | `CORS policy` no console do navegador | Origem não liberada | Inclua a URL em `CORS_ORIGENS` no `.env` |
 | Alerta dispara uma vez e para | Cooldown de 3h | Use `?forcar=true` ou reduza `MONITOR_COOLDOWN_SEGUNDOS` |
 | `Falha ao gravar alerta no Supabase` | RLS bloqueando a escrita | Rode `sql/alertas.sql`; em produção prefira a `service_role key` |
-| WhatsApp "nenhum numero cadastrado" | `cidadao.telefone` vazio | Preencha o telefone ou use `WHATSAPP_NUMEROS_TESTE` |
+| WhatsApp `nenhum inscrito` | Ninguém mandou `pluvite` | Mande `pluvite` de outro celular ou use `WHATSAPP_NUMEROS_TESTE` |
+| WhatsApp `chatbot QR indisponivel` | `[whatsapp]` não subiu | Veja a mensagem dele no terminal; rode `npm install` em `web/app/python/chatbot` |
+| `[whatsapp] WhatsApp por QR desligado` | `WHATSAPP_PROVEDOR` diferente de `qr` | Ajuste o `.env` e reinicie |
+| WhatsApp `Token inválido` / `401` | `CHATBOT_TOKEN` mudou com tudo rodando | Reinicie o `npm run dev` |
+| WhatsApp `ainda não conectado` (503) | Sessão carregando ou QR não escaneado | Espere o `✅ WhatsApp conectado` ou escaneie o QR |
+| `Não foi possível iniciar o WhatsApp` | Chrome/Edge não encontrado | Instale o Chrome ou defina `PUPPETEER_EXECUTABLE_PATH` |
 | `[push] Push notification so funciona em aparelho fisico` | Emulador | Use um celular real |
 | `[push] Não foi possível gerar o token` | Falta `projectId` do EAS | `npx eas init` e refaça o build |
 | Push não chega, mas o Expo diz "ok" | Credencial FCM ausente | `npx eas credentials` → FCM V1 |
@@ -526,8 +628,11 @@ Cenário final de homologação:
 - [ ] Pop-up aparece para quem abre o site depois (`Teste 3.3`)
 - [ ] "Estou Ciente" não reaparece após F5
 - [ ] WebSocket reconecta sozinho após queda do backend
-- [ ] WhatsApp chega formatado (`Teste 4.2`)
-- [ ] WhatsApp respeita os telefones da tabela `cidadao` (`Teste 4.3`)
+- [ ] Chatbot conecta pelo `npm run dev`, sem outro terminal (`Teste 4.1`)
+- [ ] `pluvite` inscreve o contato e responde a apresentação (`Teste 4.2`)
+- [ ] Alerta do site chega no WhatsApp junto com o pop-up (`Teste 4.3`)
+- [ ] Só inscritos recebem; `sair` remove da lista (`Teste 4.5`)
+- [ ] `logout` apaga os inscritos e mostra QR novo (`Teste 4.5`)
 - [ ] Token de push registrado em `dispositivos` (`Teste 5.2`)
 - [ ] Push acende a tela do celular bloqueado (`Teste 5.3`)
 - [ ] Modal abre na tela inicial ao tocar na notificação (`Teste 5.4`)

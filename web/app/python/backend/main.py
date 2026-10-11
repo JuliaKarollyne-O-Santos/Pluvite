@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 from . import config, openweather, supabase_client
 from .alerta import montar_payload
 from .canais.websocket_hub import hub
+from .canais.whatsapp import status_chatbot
 from .dispatcher import disparar_alerta, ultimo_payload
 
 logging.basicConfig(
@@ -109,6 +110,10 @@ async def status() -> dict[str, Any]:
         "monitor_mock": config.MOCK_OPENWEATHER,
         "cidades_monitoradas": config.MONITOR_CIDADES,
         "whatsapp_provedor": config.WHATSAPP_PROVEDOR,
+        "whatsapp_somente_teste": config.WHATSAPP_SOMENTE_TESTE,
+        "whatsapp_chatbot": (
+            await status_chatbot() if config.WHATSAPP_PROVEDOR == "qr" else None
+        ),
         "push_ativo": config.PUSH_ATIVO,
         "ultimo_alerta": ultimo_payload(),
     }

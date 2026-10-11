@@ -59,13 +59,20 @@ MOCK_OPENWEATHER_ARQUIVO = os.getenv(
 )
 
 # ── WhatsApp ────────────────────────────────────────────────────────────────
-# "evolution" = Evolution API / Baileys self-hosted; "off" = canal desativado
+# "qr" = chatbot/chatbot.js (sessao por QR); "evolution" = Evolution API;
+# "off" = canal desativado
 WHATSAPP_PROVEDOR = os.getenv("WHATSAPP_PROVEDOR", "off").strip().lower()
+CHATBOT_URL = os.getenv("CHATBOT_URL", "http://127.0.0.1:3010")
+CHATBOT_TOKEN = os.getenv("CHATBOT_TOKEN", "")
+# Pausa entre mensagens no modo "qr" (rajadas aumentam o risco de bloqueio)
+CHATBOT_INTERVALO_SEGUNDOS = float(os.getenv("CHATBOT_INTERVALO_SEGUNDOS", "2"))
 EVOLUTION_URL = os.getenv("EVOLUTION_URL", "")
 EVOLUTION_INSTANCIA = os.getenv("EVOLUTION_INSTANCIA", "")
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "")
 # Numeros extras de teste (formato E.164 sem +, ex: 5512974075279)
 WHATSAPP_NUMEROS_TESTE = _lista("WHATSAPP_NUMEROS_TESTE")
+# true = envia SO para WHATSAPP_NUMEROS_TESTE, ignorando os telefones do banco
+WHATSAPP_SOMENTE_TESTE = _bool("WHATSAPP_SOMENTE_TESTE", True)
 WHATSAPP_DDI_PADRAO = os.getenv("WHATSAPP_DDI_PADRAO", "55")
 
 # ── Push mobile (Expo -> FCM/APNs) ──────────────────────────────────────────

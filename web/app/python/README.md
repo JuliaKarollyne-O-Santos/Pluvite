@@ -2,12 +2,13 @@
 
 Ponto único de disparo de alertas. Um evento entra (automático pelo OpenWeather
 ou manual pelo painel) e sai simultaneamente pelo site e pelo app. O envio
-WhatsApp via Evolution API é opcional e fica desativado por padrão:
+WhatsApp (pelo chatbot conectado por QR ou pela Evolution API) é opcional e fica
+desativado por padrão:
 
 | Canal | Tecnologia | Arquivo |
 |---|---|---|
 | 🖥️ Pop-up no site | WebSocket | `backend/canais/websocket_hub.py` |
-| 💬 WhatsApp | Evolution API (opcional); chatbot QR independente em `chatbot/` | `backend/canais/whatsapp.py` |
+| 💬 WhatsApp | Chatbot QR em `chatbot/` (`WHATSAPP_PROVEDOR=qr`) ou Evolution API | `backend/canais/whatsapp.py` |
 | 📱 App mobile | Expo Push → FCM/APNs | `backend/canais/push_mobile.py` |
 
 ## Estrutura
@@ -24,14 +25,34 @@ web/app/python/
 ├── notificacao_popup/popups.py   # Pop-up de desktop (usa o mesmo formato)
 ├── mocks/                  # Respostas simuladas do OpenWeather (testes)
 ├── sql/alertas.sql         # Tabelas e políticas do Supabase
-├── chatbot/                # Chatbot WhatsApp via QR (ainda sem integração com alertas)
+├── chatbot/                # Chatbot WhatsApp via QR + API local de envio de alertas
 ├── requirements.txt
 └── .env.example
 ```
 
-O canal WhatsApp do despachante fica desativado por padrão. A resposta de
-boas-vindas do chatbot via QR funciona separadamente; a integração desse
-chatbot com o envio de alertas ainda precisa ser implementada.
+### WhatsApp pelo chatbot QR (sem software extra)
+
+Recebem os alertas **só** os contatos que mandarem `pluvite` no privado do
+WhatsApp conectado (os telefones da tabela `cidadao` não são usados nesse modo).
+Quem mandar `sair` deixa de receber. A lista fica em `chatbot/inscritos.json`
+(ignorado pelo git), sobrevive a reinícios com Ctrl+C e é **apagada no logout**
+(comando `logout` no terminal ou desconectar o aparelho pelo celular).
+
+1. No `.env`: `WHATSAPP_PROVEDOR=qr` e um `CHATBOT_TOKEN` qualquer (secreto).
+   `WHATSAPP_NUMEROS_TESTE` é opcional (números que sempre recebem).
+2. `cd chatbot && npm install` (uma vez). Depois, `npm run dev` em `web/` já sobe
+   o chatbot junto com o site (prefixo `[whatsapp]`): escaneie o QR com o número
+   que vai enviar os alertas. O chatbot lê o mesmo `.env` e abre a API local em
+   `http://127.0.0.1:3010` (`POST /enviar`, `GET /inscritos`, `GET /status`).
+   Para rodar sozinho: `npm start` dentro de `chatbot/`.
+3. De outro celular, mande `pluvite` para esse número.
+4. Dispare um alerta no painel `/Servidor` do site: sai o pop-up e, junto, o
+   WhatsApp para os inscritos. `/api/status` mostra `whatsapp_chatbot`.
+5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
+   `python -m backend.canais.whatsapp`
+
+Roteiro completo: `GUIA-TESTES-ALERTAS.md` (Teste 4). Os envios saem um por vez
+(`CHATBOT_INTERVALO_SEGUNDOS`) para reduzir o risco de bloqueio do número.
 
 ## Como rodar
 
@@ -69,7 +90,7 @@ Painel web (POST manual)     ─┘         │
                                         ├─ grava em alertas_tempo_real
                                         └─ asyncio.gather:
                                              ├─ WebSocket  -> pop-up no site
-                                             ├─ WhatsApp   -> Evolution API (opcional; desligado por padrão)
+                                             ├─ WhatsApp   -> chatbot QR ou Evolution API (desligado por padrão)
                                              └─ Expo Push  -> app mobile
 ```
 

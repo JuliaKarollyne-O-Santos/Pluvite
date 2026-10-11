@@ -4,3 +4,4 @@ __pycache__/
 venv/
 chatbot/.wwebjs_auth/
 chatbot/.wwebjs_cache/
+chatbot/inscritos.json

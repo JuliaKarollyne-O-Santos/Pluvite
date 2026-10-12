@@ -87,10 +87,16 @@ resto do projeto sobe normalmente.
 O backend é iniciado junto com o site no passo 0.3. Não inicie outro Uvicorn
 manualmente, pois ele tentará usar a mesma porta 8000.
 
+O padrão monitora os **39 municípios do Vale do Paraíba e Litoral Norte** uma
+vez por hora (`MONITOR_INTERVALO_SEGUNDOS=3600`). Isso usa ao menos 39
+consultas de clima por ciclo e até 39 chamadas adicionais do One Call (até
+1.872 chamadas/dia, se esse endpoint estiver habilitado). Confira a cota do seu
+plano OpenWeather antes de aumentar a frequência.
+
 Ao iniciar o projeto, você deve ver:
 
 ```
-Monitor OpenWeather ativo - cidades: Taubate, Sao Jose dos Campos | intervalo: 600s
+Monitor OpenWeather ativo - cidades: Aparecida, Arapeí, ... | intervalo: 3600s
 Uvicorn running on http://0.0.0.0:8000
 ```
 
@@ -349,8 +355,10 @@ Dispare um alerta e observe o objeto chegando com `evento: "alerta_emergencia"`.
 de quem pediu, sem abrir outro terminal.
 
 **Quem recebe:** só os contatos que mandaram `pluvite` no privado do WhatsApp
-conectado (mais os números opcionais de `WHATSAPP_NUMEROS_TESTE`). Os
-telefones da tabela `cidadao` **não** são usados nesse modo.
+conectado e escolheram um município (mais os números opcionais de
+`WHATSAPP_NUMEROS_TESTE`). Cada alerta é entregue apenas aos inscritos na
+cidade correspondente. Os telefones da tabela `cidadao` **não** são usados
+nesse modo.
 
 ### 4.1 Conectar
 
@@ -365,12 +373,12 @@ Com `npm run dev` rodando (passo 0.3), o `[whatsapp]` deve mostrar
 
 ### 4.2 Inscrever um celular
 
-De **outro** celular, mande `pluvite` para o número conectado. Ele recebe a
-apresentação com "✅ A partir de agora você vai receber os alertas do Pluvite
-por aqui" e o terminal mostra:
+De **outro** celular, mande `pluvite` para o número conectado. O chatbot pede
+o município desejado; responda com um dos 39 nomes para concluir a inscrição.
+O terminal mostra:
 
 ```
-[whatsapp] ➕ Novo inscrito nos alertas (1 no total)
+[whatsapp] ➕ Novo inscrito aguardando escolha de cidade (1 no total)
 ```
 
 > Mensagens enviadas pela própria conta conectada são ignoradas. Para testar
@@ -469,8 +477,12 @@ npx eas build --profile development --platform android
 4. Confirme a gravação:
 
 ```sql
-select push_token, plataforma, ativo from dispositivos;
+select push_token, plataforma, municipio, ativo from dispositivos;
 ```
+
+No app, abra **Perfil → Notificações**, escolha o município e salve. O aparelho
+receberá push somente para alertas dessa cidade; sem escolha, não recebe push
+de alertas municipais.
 
 Se preferir não depender do banco, copie o token para o `.env` do backend:
 
@@ -629,7 +641,7 @@ Cenário final de homologação:
 - [ ] "Estou Ciente" não reaparece após F5
 - [ ] WebSocket reconecta sozinho após queda do backend
 - [ ] Chatbot conecta pelo `npm run dev`, sem outro terminal (`Teste 4.1`)
-- [ ] `pluvite` inscreve o contato e responde a apresentação (`Teste 4.2`)
+- [ ] `pluvite` pede o município e inscreve o contato nessa cidade (`Teste 4.2`)
 - [ ] Alerta do site chega no WhatsApp junto com o pop-up (`Teste 4.3`)
 - [ ] Só inscritos recebem; `sair` remove da lista (`Teste 4.5`)
 - [ ] `logout` apaga os inscritos e mostra QR novo (`Teste 4.5`)

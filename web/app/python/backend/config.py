@@ -4,6 +4,7 @@ Todas as credenciais sao lidas do arquivo web/app/python/.env
 (veja .env.example para a lista completa de variaveis).
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 # .env fica na raiz de web/app/python (um nivel acima deste pacote)
 RAIZ_PYTHON = Path(__file__).resolve().parent.parent
 load_dotenv(dotenv_path=RAIZ_PYTHON / ".env")
+MUNICIPIOS = json.loads((RAIZ_PYTHON / "municipios.json").read_text(encoding="utf-8"))
 
 
 def _bool(nome: str, padrao: bool = False) -> bool:
@@ -48,8 +50,8 @@ CORS_ORIGENS = _lista("CORS_ORIGENS", "http://localhost:3000,http://127.0.0.1:30
 # ── OpenWeather ─────────────────────────────────────────────────────────────
 OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY", "")
 MONITOR_ATIVO = _bool("MONITOR_ATIVO", True)
-MONITOR_CIDADES = _lista("MONITOR_CIDADES", "Taubate,Sao Jose dos Campos")
-MONITOR_INTERVALO_SEGUNDOS = _int("MONITOR_INTERVALO_SEGUNDOS", 600)
+MONITOR_CIDADES = _lista("MONITOR_CIDADES", ",".join(MUNICIPIOS))
+MONITOR_INTERVALO_SEGUNDOS = _int("MONITOR_INTERVALO_SEGUNDOS", 3600)
 # Nao repete o mesmo alerta (cidade + tipo) dentro desse intervalo
 MONITOR_COOLDOWN_SEGUNDOS = _int("MONITOR_COOLDOWN_SEGUNDOS", 10800)
 # Modo de teste: le a resposta do OpenWeather de um arquivo JSON local

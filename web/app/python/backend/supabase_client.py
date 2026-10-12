@@ -30,16 +30,12 @@ def _filtrar_por_municipio(
 ) -> list[dict[str, Any]]:
     alvo = _normalizar_municipio(municipio)
     if not alvo:
-        return linhas
-
-    com_municipio = [
-        (linha, _normalizar_municipio(linha.get(campo)))
+        return []
+    return [
+        linha
         for linha in linhas
-        if _normalizar_municipio(linha.get(campo))
+        if _normalizar_municipio(linha.get(campo)) == alvo
     ]
-    if not com_municipio:
-        return linhas
-    return [linha for linha, nome in com_municipio if nome == alvo]
 
 
 def cliente() -> Client | None:
@@ -101,10 +97,15 @@ def _telefones_sync(municipio: str | None) -> list[str]:
     sb = cliente()
     if sb is None:
         return []
-    consulta = sb.table("cidadao").select("telefone,cidade").not_.is_("telefone", "null")
+    consulta = (
+        sb.table("cidadao")
+        .select("telefone,municipio_alertas")
+        .not_.is_("telefone", "null")
+        .not_.is_("municipio_alertas", "null")
+    )
     resposta = consulta.execute()
     linhas = resposta.data or []
-    linhas = _filtrar_por_municipio(linhas, municipio, "cidade")
+    linhas = _filtrar_por_municipio(linhas, municipio, "municipio_alertas")
     return [str(l["telefone"]) for l in linhas if l.get("telefone")]
 
 

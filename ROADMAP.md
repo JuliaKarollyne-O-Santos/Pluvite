@@ -77,7 +77,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Servidor cria e dispara alertas por município com nível de prioridade (Zona Segura → Alerta Máximo)
 - [ ] Corrigir o listener de alertas do Mapa (usa cidadão fixo `id = 1`); filtrar pelo usuário/município logado
 - [ ] Componente React de pop-up de alerta (portar `python/teste chat/alerta_desastre.js`)
-- [ ] Alerta automático por limiar de chuva (portar `teste de chuva.py` para job agendado no backend ou Edge Function)
+- [x] Alerta automático por limiar de chuva (job agendado no backend, monitorando os 39 municípios)
 - [ ] Push notifications no mobile (`expo-notifications`) respeitando `notif_*` do perfil
 - [ ] Envio de SMS pelo backend via Twilio (portar `python/Sms/app.py`)
 - [x] Protótipo de envio do último alerta por WhatsApp via Twilio (`python/WhatsApp/app.py`)

@@ -113,7 +113,7 @@ and by running the affected screen.
 
 | Table / bucket          | Key columns | Used by |
 |-------------------------|-------------|---------|
-| `cidadao`               | `auth_id` (= auth.users.id, upsert conflict key), `email`, `nome_completo`, `avatar_url`, `telefone`, `data_nascimento`, `cidade`, `bairro`, `cep`, `pcd`, `tipo_deficiencia`, `tipo_sanguineo`, `alergias`, `condicoes_medicas`, `medicamentos_uso`, `contato_emergencia_*`, `notif_*` | perfil, navbar2, Feed, mobile |
+| `cidadao`               | `auth_id` (= auth.users.id, upsert conflict key), `email`, `nome_completo`, `avatar_url`, `telefone`, `data_nascimento`, `cidade`, `municipio_alertas`, `bairro`, `cep`, `pcd`, `tipo_deficiencia`, `tipo_sanguineo`, `alergias`, `condicoes_medicas`, `medicamentos_uso`, `contato_emergencia_*`, `notif_*` | perfil, navbar2, Feed, mobile, alert delivery |
 | `ocorrencias`           | `id`, `autor_id`, `tipo`, `cidade`, `bairro`, `endereco`, `descricao`, `imagem_url`, `status`, `criado_em`, `latitude`, `longitude` (nullable — migration `20260923120000`) | Feed, Rotas (backend + Realtime) |
 | `curtidas`              | `ocorrencia_id`, `usuario_id` | Feed |
 | `comentarios`           | `ocorrencia_id`, author, text | Feed |

@@ -10,6 +10,8 @@ import {
   Alert,
   Image,
   Switch,
+  Modal,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
@@ -30,21 +32,28 @@ import {
   X,
   Save,
   Phone,
+  ChevronDown,
+  Check,
 } from "lucide-react-native";
+import { MUNICIPIOS, normalizar } from "../../lib/constantes";
+import { useAlerta } from "../../context/AlertaContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
 type Secao = "dados" | "emergencia" | "notificacoes" | "seguranca" | "acessibilidade";
-type Bloco = "pessoais" | "endereco" | "medico" | "contatoEmergencia" | null;
+type Bloco = "pessoais" | "endereco" | "medico" | "contatoEmergencia" | "alertas" | null;
 
 const TIPOS_SANGUINEOS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export default function Perfil({ navigation }: Props) {
+  const { atualizarMunicipioAlertas } = useAlerta();
   const [carregando, setCarregando] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [editandoBloco, setEditandoBloco] = useState<Bloco>(null);
   const [secaoAtiva, setSecaoAtiva] = useState<Secao>("dados");
+  const [seletorMunicipioAberto, setSeletorMunicipioAberto] = useState(false);
+  const [buscaMunicipio, setBuscaMunicipio] = useState("");
 
   const [perfil, setPerfil] = useState({
     nome_completo: "",
@@ -52,6 +61,7 @@ export default function Perfil({ navigation }: Props) {
     telefone: "",
     data_nascimento: "",
     cidade: "",
+    municipio_alertas: "",
     bairro: "",
     cep: "",
     pcd: false,
@@ -106,6 +116,7 @@ export default function Perfil({ navigation }: Props) {
             telefone: data.telefone || "",
             data_nascimento: data.data_nascimento || "",
             cidade: data.cidade || "",
+            municipio_alertas: data.municipio_alertas || "",
             bairro: data.bairro || "",
             cep: data.cep || "",
             pcd: data.pcd ?? false,
@@ -229,6 +240,7 @@ export default function Perfil({ navigation }: Props) {
         telefone: perfil.telefone || null,
         data_nascimento: perfil.data_nascimento || null,
         cidade: perfil.cidade || null,
+        municipio_alertas: perfil.municipio_alertas || null,
         bairro: perfil.bairro || null,
         cep: perfil.cep || null,
         pcd: perfil.pcd,
@@ -247,6 +259,16 @@ export default function Perfil({ navigation }: Props) {
         .upsert(dadosParaSalvar, { onConflict: "auth_id" });
 
       if (error) throw error;
+
+      if (bloco === "alertas" && perfil.municipio_alertas) {
+        const pushAtualizado = await atualizarMunicipioAlertas(perfil.municipio_alertas, user.id);
+        if (!pushAtualizado) {
+          Alert.alert(
+            "Preferência salva",
+            "A cidade foi salva no perfil, mas não foi possível atualizar o aparelho para receber notificações push. Verifique a conexão e abra o app novamente.",
+          );
+        }
+      }
 
       setEditandoBloco(null);
     } catch (err: any) {
@@ -379,7 +401,9 @@ export default function Perfil({ navigation }: Props) {
           <Text style={styles.avatarNome}>{perfil.nome_completo || "Usuário"}</Text>
           <Text style={styles.avatarEmail}>{perfil.email}</Text>
           <View style={styles.cidadeBadge}>
-            <Text style={styles.cidadeBadgeText}>Taubaté</Text>
+            <Text style={styles.cidadeBadgeText}>
+              {perfil.municipio_alertas || perfil.cidade || "Escolha sua cidade"}
+            </Text>
           </View>
 
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={saindo}>
@@ -543,18 +567,63 @@ export default function Perfil({ navigation }: Props) {
 
         {/* SEÇÃO: NOTIFICAÇÕES */}
         {secaoAtiva === "notificacoes" && (
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.cardHeaderLeft}>
-                <View style={styles.iconBadge}>
-                  <Bell size={14} color="#1447c4" />
+          <View>
+            <View style={styles.card}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={styles.iconBadge}>
+                    <Bell size={14} color="#1447c4" />
+                  </View>
+                  <Text style={styles.cardTitle}>Preferências de Notificações</Text>
                 </View>
-                <Text style={styles.cardTitle}>Preferências de Notificações</Text>
               </View>
+
+              <Text style={styles.notaTexto}>
+                Escolha o município para receber alertas meteorológicos automáticos e notificações do app.
+              </Text>
+              <View style={styles.campoBox}>
+                <Text style={styles.campoLabel}>Município dos alertas</Text>
+                <TouchableOpacity
+                  style={styles.seletorMunicipio}
+                  onPress={() => setSeletorMunicipioAberto(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Escolher município para receber alertas"
+                >
+                  <Text
+                    style={[
+                      styles.campoValor,
+                      !perfil.municipio_alertas && styles.seletorPlaceholder,
+                    ]}
+                  >
+                    {perfil.municipio_alertas || "Selecione uma cidade do Vale"}
+                  </Text>
+                  <ChevronDown size={18} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.salvarPreferencia,
+                  !perfil.municipio_alertas && styles.botaoDesabilitado,
+                ]}
+                onPress={() => salvarDados("alertas")}
+                disabled={carregando || !perfil.municipio_alertas}
+              >
+                {carregando ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Save size={15} color="#ffffff" />
+                )}
+                <Text style={styles.salvarPreferenciaTexto}>Salvar cidade dos alertas</Text>
+              </TouchableOpacity>
             </View>
 
-            {["Alertas de chuva forte", "Alertas de risco de deslizamento", "Notificações por e-mail", "Notificações push"].map(
-              (label) => (
+            <View style={styles.card}>
+              {[
+                "Alertas de chuva forte",
+                "Alertas de risco de deslizamento",
+                "Notificações por e-mail",
+                "Notificações push",
+              ].map((label) => (
                 <View key={label} style={styles.toggleRow}>
                   <Text style={styles.toggleLabel}>{label}</Text>
                   <Switch
@@ -563,11 +632,11 @@ export default function Perfil({ navigation }: Props) {
                     thumbColor="#ffffff"
                   />
                 </View>
-              ),
-            )}
-            <Text style={styles.notaTexto}>
-              Essas preferências ainda não estão conectadas ao banco de dados — só a interface está pronta.
-            </Text>
+              ))}
+              <Text style={styles.notaTexto}>
+                Essas preferências ainda não estão conectadas ao banco de dados — só a interface está pronta.
+              </Text>
+            </View>
           </View>
         )}
 
@@ -647,6 +716,54 @@ export default function Perfil({ navigation }: Props) {
           </View>
         )}
       </ScrollView>
+      <Modal
+        visible={seletorMunicipioAberto}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSeletorMunicipioAberto(false)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={styles.modalMunicipios}>
+            <Text style={styles.modalTitulo}>Escolha o município</Text>
+            <TextInput
+              style={styles.buscaMunicipio}
+              placeholder="Buscar cidade..."
+              placeholderTextColor="#94a3b8"
+              value={buscaMunicipio}
+              onChangeText={setBuscaMunicipio}
+            />
+            <FlatList
+              data={MUNICIPIOS.filter((municipio) =>
+                normalizar(municipio).includes(normalizar(buscaMunicipio)),
+              )}
+              keyExtractor={(municipio) => municipio}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.opcaoMunicipio}
+                  onPress={() => {
+                    setPerfil((prev) => ({ ...prev, municipio_alertas: item }));
+                    setBuscaMunicipio("");
+                    setSeletorMunicipioAberto(false);
+                  }}
+                >
+                  <Text style={styles.opcaoMunicipioTexto}>{item}</Text>
+                  {perfil.municipio_alertas === item && <Check size={18} color="#1447c4" />}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.fecharSeletor}
+              onPress={() => {
+                setBuscaMunicipio("");
+                setSeletorMunicipioAberto(false);
+              }}
+            >
+              <Text style={styles.linkAzul}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -775,6 +892,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  seletorMunicipio: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 11,
+  },
+  seletorPlaceholder: { color: "#94a3b8" },
+  salvarPreferencia: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#1447c4",
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  botaoDesabilitado: { opacity: 0.45 },
+  salvarPreferenciaTexto: { color: "#ffffff", fontSize: 12.5, fontWeight: "700" },
+  modalFundo: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
+  },
+  modalMunicipios: {
+    maxHeight: "80%",
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 18,
+  },
+  modalTitulo: { fontSize: 18, fontWeight: "800", color: "#1e293b", marginBottom: 12 },
+  buscaMunicipio: {
+    fontSize: 14,
+    color: "#334155",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  opcaoMunicipio: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+    paddingHorizontal: 4,
+  },
+  opcaoMunicipioTexto: { fontSize: 14, color: "#334155" },
+  fecharSeletor: { alignItems: "center", paddingTop: 14, paddingBottom: 4 },
 
   avisoBox: {
     flexDirection: "row",

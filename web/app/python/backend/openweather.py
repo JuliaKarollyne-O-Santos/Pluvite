@@ -19,6 +19,7 @@ import asyncio
 import json
 import logging
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,19 @@ _ultimos_disparos: dict[tuple[str, str], float] = {}
 
 # -- Coleta ------------------------------------------------------------------
 
+def _normalizar_municipio(nome: str) -> str:
+    texto = unicodedata.normalize("NFD", nome.casefold())
+    return "".join(c for c in texto if unicodedata.category(c) != "Mn")
+
+
+def _coordenadas_municipio(nome: str) -> tuple[float, float] | None:
+    alvo = _normalizar_municipio(nome)
+    for municipio, coordenadas in config.MUNICIPIOS.items():
+        if _normalizar_municipio(municipio) == alvo:
+            return float(coordenadas[0]), float(coordenadas[1])
+    return None
+
+
 def _carregar_mock() -> dict[str, Any]:
     caminho = Path(config.MOCK_OPENWEATHER_ARQUIVO)
     if not caminho.is_absolute():
@@ -68,10 +82,16 @@ async def consultar_tempo(cliente: httpx.AsyncClient, cidade: str) -> dict[str, 
     if config.MOCK_OPENWEATHER:
         return _carregar_mock()
     try:
+        coordenadas = _coordenadas_municipio(cidade)
+        parametros = (
+            {"lat": coordenadas[0], "lon": coordenadas[1]}
+            if coordenadas
+            else {"q": f"{cidade},BR"}
+        )
         resposta = await cliente.get(
             URL_TEMPO,
             params={
-                "q": cidade,
+                **parametros,
                 "appid": config.OPENWEATHER_KEY,
                 "units": "metric",
                 "lang": "pt_br",
@@ -211,8 +231,12 @@ async def verificar_cidade(cliente: httpx.AsyncClient, cidade: str) -> dict[str,
     dados = await consultar_tempo(cliente, cidade)
     if not dados:
         return {"cidade": cidade, "consultado": False}
+    dados["name"] = cidade
 
+    coordenadas_municipio = _coordenadas_municipio(cidade)
     coord = dados.get("coord") or {}
+    if coordenadas_municipio:
+        coord = {"lat": coordenadas_municipio[0], "lon": coordenadas_municipio[1]}
     candidatos: list[dict[str, Any]] = []
 
     if coord.get("lat") is not None and coord.get("lon") is not None:

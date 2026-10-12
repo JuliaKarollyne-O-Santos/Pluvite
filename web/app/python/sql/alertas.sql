@@ -41,9 +41,11 @@ create index if not exists idx_dispositivos_municipio
   on public.dispositivos (municipio) where ativo;
 
 
--- 3. Cidade do cidadao: usada para direcionar o WhatsApp so para o municipio
---    afetado. (A coluna telefone ja existe.)
-alter table public.cidadao add column if not exists cidade text;
+-- 3. Municipio escolhido pelo cidadao para receber alertas.
+alter table public.cidadao add column if not exists municipio_alertas text;
+create index if not exists idx_cidadao_municipio_alertas
+  on public.cidadao (municipio_alertas)
+  where municipio_alertas is not null;
 
 
 -- 4. Permissoes

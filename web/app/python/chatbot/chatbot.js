@@ -5,6 +5,7 @@ const { existsSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const readline = require("node:readline");
+const MUNICIPIOS = Object.keys(require("../municipios.json"));
 
 // Usa o mesmo .env do backend de alertas (web/app/python/.env)
 const arquivoEnv = path.join(__dirname, "..", ".env");
@@ -62,24 +63,47 @@ const ARQUIVO_INSCRITOS = path.join(__dirname, "inscritos.json");
 
 function carregarInscritos() {
   try {
-    if (!existsSync(ARQUIVO_INSCRITOS)) return new Set();
-    return new Set(JSON.parse(readFileSync(ARQUIVO_INSCRITOS, "utf-8")));
+    if (!existsSync(ARQUIVO_INSCRITOS)) return new Map();
+    const dados = JSON.parse(readFileSync(ARQUIVO_INSCRITOS, "utf-8"));
+    if (Array.isArray(dados)) return new Map(dados.map((id) => [id, null]));
+    return new Map(Object.entries(dados));
   } catch (error) {
     console.error("❌ Não foi possível ler inscritos.json, começando vazio:", error);
-    return new Set();
+    return new Map();
   }
 }
 
 const inscritos = carregarInscritos();
 
 function salvarInscritos() {
-  writeFileSync(ARQUIVO_INSCRITOS, JSON.stringify([...inscritos], null, 2));
+  writeFileSync(ARQUIVO_INSCRITOS, JSON.stringify(Object.fromEntries(inscritos), null, 2));
 }
 
 function limparInscritos() {
   inscritos.clear();
   rmSync(ARQUIVO_INSCRITOS, { force: true });
   console.log("🧹 Lista de inscritos nos alertas apagada.");
+}
+
+function mensagemEscolhaMunicipio() {
+  return (
+    "📍 Qual município você quer acompanhar? Responda com o nome de uma cidade:\n" +
+    MUNICIPIOS.map((municipio) => `• ${municipio}`).join("\n") +
+    "\n\nVocê começará a receber alertas após escolher a cidade. " +
+    "Para parar, envie *SAIR*."
+  );
+}
+
+async function avisarInscritosSemMunicipio() {
+  for (const [destino, municipio] of inscritos) {
+    if (municipio) continue;
+    try {
+      await client.sendMessage(destino, mensagemEscolhaMunicipio());
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error(`❌ Não foi possível pedir a cidade para ${destino}:`, error);
+    }
+  }
 }
 
 // =====================================
@@ -121,6 +145,7 @@ function criarCliente() {
     console.log("✅ Tudo certo! WhatsApp conectado.");
     console.log(`📋 Inscritos nos alertas: ${inscritos.size}`);
     console.log("Digite \"logout\" para desvincular e apagar a sessão local e os inscritos.");
+    void avisarInscritosSemMunicipio();
   });
 
   // DESCONEXÃO
@@ -273,8 +298,15 @@ const servidorApi = http.createServer(async (req, res) => {
     return responder(res, 200, { ok: true, conectado, inscritos: inscritos.size });
   }
 
-  if (req.method === "GET" && req.url === "/inscritos") {
-    return responder(res, 200, { ok: true, inscritos: [...inscritos] });
+  const url = new URL(req.url, "http://127.0.0.1");
+  if (req.method === "GET" && url.pathname === "/inscritos") {
+    const municipio = url.searchParams.get("municipio");
+    const normalizar = (texto) =>
+      texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const destinatarios = [...inscritos]
+      .filter(([, cidade]) => !municipio || normalizar(cidade || "") === normalizar(municipio))
+      .map(([destino]) => destino);
+    return responder(res, 200, { ok: true, inscritos: destinatarios });
   }
 
   if (req.method !== "POST" || req.url !== "/enviar") {
@@ -334,20 +366,27 @@ async function tratarMensagem(msg) {
     // MENSAGEM INICIAL
     // =====================================
     if (texto === "pluvite") {
-      if (!inscritos.has(msg.from)) {
-        inscritos.add(msg.from);
-        salvarInscritos();
-        console.log(`➕ Novo inscrito nos alertas (${inscritos.size} no total)`);
+      if (inscritos.get(msg.from)) {
+        await client.sendMessage(
+          msg.from,
+          `Você já recebe alertas para *${inscritos.get(msg.from)}*. ` +
+            "Para trocar, envie *CIDADE*. Para parar, envie *SAIR*."
+        );
+        return;
       }
 
+      inscritos.set(msg.from, null);
+      salvarInscritos();
+      console.log(`➕ Novo inscrito aguardando escolha de cidade (${inscritos.size} no total)`);
       await client.sendMessage(
         msg.from,
         "Olá! 👋 Sou o assistente virtual do Pluvite.\n\n" +
           "O Pluvite ajuda a acompanhar alertas e ocorrências no Vale do Paraíba e Litoral Norte.\n\n" +
-          "✅ A partir de agora você vai receber os alertas do Pluvite por aqui. " +
-          "Para parar, envie *SAIR*.\n\n" +
+          mensagemEscolhaMunicipio() +
+          "\n\n" +
           "Em caso de emergência, ligue 199 (Defesa Civil) ou 193 (Bombeiros)."
       );
+      return;
     }
 
     // =====================================
@@ -360,6 +399,38 @@ async function tratarMensagem(msg) {
       await client.sendMessage(
         msg.from,
         "Pronto, você não vai mais receber os alertas do Pluvite. Envie *PLUVITE* para voltar."
+      );
+      return;
+    }
+
+    if ((texto === "cidade" || texto === "alterar cidade") && inscritos.has(msg.from)) {
+      inscritos.set(msg.from, null);
+      salvarInscritos();
+      await client.sendMessage(
+        msg.from,
+        mensagemEscolhaMunicipio()
+      );
+      return;
+    }
+
+    if (inscritos.has(msg.from) && !inscritos.get(msg.from)) {
+      const normalizar = (valor) =>
+        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const municipio = MUNICIPIOS.find((opcao) => normalizar(opcao) === normalizar(texto));
+      if (!municipio) {
+        await client.sendMessage(
+          msg.from,
+          "Não reconheci esse município. Responda com o nome de uma das cidades da lista."
+        );
+        return;
+      }
+
+      inscritos.set(msg.from, municipio);
+      salvarInscritos();
+      console.log(`✅ Inscrito configurado para ${municipio}`);
+      await client.sendMessage(
+        msg.from,
+        `✅ Pronto! Você receberá alertas para *${municipio}*. Para trocar, envie *CIDADE*; para parar, envie *SAIR*.`
       );
     }
   } catch (error) {

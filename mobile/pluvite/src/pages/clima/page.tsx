@@ -65,7 +65,13 @@ function getDiaSemana(dataStr: string) {
 
 export default function Clima() {
   // Alerta vindo do push, do WebSocket ou da consulta feita ao abrir o app
-  const { alerta, ultimoAlerta, dispensar, reabrir } = useAlerta();
+  const {
+    alerta,
+    ultimoAlerta,
+    dispensar,
+    reabrir,
+    municipioAlertas,
+  } = useAlerta();
 
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -189,6 +195,15 @@ export default function Clima() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Emergencia em andamento - fica no topo enquanto o alerta vale */}
         <AlertaDestaqueCard alerta={ultimoAlerta} aoTocar={reabrir} />
+
+        {!municipioAlertas && (
+          <View style={styles.avisoMunicipio}>
+            <Text style={styles.avisoMunicipioTitulo}>Escolha sua cidade para receber alertas</Text>
+            <Text style={styles.avisoMunicipioTexto}>
+              Acesse Perfil → Notificações e selecione o município que deseja acompanhar.
+            </Text>
+          </View>
+        )}
 
         {/* Barra de busca */}
         <View style={styles.searchBar}>
@@ -329,6 +344,16 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
+  avisoMunicipio: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#bfdbfe",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+  },
+  avisoMunicipioTitulo: { color: "#1e3a8a", fontSize: 13, fontWeight: "800" },
+  avisoMunicipioTexto: { color: "#475569", fontSize: 11.5, lineHeight: 16, marginTop: 4 },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",

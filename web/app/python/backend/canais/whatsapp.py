@@ -3,8 +3,9 @@
 Provedores:
   - ``qr``: o chatbot ``chatbot/chatbot.js`` (whatsapp-web.js, sessao por QR)
     expoe ``POST /enviar`` em 127.0.0.1; nao precisa de software extra.
-    Recebem SO os contatos que mandaram "pluvite" (GET /inscritos) mais
-    WHATSAPP_NUMEROS_TESTE; os telefones do banco sao ignorados.
+    Recebem os contatos que mandaram "pluvite" e escolheram o municipio
+    correspondente (GET /inscritos?municipio=...) mais WHATSAPP_NUMEROS_TESTE;
+    os telefones do banco sao ignorados nesse modo.
   - ``evolution``: Evolution API self-hosted.
 """
 
@@ -64,11 +65,14 @@ async def _enviar_evolution(
     return {"numero": numero, "ok": True, "resposta": corpo}
 
 
-async def _inscritos_chatbot(cliente: httpx.AsyncClient) -> list[str]:
-    """IDs de chat (ex: 5512...@c.us) de quem mandou "pluvite" ao chatbot."""
+async def _inscritos_chatbot(
+    cliente: httpx.AsyncClient, municipio: str
+) -> list[str]:
+    """IDs de chat inscritos para receber alertas do municipio informado."""
     resposta = await cliente.get(
         f"{config.CHATBOT_URL.rstrip('/')}/inscritos",
         headers={"X-Pluvite-Token": config.CHATBOT_TOKEN},
+        params={"municipio": municipio},
     )
     resposta.raise_for_status()
     return [str(i) for i in resposta.json().get("inscritos", [])]
@@ -143,7 +147,7 @@ async def enviar_alerta_whatsapp(
         if config.WHATSAPP_PROVEDOR == "qr":
             # Modo QR: so quem pediu os alertas ao chatbot (telefones do banco ignorados)
             try:
-                destinos = await _inscritos_chatbot(cliente)
+                destinos = await _inscritos_chatbot(cliente, payload["municipio"])
             except (httpx.HTTPError, ValueError) as erro:
                 log.error("Nao foi possivel ler os inscritos do chatbot: %s", erro)
                 return {
@@ -163,7 +167,7 @@ async def enviar_alerta_whatsapp(
 
         if not destinos:
             motivo = (
-                'nenhum inscrito (mande "pluvite" ao WhatsApp conectado)'
+                'nenhum inscrito com município escolhido (mande "pluvite" e responda com a cidade)'
                 if config.WHATSAPP_PROVEDOR == "qr"
                 else "nenhum numero cadastrado"
             )

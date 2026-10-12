@@ -33,10 +33,12 @@ web/app/python/
 ### WhatsApp pelo chatbot QR (sem software extra)
 
 Recebem os alertas **só** os contatos que mandarem `pluvite` no privado do
-WhatsApp conectado (os telefones da tabela `cidadao` não são usados nesse modo).
-Quem mandar `sair` deixa de receber. A lista fica em `chatbot/inscritos.json`
-(ignorado pelo git), sobrevive a reinícios com Ctrl+C e é **apagada no logout**
-(comando `logout` no terminal ou desconectar o aparelho pelo celular).
+WhatsApp conectado e escolherem um município (os telefones da tabela `cidadao`
+não são usados nesse modo). Cada alerta municipal chega apenas aos inscritos
+daquela cidade. Envie `cidade` para alterar a escolha ou `sair` para cancelar.
+A lista fica em `chatbot/inscritos.json` (ignorado pelo git), sobrevive a
+reinícios com Ctrl+C e é **apagada no logout** (comando `logout` no terminal ou
+desconectar o aparelho pelo celular).
 
 1. No `.env`: `WHATSAPP_PROVEDOR=qr` e um `CHATBOT_TOKEN` qualquer (secreto).
    `WHATSAPP_NUMEROS_TESTE` é opcional (números que sempre recebem).
@@ -45,7 +47,8 @@ Quem mandar `sair` deixa de receber. A lista fica em `chatbot/inscritos.json`
    que vai enviar os alertas. O chatbot lê o mesmo `.env` e abre a API local em
    `http://127.0.0.1:3010` (`POST /enviar`, `GET /inscritos`, `GET /status`).
    Para rodar sozinho: `npm start` dentro de `chatbot/`.
-3. De outro celular, mande `pluvite` para esse número.
+3. De outro celular, mande `pluvite` para esse número e responda com a cidade
+   desejada entre os 39 municípios do Vale do Paraíba e Litoral Norte.
 4. Dispare um alerta no painel `/Servidor` do site: sai o pop-up e, junto, o
    WhatsApp para os inscritos. `/api/status` mostra `whatsapp_chatbot`.
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
@@ -53,6 +56,17 @@ Quem mandar `sair` deixa de receber. A lista fica em `chatbot/inscritos.json`
 
 Roteiro completo: `GUIA-TESTES-ALERTAS.md` (Teste 4). Os envios saem um por vez
 (`CHATBOT_INTERVALO_SEGUNDOS`) para reduzir o risco de bloqueio do número.
+
+## Monitoramento regional OpenWeather
+
+Por padrão, o monitor consulta os 39 municípios uma vez por hora. Usa as
+coordenadas cadastradas em `municipios.json`, pois a busca nominal da API não
+reconhece todas as cidades. Isso consome 39 chamadas de clima por ciclo e pode
+fazer até outras 39 consultas do One Call: até 1.872 chamadas por dia quando
+esse endpoint está habilitado. Confira a cota do plano antes de ativá-lo.
+`MONITOR_CIDADES` e `MONITOR_INTERVALO_SEGUNDOS` podem ser ajustados no `.env`.
+Os usuários escolhem no perfil/app ou no chatbot WhatsApp qual município querem
+acompanhar; push e mensagens WhatsApp são filtrados por essa preferência.
 
 ## Como rodar
 

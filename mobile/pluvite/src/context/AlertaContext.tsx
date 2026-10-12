@@ -15,11 +15,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 
+import { normalizar } from "../lib/constantes";
+import { supabase } from "../pages/lib/supabase";
 import {
   alertaAindaVale,
   buscarUltimoAlerta,
+  registrarDispositivo,
   WS_ALERTAS,
   type Alerta,
 } from "../services/alertas";
@@ -37,6 +40,8 @@ interface ValorContexto {
   dispensar: () => void;
   reabrir: () => void;
   pushToken: string | null;
+  municipioAlertas: string | null;
+  atualizarMunicipioAlertas: (municipio: string, authId: string) => Promise<boolean>;
   conectado: boolean;
 }
 
@@ -46,6 +51,8 @@ const AlertaContext = createContext<ValorContexto>({
   dispensar: () => {},
   reabrir: () => {},
   pushToken: null,
+  municipioAlertas: null,
+  atualizarMunicipioAlertas: async () => false,
   conectado: false,
 });
 
@@ -58,9 +65,11 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
   const [alerta, setAlerta] = useState<Alerta | null>(null);
   const [ultimoAlerta, setUltimoAlerta] = useState<Alerta | null>(null);
   const [pushToken, setPushToken] = useState<string | null>(null);
+  const [municipioAlertas, setMunicipioAlertas] = useState<string | null>(null);
   const [conectado, setConectado] = useState(false);
 
   const dispensadosRef = useRef<Set<string>>(new Set());
+  const municipioRef = useRef<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconexaoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,6 +77,12 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
 
   const receber = useCallback((novo: Alerta | null) => {
     if (!novo) return;
+    if (
+      !municipioRef.current ||
+      normalizar(novo.municipio) !== normalizar(municipioRef.current)
+    ) {
+      return;
+    }
     setUltimoAlerta(novo);
     if (dispensadosRef.current.has(novo.id)) return;
     if (!alertaAindaVale(novo)) return;
@@ -85,10 +100,86 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
     if (ultimoAlerta) setAlerta(ultimoAlerta);
   }, [ultimoAlerta]);
 
+  const atualizarMunicipioAlertas = useCallback(
+    async (municipio: string, authId: string) => {
+      municipioRef.current = municipio;
+      setMunicipioAlertas(municipio);
+      setAlerta((atual) =>
+        atual && normalizar(atual.municipio) !== normalizar(municipio) ? null : atual,
+      );
+      setUltimoAlerta((atual) =>
+        atual && normalizar(atual.municipio) !== normalizar(municipio) ? null : atual,
+      );
+      const atualizado =
+        !pushToken ||
+        (await registrarDispositivo({
+          push_token: pushToken,
+          plataforma: Platform.OS,
+          auth_id: authId,
+          municipio,
+        }));
+      if (atualizado) await buscarUltimoAlerta().then(receber);
+      return atualizado;
+    },
+    [pushToken, receber],
+  );
+
   /* 1. Push notification */
   useEffect(() => {
-    registrarParaPush().then(setPushToken);
-    alertaQueAbriuOApp().then(receber);
+    let ativo = true;
+    async function iniciarPush() {
+      try {
+        const {
+          data: { user },
+          error: erroUsuario,
+        } = await supabase.auth.getUser();
+        if (erroUsuario) {
+          console.error("Erro ao identificar usuário para alertas:", erroUsuario);
+          return;
+        }
+
+        let municipio: string | null = null;
+        if (user) {
+          const { data, error } = await supabase
+            .from("cidadao")
+            .select("municipio_alertas")
+            .eq("auth_id", user.id)
+            .maybeSingle();
+          if (error) {
+            console.error("Erro ao carregar município dos alertas:", error);
+            return;
+          } else {
+            municipio = data?.municipio_alertas ?? null;
+          }
+        }
+
+        municipioRef.current = municipio;
+        if (ativo) setMunicipioAlertas(municipio);
+
+        const token = await registrarParaPush({
+          authId: user?.id,
+          municipio,
+        });
+        if (token && user && municipioRef.current !== municipio) {
+          const atualizado = await registrarDispositivo({
+            push_token: token,
+            plataforma: Platform.OS,
+            auth_id: user.id,
+            municipio: municipioRef.current,
+          });
+          if (!atualizado) {
+            console.warn("[alertas] Não foi possível atualizar a cidade escolhida no aparelho.");
+          }
+        }
+        if (ativo) setPushToken(token);
+        await alertaQueAbriuOApp().then(receber);
+        await buscarUltimoAlerta().then(receber);
+      } catch (error) {
+        console.error("Erro ao iniciar notificações de alerta:", error);
+      }
+    }
+
+    void iniciarPush();
     return escutarNotificacoes(receber);
   }, [receber]);
 
@@ -163,7 +254,16 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AlertaContext.Provider
-      value={{ alerta, ultimoAlerta, dispensar, reabrir, pushToken, conectado }}
+      value={{
+        alerta,
+        ultimoAlerta,
+        dispensar,
+        reabrir,
+        pushToken,
+        municipioAlertas,
+        atualizarMunicipioAlertas,
+        conectado,
+      }}
     >
       {children}
     </AlertaContext.Provider>

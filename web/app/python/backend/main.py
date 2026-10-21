@@ -5,6 +5,7 @@ Rotas:
     WS   /ws/alertas                  -> pop-up do site em tempo real
     POST /api/alertas/disparar        -> gatilho MANUAL (painel do servidor)
     GET  /api/alertas/ultimo          -> ultimo alerta (site/app que abrem depois)
+    GET  /api/alertas/ultimo-openweather -> ultimo alerta real do monitor
     POST /api/monitor/verificar-agora -> forca um ciclo do monitor OpenWeather
     POST /api/dispositivos            -> app mobile registra seu token de push
 
@@ -28,7 +29,7 @@ from . import config, openweather, supabase_client
 from .alerta import montar_payload
 from .canais.websocket_hub import hub
 from .canais.whatsapp import status_chatbot
-from .dispatcher import disparar_alerta, ultimo_payload
+from .dispatcher import disparar_alerta, ultimo_payload, ultimo_payload_openweather
 
 logging.basicConfig(
     level=logging.INFO,
@@ -159,6 +160,26 @@ async def ultimo_alerta() -> dict[str, Any]:
     if not registro:
         return {"alerta": None}
     return {"alerta": montar_payload(registro, origem="banco")}
+
+
+@app.get("/api/alertas/ultimo-openweather")
+async def ultimo_alerta_openweather() -> dict[str, Any]:
+    """Ultimo alerta do monitoramento real, excluindo disparos manuais e mocks."""
+    payload = ultimo_payload_openweather()
+    if payload:
+        return {"alerta": payload}
+
+    try:
+        registro = await supabase_client.ultimo_alerta_openweather()
+    except Exception as erro:
+        log.error("Falha ao buscar ultimo alerta real do OpenWeather: %s", erro)
+        raise HTTPException(
+            status_code=503,
+            detail="Nao foi possivel consultar o historico de alertas OpenWeather.",
+        ) from erro
+    if not registro:
+        return {"alerta": None}
+    return {"alerta": montar_payload(registro, origem="openweather")}
 
 
 @app.post("/api/monitor/verificar-agora", dependencies=[Depends(exigir_token)])

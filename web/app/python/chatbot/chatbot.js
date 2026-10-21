@@ -265,10 +265,55 @@ inicializar().catch(async (error) => {
 // =====================================
 const PORTA_API = Number(process.env.CHATBOT_PORTA || 3010);
 const TOKEN_API = process.env.CHATBOT_TOKEN || "";
+const URL_API_ALERTAS = `http://127.0.0.1:${process.env.API_PORT || 8000}`;
 
 function responder(res, status, corpo) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(corpo));
+}
+
+function formatarDataAlerta(data) {
+  const instante = new Date(data);
+  if (Number.isNaN(instante.getTime())) return "data não informada";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(instante);
+}
+
+async function responderUltimoAlertaOpenWeather(destino) {
+  try {
+    const resposta = await fetch(`${URL_API_ALERTAS}/api/alertas/ultimo-openweather`);
+    const corpo = await resposta.json();
+    if (!resposta.ok) {
+      throw new Error(corpo.detail || `API de alertas respondeu ${resposta.status}`);
+    }
+
+    const alerta = corpo.alerta;
+    if (!alerta) {
+      await client.sendMessage(
+        destino,
+        "Ainda não há um alerta real do OpenWeather registrado. Alertas de teste e disparos manuais não entram nessa consulta."
+      );
+      return;
+    }
+
+    await client.sendMessage(
+      destino,
+      "📡 *Último alerta real do monitoramento OpenWeather* (sem simulação):\n\n" +
+        `🚨 *${alerta.tipo} — ${alerta.municipio}*\n` +
+        `Prioridade: ${alerta.prioridade}\n` +
+        `Registrado pelo Pluvite: ${formatarDataAlerta(alerta.criado_em)}\n\n` +
+        alerta.descricao
+    );
+  } catch (error) {
+    console.error("❌ Não foi possível consultar o último alerta OpenWeather:", error);
+    await client.sendMessage(
+      destino,
+      "Não consegui consultar o último alerta real do OpenWeather agora. Verifique se o backend de alertas está ativo e tente novamente."
+    );
+  }
 }
 
 function lerCorpo(req) {
@@ -361,6 +406,15 @@ async function tratarMensagem(msg) {
     if (!msg.from || msg.fromMe || msg.from.endsWith("@g.us")) return;
 
     const texto = (msg.body || "").trim().toLocaleLowerCase("pt-BR");
+    const textoNormalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if (
+      /\b(ultimo|mais recente)\b/.test(textoNormalizado) &&
+      /\b(alerta|aviso)\b/.test(textoNormalizado)
+    ) {
+      await responderUltimoAlertaOpenWeather(msg.from);
+      return;
+    }
 
     // =====================================
     // MENSAGEM INICIAL

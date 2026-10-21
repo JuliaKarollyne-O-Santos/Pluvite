@@ -91,6 +91,26 @@ async def ultimo_alerta() -> dict[str, Any] | None:
         return None
 
 
+def _ultimo_alerta_openweather_sync() -> dict[str, Any] | None:
+    sb = cliente()
+    if sb is None:
+        return None
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select("*")
+        .eq("origem", "openweather")
+        .order("criado_em", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return resposta.data[0] if resposta.data else None
+
+
+async def ultimo_alerta_openweather() -> dict[str, Any] | None:
+    """Busca o alerta mais recente emitido pelo monitoramento real."""
+    return await asyncio.to_thread(_ultimo_alerta_openweather_sync)
+
+
 # ── Destinatarios ───────────────────────────────────────────────────────────
 
 def _telefones_sync(municipio: str | None) -> list[str]:

@@ -2,9 +2,9 @@
  * Estado global do alerta de emergencia no app.
  *
  * Tres entradas alimentam o mesmo estado:
- *   1. push notification recebida/tocada (expo-notifications);
+ *   1. push notification FCM recebida/tocada;
  *   2. WebSocket do backend, enquanto o app esta aberto;
- *   3. consulta ao backend quando o app abre (caso a push tenha sido perdida).
+ *   3. consulta ao backend quando o app abre ou volta ao primeiro plano.
  */
 
 import React, {

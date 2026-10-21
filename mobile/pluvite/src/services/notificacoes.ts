@@ -1,100 +1,74 @@
 /**
- * ALERTA 3 (parte 1) — Push notification nativo.
+ * Push nativo Android via Firebase Cloud Messaging.
  *
- * O app e Expo (SDK 54), entao usamos `expo-notifications`: o token gerado
- * aqui e entregue pelo Expo Push Service via **FCM** (Android) e **APNs**
- * (iOS). O celular toca/acende a tela mesmo com o app fechado.
- *
- * Instalacao das dependencias:
- *     cd mobile/pluvite
- *     npx expo install expo-notifications expo-device expo-constants
- *
- * Android: e necessario um build de desenvolvimento (`npx expo run:android`
- * ou EAS Build) com o google-services.json do Firebase — o Expo Go nao
- * recebe mais push remoto desde o SDK 53.
+ * O Google Services configura o aplicativo a partir de
+ * android/app/google-services.json. Sem esse arquivo, o restante do app
+ * continua funcionando, mas o registro de push fica indisponivel.
  */
 
-import { Platform } from "react-native";
-import Constants from "expo-constants";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
+import { PermissionsAndroid, Platform } from "react-native";
+import messaging, {
+  FirebaseMessagingTypes,
+} from "@react-native-firebase/messaging";
 
 import { registrarDispositivo, type Alerta } from "./alertas";
 
 export const CANAL_ALERTAS = "alertas-emergencia";
 
-/** Como a notificacao se comporta com o app aberto em primeiro plano. */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
-/**
- * Canal Android dedicado a emergencias: importancia maxima, som, vibracao
- * e luz — e o que faz a tela acender.
- */
-async function criarCanalAndroid() {
-  if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync(CANAL_ALERTAS, {
-    name: "Alertas de emergência",
-    description: "Avisos de risco climático da Defesa Civil",
-    importance: Notifications.AndroidImportance.MAX,
-    sound: "default",
-    vibrationPattern: [0, 400, 200, 400],
-    lightColor: "#b91c1c",
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    bypassDnd: true,
-    enableVibrate: true,
-    showBadge: true,
-  });
-}
-
-function obterProjectId(): string | undefined {
+function ehAlerta(valor: unknown): valor is Alerta {
+  if (typeof valor !== "object" || valor === null) return false;
+  const dados = valor as Record<string, unknown>;
   return (
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    // Caminho usado pelos builds do EAS
-    Constants.easConfig?.projectId
+    typeof dados.id === "string" &&
+    typeof dados.tipo === "string" &&
+    typeof dados.municipio === "string" &&
+    typeof dados.criado_em === "string"
   );
 }
 
-/**
- * Pede permissao, gera o Expo Push Token e registra no backend.
- * Devolve o token ou null quando nao for possivel (emulador, recusa, etc).
- */
+function extrairAlerta(mensagem: FirebaseMessagingTypes.RemoteMessage): Alerta | null {
+  const dados = mensagem.data;
+  if (dados?.tipo_evento !== "alerta_emergencia" || !dados.alerta) return null;
+
+  try {
+    const alerta: unknown =
+      typeof dados.alerta === "string" ? JSON.parse(dados.alerta) : dados.alerta;
+    return ehAlerta(alerta) ? alerta : null;
+  } catch (erro) {
+    console.error("[push] Dados do alerta FCM inválidos:", erro);
+  }
+  return null;
+}
+
+async function pedirPermissaoAndroid(): Promise<boolean> {
+  if (Platform.OS !== "android") return false;
+  if (Number(Platform.Version) < 33) return true;
+
+  const permissao = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+  );
+  return permissao === PermissionsAndroid.RESULTS.GRANTED;
+}
+
+/** Solicita permissão, registra o token FCM no backend e devolve o token. */
 export async function registrarParaPush(opcoes?: {
   authId?: string | null;
   municipio?: string | null;
 }): Promise<string | null> {
-  await criarCanalAndroid();
-
-  if (!Device.isDevice) {
-    console.warn("[push] Push notification so funciona em aparelho fisico.");
-    return null;
-  }
-
-  const { status: statusAtual } = await Notifications.getPermissionsAsync();
-  let status = statusAtual;
-
-  if (status !== "granted") {
-    const solicitacao = await Notifications.requestPermissionsAsync();
-    status = solicitacao.status;
-  }
-
-  if (status !== "granted") {
-    console.warn("[push] Permissão de notificação negada pelo usuário.");
+  if (!(await pedirPermissaoAndroid())) {
+    console.warn("[push] Permissão de notificações não concedida ou plataforma não suportada.");
     return null;
   }
 
   try {
-    const projectId = obterProjectId();
-    const { data: token } = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
+    const autorizado = await messaging().hasPermission();
+    if (autorizado !== messaging.AuthorizationStatus.AUTHORIZED &&
+        autorizado !== messaging.AuthorizationStatus.PROVISIONAL) {
+      console.warn("[push] Firebase Messaging não tem autorização para notificações.");
+      return null;
+    }
 
+    const token = await messaging().getToken();
     const registrado = await registrarDispositivo({
       push_token: token,
       plataforma: Platform.OS,
@@ -103,75 +77,51 @@ export async function registrarParaPush(opcoes?: {
     });
 
     if (!registrado) {
-      console.warn("[push] Token gerado, mas o backend não confirmou o registro.");
+      console.warn("[push] Token FCM gerado, mas o backend não confirmou o registro.");
       return null;
     }
 
-    console.log("[push] Token registrado:", token);
+    console.log("[push] Token FCM registrado.");
     return token;
   } catch (erro) {
     console.warn(
-      "[push] Não foi possível gerar o token. Configure o projectId do EAS " +
-        "(npx eas init) e use um build de desenvolvimento:",
+      "[push] Não foi possível obter o token FCM. Confira Firebase e google-services.json:",
       erro,
     );
     return null;
   }
 }
 
-/** Extrai o alerta completo que o backend embute em `data` do push. */
-export function extrairAlerta(
-  notificacao: Notifications.Notification | Notifications.NotificationResponse,
-): Alerta | null {
-  const conteudo =
-    "request" in notificacao
-      ? notificacao.request.content
-      : notificacao.notification.request.content;
-
-  const dados = conteudo.data as { tipo_evento?: string; alerta?: Alerta } | undefined;
-  if (dados?.tipo_evento === "alerta_emergencia" && dados.alerta) {
-    return dados.alerta;
-  }
-  return null;
-}
-
-/**
- * Escuta as notificacoes: com o app aberto (`received`) e quando o usuario
- * toca na notificacao e o app abre (`response`).
- */
+/** Observa alertas recebidos com o app aberto ou aberto pela notificação. */
 export function escutarNotificacoes(aoReceberAlerta: (alerta: Alerta) => void) {
-  const recebida = Notifications.addNotificationReceivedListener((notificacao) => {
-    const alerta = extrairAlerta(notificacao);
-    if (alerta) aoReceberAlerta(alerta);
-  });
+  try {
+    const recebida = messaging().onMessage(async (mensagem) => {
+      const alerta = extrairAlerta(mensagem);
+      if (alerta) aoReceberAlerta(alerta);
+    });
 
-  const tocada = Notifications.addNotificationResponseReceivedListener((resposta) => {
-    const alerta = extrairAlerta(resposta);
-    if (alerta) aoReceberAlerta(alerta);
-  });
+    const tocada = messaging().onNotificationOpenedApp((mensagem) => {
+      const alerta = extrairAlerta(mensagem);
+      if (alerta) aoReceberAlerta(alerta);
+    });
 
-  return () => {
-    recebida.remove();
-    tocada.remove();
-  };
+    return () => {
+      recebida();
+      tocada();
+    };
+  } catch (erro) {
+    console.warn("[push] Firebase não configurado; alertas em primeiro plano continuam via WebSocket.", erro);
+    return () => {};
+  }
 }
 
-/** App aberto pelo toque em uma notificacao enquanto estava fechado. */
+/** Lê o alerta da notificação que iniciou o app, se houver. */
 export async function alertaQueAbriuOApp(): Promise<Alerta | null> {
-  const ultima = await Notifications.getLastNotificationResponseAsync();
-  return ultima ? extrairAlerta(ultima) : null;
-}
-
-/** Dispara uma notificacao local — atalho para testar sem backend. */
-export async function notificacaoDeTeste(alerta: Alerta) {
-  await criarCanalAndroid();
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${alerta.icone} ${alerta.tipo.toUpperCase()} — ${alerta.municipio}`,
-      body: alerta.descricao.slice(0, 120),
-      sound: "default",
-      data: { tipo_evento: "alerta_emergencia", alerta },
-    },
-    trigger: null,
-  });
+  try {
+    const mensagem = await messaging().getInitialNotification();
+    return mensagem ? extrairAlerta(mensagem) : null;
+  } catch (erro) {
+    console.warn("[push] Não foi possível ler a notificação que abriu o app:", erro);
+    return null;
+  }
 }

@@ -17,8 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../App";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
+import { launchImageLibrary } from "react-native-image-picker";
 import { decode } from "base64-arraybuffer";
 import {
   User,
@@ -159,21 +158,18 @@ export default function Perfil({ navigation }: Props) {
   // TROCA DE FOTO DE PERFIL (galeria + upload pro Supabase Storage)
   const handleTrocarFoto = async () => {
     try {
-      const permissao = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissao.granted) {
-        Alert.alert("Permissão necessária", "Precisamos acessar suas fotos para trocar o avatar.");
-        return;
-      }
-
-      const resultado = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+      const resultado = await launchImageLibrary({
+        mediaType: "photo",
+        selectionLimit: 1,
         quality: 0.7,
-        base64: true,
+        includeBase64: true,
       });
 
-      if (resultado.canceled || !resultado.assets?.[0]) return;
+      if (resultado.didCancel) return;
+      if (resultado.errorCode) {
+        throw new Error(resultado.errorMessage || "Não foi possível abrir a galeria.");
+      }
+      if (!resultado.assets?.[0]) return;
 
       const asset = resultado.assets[0];
       setEnviandoFoto(true);
@@ -183,17 +179,16 @@ export default function Perfil({ navigation }: Props) {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const base64 =
-        asset.base64 ??
-        (await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 }));
+      if (!asset.base64) throw new Error("A imagem selecionada não pôde ser lida.");
+      const base64 = asset.base64;
 
-      const fileExt = asset.uri.split(".").pop()?.split("?")[0] || "jpg";
+      const fileExt = asset.fileName?.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(fileName, decode(base64), {
-          contentType: `image/${fileExt}`,
+          contentType: asset.type || `image/${fileExt}`,
           upsert: true,
         });
 

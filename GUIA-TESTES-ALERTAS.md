@@ -14,8 +14,8 @@ tudo, inclusive o chatbot — o alerta disparado no site sai sozinho no WhatsApp
 ```
                     ┌──────────────────────────────┐
   OpenWeather ─────►│                              │──► WebSocket  ──► Pop-up no site
-  (rotina 10 min)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► chatbot QR (inscritos)
-  Painel web  ─────►│   (ponto central, asyncio)   │──► Expo Push  ──► FCM/APNs no celular
+  (rotina 1 hora)   │   dispatcher.disparar_alerta │──► WhatsApp   ──► chatbot QR (inscritos)
+  Painel web  ─────►│   (ponto central, asyncio)   │──► FCM Push   ──► Android nativo
   (/Servidor)       └──────────────────────────────┘
                                   │
                                   └──► Supabase: alertas_tempo_real
@@ -46,6 +46,8 @@ Arquivos principais:
 No painel do Supabase → **SQL Editor** → **New query**, cole e execute o
 conteúdo de `web/app/python/sql/alertas.sql`. Ele cria a tabela
 `dispositivos` (tokens de push) e garante as colunas usadas pelos 3 canais.
+Se já tiver executado esse script, execute-o novamente para adicionar a coluna
+`origem`, usada para diferenciar alertas reais de mocks e disparos manuais.
 
 Confira:
 
@@ -92,6 +94,23 @@ vez por hora (`MONITOR_INTERVALO_SEGUNDOS=3600`). Isso usa ao menos 39
 consultas de clima por ciclo e até 39 chamadas adicionais do One Call (até
 1.872 chamadas/dia, se esse endpoint estiver habilitado). Confira a cota do seu
 plano OpenWeather antes de aumentar a frequência.
+
+### Executar os testes automatizados (Windows PowerShell)
+
+Com as dependências instaladas no passo 0.2, a partir da raiz do repositório:
+
+```powershell
+cd web\app\python
+.\.venv\Scripts\Activate.ps1
+python -m unittest discover -s tests -p "test_openweather.py" -v
+python -m unittest discover -s tests -p "test_whatsapp.py" -v
+python -m unittest discover -s tests -p "test_main.py" -v
+node --check chatbot\chatbot.js
+```
+
+Os comandos Python executam os testes do monitor OpenWeather, da formatação
+WhatsApp e da consulta do último alerta real. O último comando verifica a
+sintaxe do chatbot. Para validar a integração dos canais, siga os Testes 1 a 6.
 
 Ao iniciar o projeto, você deve ver:
 
@@ -141,15 +160,18 @@ Se o backend Python não estiver em `http://localhost:8000`, crie
 NEXT_PUBLIC_API_ALERTAS=http://192.168.0.10:8000
 ```
 
-### 0.4 App mobile (Expo)
+### 0.4 App mobile (React Native nativo)
 
 ```powershell
 cd mobile\pluvite
 npm install
-npx expo install expo-notifications expo-device expo-constants
+npm run android
 ```
 
-> O `npx expo install` ajusta as versões para as compatíveis com o SDK 54.
+Para abrir pela interface, inicie o Android Studio e escolha
+**Open** → `mobile/pluvite/android`. Configure um emulador ou conecte um
+aparelho Android com depuração USB habilitada. O guia de configuração completo
+está em `mobile/pluvite/README.md`.
 
 ---
 
@@ -177,10 +199,13 @@ automaticamente mudanças nesse arquivo. No log deve aparecer:
 
 ```
 WARNING | pluvite.openweather | MOCK_OPENWEATHER ativo - lendo ...openweather_tempestade.json
-INFO    | pluvite.dispatcher  | >> Disparando alerta [openweather] [CRITICA] Alerta de Tempestade - Taubate
+INFO    | pluvite.dispatcher  | >> Disparando alerta [openweather_mock] [CRITICA] Alerta de Tempestade - Taubate
 ```
 
-### 1.2 Forçar um ciclo sem esperar os 10 minutos
+No WhatsApp de teste, a mensagem começa com **"SIMULAÇÃO — dados de teste"**
+para não ser confundida com um alerta real.
+
+### 1.2 Forçar um ciclo sem esperar o próximo monitoramento
 
 ```powershell
 curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true"
@@ -219,18 +244,27 @@ Edite `weather[0].id` no arquivo de mock e repita o passo 1.2:
 
 Há também `mocks/openweather_normal.json` pronto para o caso "céu limpo".
 
-### 1.4 Testar com a API real
+### 1.4 Executar o monitor com dados reais
 
-Basta `MOCK_OPENWEATHER=false`. Como o tempo real raramente está em
-emergência, para ver o disparo acontecer de verdade baixe temporariamente os
-limites em `backend/openweather.py`:
+No `.env`, configure uma chave válida e desligue o mock:
 
-```python
-LIMITE_VENTO_MS = 1.0        # em vez de 17.0
-LIMITE_CHUVA_1H_MM = 0.1     # em vez de 30.0
+```
+MOCK_OPENWEATHER=false
+OPENWEATHER_KEY=sua-chave-real
+MONITOR_CIDADES=Taubaté
 ```
 
-**Não esqueça de voltar os valores originais depois do teste.**
+Reinicie `npm run dev` e force uma consulta:
+
+```powershell
+curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true"
+```
+
+O monitor consulta as condições atuais. Se elas não atingirem os critérios de
+emergência, a resposta correta é `"emergencia": false` e nenhum alerta real
+será gravado. Não reduza os limites no código para simular uma emergência:
+use o Teste 1 com mock para validar disparos previsíveis. Alertas reais e
+manuais ficam identificados separadamente no banco.
 
 ---
 
@@ -403,7 +437,34 @@ O terminal mostra:
 O alerta automático do OpenWeather (Teste 1) segue o mesmo caminho e também
 chega no WhatsApp.
 
-### 4.4 Teste só do WhatsApp (sem banco, site ou push)
+### 4.4 Perguntar pelo último alerta real do OpenWeather
+
+O chatbot responde a perguntas como **"Qual foi o último alerta real do
+OpenWeather?"** consultando apenas alertas gravados pelo monitoramento com a
+API real. Disparos manuais e alertas simulados no Teste 1 não entram nessa
+resposta. A consulta funciona em conversa privada, mesmo antes de escolher
+município para receber alertas.
+
+1. Confirme que `web/app/python/sql/alertas.sql` foi executado após a inclusão
+   da coluna `origem`.
+2. No `.env`, defina `MOCK_OPENWEATHER=false` e informe uma chave válida em
+   `OPENWEATHER_KEY`; reinicie `npm run dev`.
+3. Consulte <http://localhost:8000/api/alertas/ultimo-openweather>. A resposta
+   terá `"alerta": null` se nenhum alerta real foi registrado desde que a
+   origem passou a ser gravada. Registros antigos sem origem não podem ser
+   classificados retroativamente.
+4. De outro celular, pergunte **"Qual foi o último alerta real do OpenWeather?"**.
+   Com um registro, a resposta mostra tipo, município, prioridade, horário de
+   registro e descrição. Sem registro, informa que ainda não há alerta real.
+5. Para tentar gerar um registro usando condições atuais, execute o ciclo do
+   passo 1.4. O alerta só será criado se o clima real atingir os critérios;
+   mock e disparo manual não servem para validar essa consulta.
+
+O texto *registrado pelo Pluvite* indica quando o monitoramento detectou e
+disparou a notificação; não é o horário original de emissão de um comunicado
+oficial externo.
+
+### 4.5 Teste só do WhatsApp (sem banco, site ou push)
 
 Em outro terminal, com o `npm run dev` rodando:
 
@@ -415,7 +476,7 @@ python -m backend.canais.whatsapp
 
 O inscrito recebe "🧪 PLUVITE — TESTE" e a resposta mostra `"enviados": 1`.
 
-### 4.5 Sair e logout
+### 4.6 Sair e logout
 
 | Ação | Esperado |
 |---|---|
@@ -435,43 +496,37 @@ A lista fica em `web/app/python/chatbot/inscritos.json` (ignorada pelo git).
 
 ## Teste 5 — App mobile (push + modal na tela inicial)
 
-### 5.1 Pré-requisito: build de desenvolvimento
+### 5.1 Pré-requisito: Android Studio e Firebase
 
-⚠️ Desde o SDK 53 o **Expo Go não recebe push remoto**. Para testar o push de
-verdade é preciso um *development build*:
+1. Instale Android Studio, Android SDK 36, JDK 17 e crie/inicie um emulador
+   (ou conecte um Android com depuração USB).
+2. Abra `mobile/pluvite/android` no Android Studio e aguarde o Gradle sincronizar.
+3. Para push remoto, crie um projeto em <https://console.firebase.google.com>
+   e adicione um app Android com o package `com.pluvite.app`.
+4. Baixe o `google-services.json` e coloque em
+   `mobile/pluvite/android/app/google-services.json`.
+5. Em Firebase → **Configurações do projeto → Contas de serviço**, gere uma
+   chave privada de conta de serviço. Salve-a como
+   `web/app/python/firebase-service-account.json` (arquivo ignorado pelo Git).
+6. No `.env` do backend, configure:
 
-```powershell
-cd mobile\pluvite
-npx eas init                  # cria o projectId (uma vez)
-npx expo run:android          # build local, exige Android Studio
-# ou, na nuvem:
-npx eas build --profile development --platform android
+```
+PUSH_ATIVO=true
+FCM_SERVICE_ACCOUNT_FILE=firebase-service-account.json
 ```
 
-**Firebase (FCM) para Android:**
-
-1. <https://console.firebase.google.com> → criar projeto.
-2. Adicionar app **Android** com o package `com.pluvite.app`
-   (o mesmo de `app.json` → `expo.android.package`).
-3. Baixar o `google-services.json` e salvar em `mobile/pluvite/`.
-4. Acrescentar a linha no `app.json`, dentro de `expo.android`:
-
-```json
-"googleServicesFile": "./google-services.json"
-```
-
-5. Enviar a credencial para o Expo: `npx eas credentials` → Android →
-   **Push Notifications: FCM V1** → subir o JSON da conta de serviço
-   (Firebase → ⚙️ → Contas de serviço → Gerar nova chave privada).
+Sem os arquivos Firebase, é possível compilar e abrir o app e testar os alertas
+em primeiro plano pelo WebSocket; o push remoto fica indisponível.
 
 ### 5.2 Registrar o aparelho
 
-1. Rode o app no celular físico (emulador não recebe push).
+1. Rode o app pelo Android Studio ou com `npm run android`.
 2. Aceite a permissão de notificação que aparece na primeira abertura.
-3. No terminal do Metro deve aparecer:
+3. Com o backend ligado, o terminal Metro deve indicar que o token FCM foi
+   registrado:
 
 ```
-[push] Token registrado: ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+[push] Token FCM registrado.
 ```
 
 4. Confirme a gravação:
@@ -484,66 +539,30 @@ No app, abra **Perfil → Notificações**, escolha o município e salve. O apar
 receberá push somente para alertas dessa cidade; sem escolha, não recebe push
 de alertas municipais.
 
-Se preferir não depender do banco, copie o token para o `.env` do backend:
+Se preferir testar sem depender do banco, copie o token FCM completo do
+dispositivo para `.env`:
 
 ```
-PUSH_TOKENS_TESTE=ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+PUSH_TOKENS_TESTE=token_fcm_do_dispositivo
 ```
 
-### 5.3 Testar o push isoladamente (sem o backend)
+### 5.3 Testar push pelo fluxo completo
 
-Ferramenta oficial: <https://expo.dev/notifications> — cole o token, preencha
-título/corpo e envie. Ou por linha de comando:
-
-```bash
-curl -X POST https://exp.host/--/api/v2/push/send \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-    "title": "🚨 ENCHENTE — Taubaté",
-    "body": "Rio transbordou. Evacuar as margens.",
-    "channelId": "alertas-emergencia",
-    "priority": "high",
-    "sound": "default",
-    "data": {
-      "tipo_evento": "alerta_emergencia",
-      "alerta": {
-        "id": "teste-1",
-        "tipo": "Enchente",
-        "prioridade": "CRITICA",
-        "municipio": "Taubaté",
-        "endereco": "Av. Tiradentes",
-        "descricao": "Rio Paraíba transbordou. Evacuar imediatamente as margens.",
-        "statusatual": "Ativo",
-        "criado_em": "2026-09-25T18:00:00Z",
-        "origem": "manual",
-        "titulo": "[CRITICA] Alerta de Enchente - Taubaté",
-        "mensagem": "",
-        "rotulo_severidade": "ALERTA VERMELHO — Perigo Extremo",
-        "icone": "🚨",
-        "cor": "#b91c1c",
-        "botao": "Estou Ciente"
-      }
-    }
-  }'
-```
-
-**Com o celular bloqueado**, a tela deve acender, tocar e vibrar (canal
-`alertas-emergencia` com importância máxima).
-
-### 5.4 Testar pelo fluxo completo
-
-Dispare pelo painel (passo 2.1) e valide os três cenários:
+Dispare pelo painel (passo 2.1) e valide os cenários:
 
 | Estado do app | Esperado |
 |---|---|
-| **Fechado** | Notificação nativa; ao tocar, o app abre já com o **modal** do alerta na tela |
-| **Aberto** (aba Clima) | Modal aparece na hora, sem push — chega pelo WebSocket |
-| **Em segundo plano** | Notificação na bandeja; ao voltar, o modal está aberto |
+| **Fechado** | FCM mostra notificação; ao tocar, o app abre no alerta quando autenticado e inscrito na cidade |
+| **Aberto** (aba Clima) | Modal de alerta aparece imediatamente |
+| **Em segundo plano** | Notificação aparece na bandeja; ao tocar, abre o app e mostra o modal |
 
-### 5.5 Tela inicial (in-app)
+Com o aparelho bloqueado, valide som e vibração. A notificação Android usa o
+canal `alertas-emergencia` de alta importância.
 
-Na aba **Clima** (tela inicial após o login):
+### 5.4 Tela de alerta no app
+
+Na aba **Clima** (tela inicial após login), o modal segue a apresentação do
+popup do site:
 
 - **Card em destaque** no topo, com barra lateral na cor da severidade,
   prioridade, tipo, município e resumo. Ele continua visível mesmo depois de
@@ -552,18 +571,15 @@ Na aba **Clima** (tela inicial após o login):
 - O **modal** traz: tipo, Localização, Endereço/Região, Nível de Prioridade,
   Status Atual, Descrição do Ocorrido e o botão **Estou Ciente**.
 
-### 5.6 Testar sem push configurado
+### 5.5 Testar sem Firebase configurado
 
-Dá para validar toda a parte visual sem Firebase, porque o app também recebe
-pelo **WebSocket** e consulta `/api/alertas/ultimo` ao abrir:
+Dá para validar o modal sem FCM, pois o app também recebe pelo **WebSocket** e
+consulta `/api/alertas/ultimo` ao abrir:
 
 1. Garanta que o celular e o PC estão na **mesma rede Wi-Fi**.
 2. Suba o projeto com `npm run dev`; o backend já escuta na rede toda.
-3. Se o app não achar o backend sozinho, fixe o IP em `app.json`:
-
-```json
-"extra": { "apiAlertas": "http://192.168.0.10:8000" }
-```
+3. Para emulador, o backend é acessado por `http://10.0.2.2:8000`. Em aparelho
+   físico, ajuste `API_ALERTAS` em `src/lib/configuracao.ts` para o IP do PC.
 
 4. Libere a porta 8000 no firewall do Windows, se necessário:
 
@@ -619,9 +635,9 @@ Cenário final de homologação:
 | WhatsApp `Token inválido` / `401` | `CHATBOT_TOKEN` mudou com tudo rodando | Reinicie o `npm run dev` |
 | WhatsApp `ainda não conectado` (503) | Sessão carregando ou QR não escaneado | Espere o `✅ WhatsApp conectado` ou escaneie o QR |
 | `Não foi possível iniciar o WhatsApp` | Chrome/Edge não encontrado | Instale o Chrome ou defina `PUPPETEER_EXECUTABLE_PATH` |
-| `[push] Push notification so funciona em aparelho fisico` | Emulador | Use um celular real |
-| `[push] Não foi possível gerar o token` | Falta `projectId` do EAS | `npx eas init` e refaça o build |
-| Push não chega, mas o Expo diz "ok" | Credencial FCM ausente | `npx eas credentials` → FCM V1 |
+| Push não registra token | Falta `google-services.json` ou Firebase sem inicializar | Confira o Firebase Android `com.pluvite.app` |
+| Backend informa `FCM_SERVICE_ACCOUNT_FILE` ausente | Credencial do servidor não configurada | Configure o JSON de conta de serviço no `.env` |
+| App físico não conecta ao backend | IP padrão é do emulador | Ajuste `API_ALERTAS` para o IP do PC e libere a porta 8000 |
 | App não acha o backend | IP errado / firewall | Fixe `extra.apiAlertas` e libere a porta 8000 |
 
 ---
@@ -643,8 +659,10 @@ Cenário final de homologação:
 - [ ] Chatbot conecta pelo `npm run dev`, sem outro terminal (`Teste 4.1`)
 - [ ] `pluvite` pede o município e inscreve o contato nessa cidade (`Teste 4.2`)
 - [ ] Alerta do site chega no WhatsApp junto com o pop-up (`Teste 4.3`)
-- [ ] Só inscritos recebem; `sair` remove da lista (`Teste 4.5`)
-- [ ] `logout` apaga os inscritos e mostra QR novo (`Teste 4.5`)
+- [ ] Pergunta no WhatsApp retorna apenas o último alerta real (`Teste 4.4`)
+- [ ] Mock e disparo manual não aparecem como alerta real (`Teste 4.4`)
+- [ ] Só inscritos recebem; `sair` remove da lista (`Teste 4.6`)
+- [ ] `logout` apaga os inscritos e mostra QR novo (`Teste 4.6`)
 - [ ] Token de push registrado em `dispositivos` (`Teste 5.2`)
 - [ ] Push acende a tela do celular bloqueado (`Teste 5.3`)
 - [ ] Modal abre na tela inicial ao tocar na notificação (`Teste 5.4`)

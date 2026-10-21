@@ -77,12 +77,9 @@ WHATSAPP_NUMEROS_TESTE = _lista("WHATSAPP_NUMEROS_TESTE")
 WHATSAPP_SOMENTE_TESTE = _bool("WHATSAPP_SOMENTE_TESTE", True)
 WHATSAPP_DDI_PADRAO = os.getenv("WHATSAPP_DDI_PADRAO", "55")
 
-# ── Push mobile (Expo -> FCM/APNs) ──────────────────────────────────────────
+# ── Push mobile (Firebase Cloud Messaging nativo) ────────────────────────────
 PUSH_ATIVO = _bool("PUSH_ATIVO", True)
-EXPO_PUSH_URL = os.getenv("EXPO_PUSH_URL", "https://exp.host/--/api/v2/push/send")
-# Necessario apenas se a conta Expo exigir "Enhanced Security for Push"
-EXPO_ACCESS_TOKEN = os.getenv("EXPO_ACCESS_TOKEN", "")
-PUSH_CANAL_ANDROID = os.getenv("PUSH_CANAL_ANDROID", "alertas-emergencia")
+FCM_SERVICE_ACCOUNT_FILE = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
 PUSH_TOKENS_TESTE = _lista("PUSH_TOKENS_TESTE")
 
 # ── Geral ───────────────────────────────────────────────────────────────────

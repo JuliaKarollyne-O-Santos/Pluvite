@@ -52,7 +52,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Proteger rotas (`/Servidor`, `/perfil`, publicação no Feed) — proxy/middleware do Next 16
 - [ ] Painel do servidor filtrado automaticamente pelo município da prefeitura logada
 - [ ] Rotas de escrita do backend exigindo token Supabase + papel de servidor
-- [ ] Sessão persistente e auto-login no mobile (AsyncStorage)
+- [x] Sessão persistente e auto-login no mobile (AsyncStorage)
 - [ ] 🟢 Aprovação/convite de contas de servidor por um administrador
 
 ## Fase 2 — Ocorrências (cidadão ↔ prefeitura) 🔴
@@ -64,7 +64,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] **Aplicar `supabase/migrations/20260923120000_ocorrencias_localizacao.sql` no Supabase** (colunas + Realtime)
 - [x] Tipo de ocorrência "Acidente"
 - [ ] Feed mobile conectado ao Supabase (hoje é mock) com FlatList
-- [ ] Publicação pelo mobile com câmera (`expo-image-picker`) e localização atual (`expo-location`)
+- [ ] Publicação pelo mobile com câmera (`react-native-image-picker`) e localização atual
 - [ ] Feed em tempo real (Supabase Realtime) em vez de recarregar
 - [ ] Reverter curtida otimista quando o Supabase retornar erro
 - [ ] Persistir o histórico de ações do servidor no banco (hoje fica na memória do Node)
@@ -78,7 +78,8 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Corrigir o listener de alertas do Mapa (usa cidadão fixo `id = 1`); filtrar pelo usuário/município logado
 - [ ] Componente React de pop-up de alerta (portar `python/teste chat/alerta_desastre.js`)
 - [x] Alerta automático por limiar de chuva (job agendado no backend, monitorando os 39 municípios)
-- [ ] Push notifications no mobile (`expo-notifications`) respeitando `notif_*` do perfil
+- [x] Push nativo Android no mobile via Firebase Cloud Messaging
+- [ ] Push no mobile respeitando `notif_*` do perfil
 - [ ] Envio de SMS pelo backend via Twilio (portar `python/Sms/app.py`)
 - [x] Protótipo de envio do último alerta por WhatsApp via Twilio (`python/WhatsApp/app.py`)
 - [ ] Integrar o chatbot WhatsApp via QR ao disparo de alertas, respeitando a autorização dos cidadãos
@@ -142,7 +143,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 ## Fase 8 — Entrega do TCC 🔴
 
 - [ ] Deploy da web (Vercel) e do backend (Render/Railway) com variáveis de ambiente
-- [ ] Build do app (EAS) para demonstração em Android
+- [ ] Validar build e demonstração do app Android nativo no Android Studio
 - [ ] Popular banco com dados de demonstração realistas
 - [ ] Atualizar README (funcionalidades reais, variáveis de ambiente, arquitetura)
 - [ ] Diagrama de arquitetura e modelo de dados para a monografia

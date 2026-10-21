@@ -28,17 +28,22 @@ log = logging.getLogger("pluvite.dispatcher")
 
 # Ultimo alerta disparado — serve para o site/app que abrem depois do evento
 _ultimo_payload: dict[str, Any] | None = None
+_ultimo_payload_openweather: dict[str, Any] | None = None
 
 
 def ultimo_payload() -> dict[str, Any] | None:
     return _ultimo_payload
 
 
+def ultimo_payload_openweather() -> dict[str, Any] | None:
+    return _ultimo_payload_openweather
+
+
 async def disparar_alerta(
     dados: dict[str, Any], origem: str = "manual"
 ) -> dict[str, Any]:
     """Executa o fluxo completo de um alerta e devolve o relatorio de entrega."""
-    global _ultimo_payload
+    global _ultimo_payload, _ultimo_payload_openweather
 
     payload = montar_payload(dados, origem=origem)
     log.info(">> Disparando alerta [%s] %s", origem, payload["titulo"])
@@ -54,6 +59,8 @@ async def disparar_alerta(
         ).isoformat()
 
     _ultimo_payload = payload
+    if origem == "openweather":
+        _ultimo_payload_openweather = payload
 
     # 2. Destinatarios dos canais externos
     telefones, tokens = await asyncio.gather(

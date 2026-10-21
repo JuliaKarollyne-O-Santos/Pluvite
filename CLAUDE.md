@@ -35,7 +35,7 @@ Pluvite/
 │   │   ├── backend/         Express 5 API (plain JS, ESM) on :3001
 │   │   └── python/          Prototypes: SMS + WhatsApp (Twilio), desktop popup, rain test, SSE chat alert
 │   └── public/              Images, map.json / bairros.json (GeoJSON)
-├── mobile/pluvite/          Expo 54 / React Native 0.81 app (React Navigation 7)
+├── mobile/pluvite/          React Native 0.81 app with native Android Studio/Gradle project
 │   └── src/{pages,navigation,assets}
 ├── Rotas/                   Road graphs per municipality (*.json, OSM + SRTM elevation) + gerar_grafos.py
 ├── supabase/migrations/     SQL migrations (apply in the Supabase SQL Editor; idempotent)
@@ -77,14 +77,14 @@ routing change must re-run the reference scenarios in the skill and keep urban a
 | Web      | Next.js 16.2 (App Router, **webpack** build), React 19, TypeScript 5.9 (strict), Tailwind CSS 4 |
 | UI libs  | lucide-react (icons), react-leaflet 4 + Leaflet (maps), Recharts 3 (charts), framer-motion |
 | Backend  | Node + Express 5 (JavaScript ESM), `@supabase/supabase-js` |
-| Mobile   | Expo SDK 54, React Native 0.81, React Navigation 7 (native-stack + bottom-tabs), lucide-react-native |
+| Mobile   | React Native 0.81 without Expo, Android Studio/Gradle, React Navigation 7, Firebase Messaging |
 | Data     | Supabase: Postgres, Auth (email + Google/Facebook OAuth), Storage, Realtime |
 | Weather  | WeatherAPI (web Clima), OpenWeather (web Mapa), Open-Meteo (mobile) — see ROADMAP to unify |
 | Scripts  | Python 3 (osmnx, networkx, twilio, supabase-py, pyautogui) |
 
 **Framework versions differ from training data.** Before writing Next.js code read
-`web/node_modules/next/dist/docs/` (see `web/AGENTS.md`); before writing Expo code check
-https://docs.expo.dev/versions/v54.0.0/ (see `mobile/pluvite/AGENTS.md`).
+`web/node_modules/next/dist/docs/` (see `web/AGENTS.md`). For mobile, follow
+`mobile/pluvite/AGENTS.md` and the native Android project.
 
 ## Commands
 
@@ -98,8 +98,9 @@ npm run lint         # eslint (next core-web-vitals + typescript)
 # Backend alone
 cd web/app/backend && npm install && npm start
 
-# Mobile
-cd mobile/pluvite && npm install && npx expo start   # scan QR with Expo Go
+# Mobile Android
+cd mobile/pluvite && npm install && npm run android
+# Or open mobile/pluvite/android directly in Android Studio
 
 # Regenerate road graphs with OSM tags + SRTM elevation (Python, needs osmnx; run from repo root)
 python Rotas/gerar_grafos.py                 # all 39 cities
@@ -149,9 +150,10 @@ Always check the real columns in Supabase before writing queries against a table
 7. **Shared constants** (municipalities, types, statuses, colors) are currently duplicated per page.
    New code must import them from `web/app/lib/` (create the module the first time you need it — see
    `SKILLS/pluvite-domain`) instead of adding another copy.
-8. **Secrets**: never add new keys to source. Use `NEXT_PUBLIC_*` in `web/.env.local`, `.env` for the
-   backend/Python, and `EXPO_PUBLIC_*` for mobile. `.env*` is git-ignored. (Existing hardcoded keys are
-   tracked as tech debt in ROADMAP.)
+8. **Secrets**: never add new keys to source. Use `NEXT_PUBLIC_*` in `web/.env.local` and `.env` for
+   the backend/Python. Keep Android Firebase client config in the ignored
+   `mobile/pluvite/android/app/google-services.json` and server credentials outside Git. `.env*` is
+   git-ignored. (Existing hardcoded keys are tracked as tech debt in ROADMAP.)
 
 ## Code conventions (summary — details in SKILLS)
 
@@ -183,7 +185,7 @@ Read the matching skill **before** generating code:
 | `SKILLS/web-page-patterns/SKILL.md`    | New/edited Next.js page or component |
 | `SKILLS/supabase-data/SKILL.md`        | Queries, inserts, storage uploads, auth, realtime |
 | `SKILLS/backend-api/SKILL.md`          | Express routes in `web/app/backend` |
-| `SKILLS/mobile-screens/SKILL.md`       | Expo / React Native screens |
+| `SKILLS/mobile-screens/SKILL.md`       | React Native Android screens and native integrations |
 | `SKILLS/pluvite-domain/SKILL.md`       | Municipalities, statuses, occurrence types, priorities |
 | `SKILLS/rotas-tempo-viagem/SKILL.md`   | Routing, road graphs, travel-time model (core requirement) |
 | `SKILLS/dev-workflow/SKILL.md`         | Running, validating, committing, updating the roadmap |
@@ -207,7 +209,7 @@ Read the matching skill **before** generating code:
 - `Rotas/routs.py` is the legacy generator (no tags/elevation) — use `gerar_grafos.py`.
 - Geocoding by free text can hit homonyms (e.g. "Cunha"); the generator validates the Vale bbox.
 - `reactStrictMode` is `false` in `next.config.ts` — effects run once in dev.
-- `web/package.json` contains unused deps (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`).
+- `web/package.json` contains unused deps (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`); the mobile app itself no longer uses Expo.
 - `cache/` (root) holds the OSMnx HTTP cache and SRTM tiles (`cache/srtm/`) — never commit it.
 
 ## Working agreement

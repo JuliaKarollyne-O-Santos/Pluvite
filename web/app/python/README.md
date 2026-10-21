@@ -54,6 +54,11 @@ desconectar o aparelho pelo celular).
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
    `python -m backend.canais.whatsapp`
 
+Em conversa privada, qualquer pessoa também pode perguntar **"Qual foi o
+último alerta real do OpenWeather?"**. A resposta consulta apenas alertas do
+monitoramento com dados reais; mocks e disparos manuais são excluídos. Execute
+`sql/alertas.sql` no Supabase para gravar a origem dos novos alertas.
+
 Roteiro completo: `GUIA-TESTES-ALERTAS.md` (Teste 4). Os envios saem um por vez
 (`CHATBOT_INTERVALO_SEGUNDOS`) para reduzir o risco de bloqueio do número.
 
@@ -90,6 +95,7 @@ Antes do primeiro uso, rode `sql/alertas.sql` no SQL Editor do Supabase.
 | `WS` | `/ws/alertas` | Pop-up do site em tempo real |
 | `POST` | `/api/alertas/disparar` | **Gatilho manual** (painel do servidor) |
 | `GET` | `/api/alertas/ultimo` | Último alerta (site/app que abrem depois) |
+| `GET` | `/api/alertas/ultimo-openweather` | Último alerta real do monitor (exclui mocks e disparos manuais) |
 | `POST` | `/api/monitor/verificar-agora?forcar=true` | Força um ciclo do monitor |
 | `POST` | `/api/dispositivos` | App mobile registra o token de push |
 
@@ -98,7 +104,7 @@ Documentação interativa: <http://localhost:8000/docs>.
 ## Fluxo
 
 ```
-OpenWeather (a cada 10 min)  ─┐
+OpenWeather (a cada 1 hora)  ─┐
                               ├─> dispatcher.disparar_alerta()
 Painel web (POST manual)     ─┘         │
                                         ├─ grava em alertas_tempo_real

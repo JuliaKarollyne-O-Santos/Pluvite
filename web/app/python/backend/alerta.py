@@ -74,7 +74,7 @@ def montar_mensagem(
 def montar_payload(registro: dict[str, Any], origem: str = "manual") -> dict[str, Any]:
     """Converte uma linha de `alertas_tempo_real` no payload unificado.
 
-    `origem` identifica quem gerou o evento: "openweather" ou "manual".
+    `origem` identifica quem gerou o evento: OpenWeather real, mock ou manual.
     """
     tipo = str(registro.get("tipo") or "Alerta").strip()
     prioridade = normalizar_prioridade(registro.get("prioridade"))
@@ -116,6 +116,7 @@ def resumo_curto(payload: dict[str, Any], limite: int = 120) -> str:
 def para_registro_banco(payload: dict[str, Any]) -> dict[str, Any]:
     """Apenas as colunas que existem em `alertas_tempo_real`."""
     return {
+        "origem": payload["origem"],
         "tipo": payload["tipo"],
         "prioridade": payload["prioridade"],
         "municipio": payload["municipio"],

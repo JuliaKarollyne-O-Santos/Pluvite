@@ -37,7 +37,12 @@ def normalizar_numero(numero: str) -> str | None:
 
 def montar_texto(payload: dict[str, Any]) -> str:
     """Mesma estrutura do pop-up, formatada com o negrito do WhatsApp."""
-    return (
+    aviso_simulacao = (
+        "🧪 *SIMULAÇÃO — dados de teste*\n\n"
+        if payload.get("origem") == "openweather_mock"
+        else ""
+    )
+    return aviso_simulacao + (
         f"{payload['icone']} *PLUVITE — {payload['rotulo_severidade']}*\n\n"
         f"*{payload['tipo'].upper()}*\n"
         f"📍 Localização: {payload['municipio']}\n"

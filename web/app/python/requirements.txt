@@ -7,6 +7,7 @@ python-dotenv>=1.0
 supabase>=2.10
 pydantic>=2.8
 websockets>=13.0
+firebase-admin>=6.5
 
 # Opcional: usado apenas por notificacao_popup/popups.py --janela
 # pyautogui>=0.9.54

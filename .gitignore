@@ -5,6 +5,8 @@ cache/
 # A service_role do Supabase ignora RLS: nunca pode ser commitada.
 .env*
 !.env.example
+# Credencial de conta de servico do Firebase (FCM)
+**/firebase-service-account*.json
 # Grafos viários são gerados localmente e permanecem fora do Git.
 Rotas/*_graph.json
 # Prints que o usuario manda para o Claude durante o desenvolvimento

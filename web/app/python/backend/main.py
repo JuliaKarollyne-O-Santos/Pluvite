@@ -3,7 +3,8 @@
 Rotas:
     GET  /api/status                  -> saude do servico e canais configurados
     WS   /ws/alertas                  -> pop-up do site em tempo real
-    POST /api/alertas/disparar        -> gatilho MANUAL (painel do servidor)
+    POST /api/alertas/disparar        -> gatilho MANUAL (painel do servidor; exige login de
+                                         servidor ou admin, ou ADMIN_TOKEN em scripts)
     GET  /api/alertas/ultimo          -> ultimo alerta (site/app que abrem depois)
     GET  /api/alertas/ultimo-openweather -> ultimo alerta real do monitor
     POST /api/monitor/verificar-agora -> forca um ciclo do monitor OpenWeather
@@ -18,7 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
@@ -73,13 +76,56 @@ app.add_middleware(
 )
 
 
-# -- Autenticacao simples do gatilho manual ----------------------------------
+# -- Quem pode disparar alertas ----------------------------------------------
+# Contas de servidor (prefeitura) e da equipe (admin), pelo token de sessao do Supabase que o
+# site envia em "Authorization: Bearer <access_token>". Servidor so dispara para o proprio
+# municipio. ADMIN_TOKEN (header X-Pluvite-Token) vale so para scripts e testes com curl:
+# nunca coloque esse valor no site (variavel NEXT_PUBLIC_ fica visivel no navegador).
 
-async def exigir_token(x_pluvite_token: str | None = Header(default=None)) -> None:
-    if not config.ADMIN_TOKEN:
-        return  # liberado em desenvolvimento
-    if x_pluvite_token != config.ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Token administrativo invalido.")
+@dataclass(frozen=True)
+class Responsavel:
+    papel: str  # "admin" | "servidor" | "token"
+    municipio: str | None = None
+
+
+async def exigir_responsavel(
+    authorization: str | None = Header(default=None),
+    x_pluvite_token: str | None = Header(default=None),
+) -> Responsavel:
+    if (
+        config.ADMIN_TOKEN
+        and x_pluvite_token
+        and secrets.compare_digest(x_pluvite_token, config.ADMIN_TOKEN)
+    ):
+        return Responsavel(papel="token")
+
+    token = (authorization or "").removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Entre com uma conta de servidor ou da equipe Pluvite para disparar alertas.",
+        )
+    usuario = await supabase_client.usuario_do_token(token)
+    if not usuario:
+        raise HTTPException(status_code=401, detail="Sessao invalida ou expirada. Entre de novo.")
+    conta = await supabase_client.papel_da_conta(usuario["id"])
+    if not conta:
+        raise HTTPException(status_code=403, detail="Esta conta nao pode disparar alertas.")
+    return Responsavel(papel=conta["papel"], municipio=conta["municipio"])
+
+
+async def exigir_equipe(responsavel: Responsavel = Depends(exigir_responsavel)) -> Responsavel:
+    if responsavel.papel == "servidor":
+        raise HTTPException(status_code=403, detail="Somente a equipe Pluvite pode forcar o monitor.")
+    return responsavel
+
+
+def municipio_oficial(nome: str) -> str | None:
+    """Nome oficial (com acento) de um dos 39 municipios, aceitando "Taubate" ou "TAUBATÉ"."""
+    alvo = supabase_client._normalizar_municipio(nome)
+    return next(
+        (m for m in config.MUNICIPIOS if supabase_client._normalizar_municipio(m) == alvo), None
+    )
 
 
 # -- Schemas -----------------------------------------------------------------
@@ -143,10 +189,26 @@ async def websocket_alertas(websocket: WebSocket) -> None:
         await hub.desconectar(websocket)
 
 
-@app.post("/api/alertas/disparar", dependencies=[Depends(exigir_token)])
-async def disparar_manual(alerta: AlertaManual) -> dict[str, Any]:
-    """GATILHO MANUAL - usado pelo painel administrativo do site."""
-    return await disparar_alerta(alerta.model_dump(), origem="manual")
+@app.post("/api/alertas/disparar")
+async def disparar_manual(
+    alerta: AlertaManual, responsavel: Responsavel = Depends(exigir_responsavel)
+) -> dict[str, Any]:
+    """GATILHO MANUAL - usado pelo painel do servidor no site (/Servidor)."""
+    municipio = municipio_oficial(alerta.municipio)
+    if not municipio:
+        raise HTTPException(
+            status_code=400,
+            detail="Municipio fora da lista dos 39 do Vale do Paraiba e Litoral Norte.",
+        )
+    if responsavel.papel == "servidor" and municipio != municipio_oficial(
+        responsavel.municipio or ""
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Contas de servidor so disparam alertas para o proprio municipio ({responsavel.municipio}).",
+        )
+    log.info("Disparo manual por conta '%s' para %s", responsavel.papel, municipio)
+    return await disparar_alerta(alerta.model_dump() | {"municipio": municipio}, origem="manual")
 
 
 @app.get("/api/alertas/ultimo")
@@ -182,7 +244,7 @@ async def ultimo_alerta_openweather() -> dict[str, Any]:
     return {"alerta": montar_payload(registro, origem="openweather")}
 
 
-@app.post("/api/monitor/verificar-agora", dependencies=[Depends(exigir_token)])
+@app.post("/api/monitor/verificar-agora", dependencies=[Depends(exigir_equipe)])
 async def verificar_agora(forcar: bool = False) -> dict[str, Any]:
     """Roda um ciclo do monitor na hora (util para homologacao).
 

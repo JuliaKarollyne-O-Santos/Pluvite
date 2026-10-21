@@ -82,11 +82,15 @@ export const PARAMETROS = {
   },
 
   // Horário de pico: janelas usadas pela CET-SP nos boletins de lentidão (seg–sex 7h–10h e
-  // 17h–20h). Multiplicadores de tempo por classe são estimativa — substituir por dados reais
-  // de tráfego (ex.: Waze for Cities/TomTom) quando disponíveis.
+  // 17h–20h). Multiplicadores CALIBRADOS com a TomTom (out/2026, scripts/calibrar-tempos.js):
+  // tempo típico de quarta-feira às 18h pelo histórico de trânsito da TomTom × previsão do Pluvite,
+  // 53 trajetos comparáveis em Taubaté, São José dos Campos, Jacareí, Pindamonhangaba, Guaratinguetá
+  // e Caraguatatuba. Os valores anteriores, da capital (1,25/1,45/1,1), deixavam o pico 21% acima
+  // da TomTom — no Vale ela mede só +5% entre 14h e 18h. Com estes: razão mediana 1,02, 72% dos
+  // trajetos dentro de ±20%. Rodar a calibração de novo com registros de campo quando houver.
   pico: {
     janelas: [[7, 10], [17, 20]],
-    multiplicador: { rodovia: 1.25, arterial: 1.45, local: 1.1 },
+    multiplicador: { rodovia: 1.05, arterial: 1.1, local: 1.05 },
   },
 
   velocidadeMinima: 5, // km/h

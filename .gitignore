@@ -7,7 +7,8 @@ cache/
 !.env.example
 # Credencial de conta de servico do Firebase (FCM)
 **/firebase-service-account*.json
-# Grafos viários são gerados localmente e permanecem fora do Git.
+# Grafos viários são gerados localmente e permanecem fora do Git (~80 MB). As cópias comprimidas
+# em web/app/backend/grafos/*.json.gz (~14 MB) SÃO versionadas: é o que o backend usa no Render.
 Rotas/*_graph.json
 # Prints que o usuario manda para o Claude durante o desenvolvimento
 Print pro Claude/

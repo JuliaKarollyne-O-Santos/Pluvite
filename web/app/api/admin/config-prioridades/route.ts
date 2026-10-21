@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { exigirAdmin, supabaseAdminClient } from "../_auth";
-import { PRIORIDADE_POR_TIPO_PADRAO, PRIORIDADES } from "@/app/lib/constantes";
+import {
+  PRIORIDADE_POR_TIPO_PADRAO,
+  PRIORIDADES,
+  TIPOS_OCORRENCIA,
+} from "@/app/lib/constantes";
 
 // Rota ADMIN da tela "Níveis de Risco" — lê e atualiza o mapeamento
 // tipo de ocorrência -> prioridade guardado em "config_prioridades"
@@ -72,6 +76,14 @@ export async function PUT(request: Request) {
     if (!(PRIORIDADES as readonly string[]).includes(prioridade)) {
       return NextResponse.json(
         { error: "Prioridade inválida." },
+        { status: 400 },
+      );
+    }
+
+    // Só os tipos que o Feed publica: um tipo desconhecido criaria uma linha que nenhuma tela usa
+    if (!(TIPOS_OCORRENCIA as readonly string[]).includes(tipo)) {
+      return NextResponse.json(
+        { error: "Tipo de ocorrência inválido." },
         { status: 400 },
       );
     }

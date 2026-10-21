@@ -60,10 +60,14 @@ account for:
 - **Signals & intersections** — Webster/HCM signal delay, PARE, yield by road hierarchy, right-hand
   priority, roundabouts, railway crossings, speed bumps (CONTRAN), pedestrian crossings.
 - **Turns** — angle-based turn cost and U-turns (OSRM), via edge-based A*.
-- **Peak hours** — CET-SP windows (weekdays 7–10h, 17–20h).
+- **Peak hours** — CET-SP windows (weekdays 7–10h, 17–20h); multipliers calibrated with TomTom
+  historic times for the Vale (Oct 2026 — see the skill).
 - **Preferences** — change the chosen path only, never the reported ETA.
 - **Feed occurrences** — active `ocorrencias` become blocked/restricted edges (`rotas/ocorrencias.js`);
   like preferences they change the path only. Navigation re-routes when one hits the remaining path.
+- **Live traffic (optional)** — with `TOMTOM_API_KEY`, TomTom incidents (`rotas/transito.js`): closures
+  and restrictions change the path; a *measured* jam delay is the only input that also adds to the
+  ETA (`max(model with peak, free flow + delay)`). Without the key nothing changes.
 
 Every constant lives in `PARAMETROS` with its source; unmeasured values are labelled "estimativa".
 These factors are **calculation logic only** — the map shows just the route and endpoints. Any
@@ -97,6 +101,11 @@ npm run lint         # eslint (next core-web-vitals + typescript)
 
 # Backend alone
 cd web/app/backend && npm install && npm start
+
+# Routing field test on a phone / demo data / travel-time calibration (GUIA-TESTE-CAMPO-ROTAS.md)
+cd web && npm run dev:celular                                  # + HTTPS tunnel, open /Rotas?registrar
+cd web/app/backend && node scripts/ocorrencias-demonstracao.js criar   # or: remover
+cd web/app/backend && node scripts/calibrar-tempos.js [--registros <pasta>]
 
 # Mobile Android
 cd mobile/pluvite && npm install && npm run android
@@ -199,13 +208,17 @@ Read the matching skill **before** generating code:
   routing backend falls back to the street named in `endereco` (whole street).
 - Browser geolocation (Rotas navigation, Feed "usar minha localização") only works on HTTPS or localhost.
   `/Rotas?simular=15` drives the navigation along the route at 15 m/s for demos.
-- The Servidor dashboard reads `alertas_tempo_real`, while citizens write to `ocorrencias` — they are
-  not connected yet (see ROADMAP).
-- `Servidor/page.tsx` polls the backend every 5 s with hardcoded `http://localhost:3001`.
+- `/Prefeituras` (prefeitura panel) reads the citizens' `ocorrencias`; `alertas_tempo_real` holds the
+  alerts dispatched by the Python backend (`web/app/python`).
+- `/Servidor` dispatches alerts through the Python backend (`lib/alertas.ts`). It requires a logged-in
+  `servidor` (own municipality only) or `admin` account, and the backend re-checks the Supabase token;
+  `ADMIN_TOKEN` (header `X-Pluvite-Token`) is only for scripts — never a `NEXT_PUBLIC_` variable.
 - `Mapa/page.tsx` realtime listener uses a hardcoded citizen id (`1`).
 - `components/sidebar.tsx` has placeholder prefeitura data and links with wrong casing.
-- `/Rotas` needs the backend running and the untracked root `Rotas/*.json` graphs (override the
-  folder with `ROTAS_DIR`). Graphs are loaded lazily and cached (max 4 cities) in `rotas/grafo.js`.
+- `/Rotas` needs the backend running and the graphs: the untracked root `Rotas/*.json` locally, or the
+  versioned gzip copies in `web/app/backend/grafos/*.json.gz` (what Render uses — it only sees the
+  backend `rootDir`). Override with `ROTAS_DIR`. After regenerating a graph, commit its `.gz` too.
+  Graphs are loaded lazily and cached (max 4 cities) in `rotas/grafo.js`.
 - `Rotas/routs.py` is the legacy generator (no tags/elevation) — use `gerar_grafos.py`.
 - Geocoding by free text can hit homonyms (e.g. "Cunha"); the generator validates the Vale bbox.
 - `reactStrictMode` is `false` in `next.config.ts` — effects run once in dev.

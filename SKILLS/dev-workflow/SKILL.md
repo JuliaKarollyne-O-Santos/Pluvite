@@ -18,7 +18,7 @@ Env files (all git-ignored; never commit them, never print their values):
 | File | Variables |
 |------|-----------|
 | `web/.env.local` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`, weather key(s) |
-| `web/app/backend/.env` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PORT`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE` |
+| `web/app/backend/.env` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PORT`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE`, `TOMTOM_API_KEY` (optional: live traffic + calibration — `GUIA-TESTE-CAMPO-ROTAS.md`) |
 | `mobile/pluvite/.env` | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `web/app/python/.env` | `SUPABASE_URL`, `SUPABASE_KEY`, `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_PHONE`, `TWILIO_VERIFIED_NUMBER`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO` |
 
@@ -30,6 +30,9 @@ When you introduce a new variable, add it (without value) to the table above and
 |------|---------|
 | Web + API | `cd web && npm run dev` → http://localhost:3000, API http://localhost:3001 |
 | Mobile | `cd mobile/pluvite && npx expo start` (Expo Go; phone and PC on the same network) |
+| Routing field test on a phone | `cd web && npm run dev:celular` + an HTTPS tunnel, open `/Rotas?registrar` (`GUIA-TESTE-CAMPO-ROTAS.md`) |
+| Demo occurrences | `cd web/app/backend && node scripts/ocorrencias-demonstracao.js criar` (or `remover`) |
+| Travel-time calibration | `cd web/app/backend && node scripts/calibrar-tempos.js [--registros <pasta>]` |
 | Road graphs | `python Rotas/gerar_grafos.py [Cidade ...]` from the repo root (OSM + SRTM; see `rotas-tempo-viagem`) |
 
 ## Deploy (produção)
@@ -46,9 +49,11 @@ da Vercel:
 Depois de publicar o backend no Render, atualize `NEXT_PUBLIC_API_URL` no projeto da Vercel com a
 URL gerada (`https://<serviço>.onrender.com`) e refaça o deploy da web.
 
-**Em aberto** (ver `ROADMAP.md`): onde hospedar os grafos de `Rotas/*.json` (~110 MB, ainda fora do
-git) para que o backend em produção tenha `ROTAS_DIR` apontando para dados reais. Sem isso,
-`/api/rotas` sobe mas fica sem dados de rota.
+Grafos em produção: o Render só enxerga `rootDir` (`web/app/backend`), então os grafos vão
+**comprimidos e versionados** em `web/app/backend/grafos/*.json.gz` (~14 MB; os `Rotas/*.json`
+brutos, ~80 MB, seguem fora do git). `python Rotas/gerar_grafos.py` grava a cópia comprimida;
+`node scripts/comprimir-grafos.js` (em `web/app/backend`) refaz todas. Após regenerar um grafo,
+commite o `.gz` junto. Para o trânsito ao vivo em produção, cadastre `TOMTOM_API_KEY` no Render.
 
 ## Validate before saying "done"
 

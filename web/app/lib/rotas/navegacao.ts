@@ -9,8 +9,9 @@ import {
   projetarNoSegmento,
   rumoEntre,
 } from "@/app/lib/geo";
+import { normalizar } from "@/app/lib/constantes";
 import type { PosicaoUsuario } from "@/app/lib/localizacao";
-import type { OcorrenciaRota, ResultadoRota, ResumoOcorrencia } from "./api";
+import type { IncidenteTransito, OcorrenciaRota, ResultadoRota, ResumoOcorrencia } from "./api";
 
 /**
  * Parâmetros da navegação (estimativas usuais de apps de GPS; ajustar com testes em campo).
@@ -183,3 +184,39 @@ export const ocorrenciasNoTrajeto = (
 
 export const descreverOcorrencia = (ocorrencia: ResumoOcorrencia) =>
   `${ocorrencia.tipo} — ${ocorrencia.rua ?? ocorrencia.endereco}`;
+
+// Quem confirmou a informação, pelo status do Feed (STATUS_OCORRENCIA em lib/constantes.ts).
+// Status desconhecido conta como relato não verificado: nunca apresentar como informação oficial.
+const CONFIRMACAO_POR_STATUS: Record<string, string> = {
+  aguardando: "Relato de cidadão, ainda não verificado pela prefeitura",
+  visualizado: "Relato visto pela prefeitura",
+  "em andamento": "Em atendimento pela prefeitura",
+};
+
+const tempoDesde = (iso: string) => {
+  const minutos = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (!Number.isFinite(minutos) || minutos < 1) return "agora";
+  if (minutos < 60) return `há ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `há ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return `há ${dias} ${dias === 1 ? "dia" : "dias"}`;
+};
+
+// Origem e atualidade da informação: "Relato de cidadão, ainda não verificado pela prefeitura · publicada há 2 h"
+export const descreverConfirmacao = ({ status, criadoEm }: ResumoOcorrencia) => {
+  const chave = normalizar(status ?? "").replace(/_/g, " ");
+  return `${CONFIRMACAO_POR_STATUS[chave] ?? CONFIRMACAO_POR_STATUS.aguardando} · publicada ${tempoDesde(criadoEm)}`;
+};
+
+// "Congestionamento — de Av. X até Rua Y · +4 min no trecho todo" (a rota pode passar só por parte dele)
+export const descreverIncidente = ({ tipo, de, ate, atrasoSegundos }: IncidenteTransito) => {
+  const local = de && ate && de !== ate ? ` — de ${de} até ${ate}` : de || ate ? ` — ${de ?? ate}` : "";
+  const atraso =
+    atrasoSegundos && atrasoSegundos >= 60 ? ` · +${Math.round(atrasoSegundos / 60)} min no trecho todo` : "";
+  return `${tipo}${local}${atraso}`;
+};
+
+// Dado medido (não relato): mostra a fonte e quando foi atualizado
+export const descreverAtualizacaoTransito = (atualizadoEm: string | null) =>
+  `Dados de trânsito © TomTom${atualizadoEm ? ` · atualizados ${tempoDesde(atualizadoEm)}` : ""}`;

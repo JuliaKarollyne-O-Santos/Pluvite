@@ -181,3 +181,50 @@ async def registrar_dispositivo(dados: dict[str, Any]) -> dict[str, Any] | None:
     except Exception as erro:
         log.error("Falha ao registrar dispositivo: %s", erro)
         return None
+
+
+# ── Contas que podem disparar alertas ───────────────────────────────────────
+
+def _usuario_do_token_sync(token: str) -> dict[str, Any] | None:
+    sb = cliente()
+    if sb is None:
+        return None
+    try:
+        resposta = sb.auth.get_user(token)
+    except Exception as erro:  # token invalido ou expirado: o SDK lanca AuthApiError
+        log.info("Sessao recusada pelo Supabase (%s)", type(erro).__name__)
+        return None
+    usuario = getattr(resposta, "user", None)
+    return {"id": usuario.id} if usuario else None
+
+
+async def usuario_do_token(token: str) -> dict[str, Any] | None:
+    """Usuario dono do token de sessao enviado pelo site, ou None se invalido/expirado."""
+    return await asyncio.to_thread(_usuario_do_token_sync, token)
+
+
+def _papel_da_conta_sync(auth_id: str) -> dict[str, Any] | None:
+    sb = cliente()
+    if sb is None:
+        return None
+    admin = sb.table("admin").select("id").eq("auth_id", auth_id).limit(1).execute()
+    if admin.data:
+        return {"papel": "admin", "municipio": None}
+    servidor = (
+        sb.table("servidor").select("municipio").eq("auth_id", auth_id).limit(1).execute()
+    )
+    if servidor.data:
+        return {"papel": "servidor", "municipio": servidor.data[0].get("municipio")}
+    return None
+
+
+async def papel_da_conta(auth_id: str) -> dict[str, Any] | None:
+    """'admin' (equipe Pluvite) ou 'servidor' (prefeitura, com o municipio), ou None.
+
+    As mesmas tabelas que /Adm e /Prefeituras conferem no site.
+    """
+    try:
+        return await asyncio.to_thread(_papel_da_conta_sync, auth_id)
+    except Exception as erro:
+        log.error("Falha ao consultar o papel da conta: %s", erro)
+        return None

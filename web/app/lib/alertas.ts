@@ -5,6 +5,8 @@
  * modelo do pop-up original (notificacao_popup/popups.py).
  */
 
+import { supabase } from "@/app/lib/banco";
+
 export type Prioridade = "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
 
 export interface Alerta {
@@ -42,9 +44,6 @@ export const WS_ALERTAS =
   process.env.NEXT_PUBLIC_WS_ALERTAS ??
   `${API_ALERTAS.replace(/^http/, "ws")}/ws/alertas`;
 
-/** Token administrativo exigido pelo backend em producao (opcional em dev) */
-const ADMIN_TOKEN = process.env.NEXT_PUBLIC_ADMIN_TOKEN ?? "";
-
 export interface EntradaAlertaManual {
   tipo: string;
   prioridade: Prioridade;
@@ -67,15 +66,23 @@ export interface RelatorioDisparo {
 /**
  * Gatilho MANUAL: o backend grava no Supabase e dispara os 3 canais
  * (pop-up do site, WhatsApp e push no app) simultaneamente.
+ * Vai com o token de sessão do Supabase: o backend só aceita contas de servidor
+ * (para o próprio município) e da equipe (admin).
  */
 export async function dispararAlertaManual(
   entrada: EntradaAlertaManual,
 ): Promise<RelatorioDisparo> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new Error("Sua sessão expirou. Entre de novo com a conta de servidor.");
+  }
+
   const resposta = await fetch(`${API_ALERTAS}/api/alertas/disparar`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(ADMIN_TOKEN ? { "X-Pluvite-Token": ADMIN_TOKEN } : {}),
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       endereco: "Toda a área do município",
@@ -85,7 +92,9 @@ export async function dispararAlertaManual(
   });
 
   if (!resposta.ok) {
-    const detalhe = await resposta.text();
+    // FastAPI devolve { detail: "mensagem" } (ou uma lista, quando o formulário é inválido)
+    const corpo = await resposta.json().catch(() => null);
+    const detalhe = typeof corpo?.detail === "string" ? corpo.detail : "dados inválidos";
     throw new Error(`Backend recusou o disparo (${resposta.status}): ${detalhe}`);
   }
 

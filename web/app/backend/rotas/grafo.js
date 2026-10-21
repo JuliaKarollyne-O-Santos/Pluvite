@@ -1,6 +1,8 @@
 import { readFile, readdir } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { promisify } from 'util';
+import { gunzip } from 'zlib';
 import { distanciaMetros, distanciaPontoSegmento, pontoAFrente, rumo } from './geo.js';
 import {
   PARAMETROS,
@@ -13,10 +15,20 @@ import {
   velocidadeOperacao,
 } from './modeloTempo.js';
 
-// Grafos gerados por Rotas/gerar_grafos.py (OSM + elevação SRTM) na raiz do repositório
-const PASTA_ROTAS =
-  process.env.ROTAS_DIR ||
-  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../Rotas');
+// Grafos gerados por Rotas/gerar_grafos.py (OSM + elevação SRTM). Pastas em ordem de preferência —
+// a primeira que tiver a cidade vence:
+// 1. ROTAS_DIR, se definida;
+// 2. Rotas/ na raiz do repositório: os .json gerados localmente (fora do Git);
+// 3. backend/grafos/: cópias comprimidas (.json.gz, ~14 MB no total) versionadas no Git para o deploy —
+//    o Render só enxerga a pasta do backend (rootDir em render.yaml).
+const PASTA_DESTE_ARQUIVO = path.dirname(fileURLToPath(import.meta.url));
+const PASTAS_GRAFOS = [
+  process.env.ROTAS_DIR,
+  path.resolve(PASTA_DESTE_ARQUIVO, '../../../../Rotas'),
+  path.resolve(PASTA_DESTE_ARQUIVO, '../grafos'),
+].filter(Boolean);
+const ARQUIVO_GRAFO = /^(.+)_graph\.json(\.gz)?$/;
+const descomprimir = promisify(gunzip);
 
 // Guarda poucos grafos na memória: o de São José dos Campos sozinho tem dezenas de MB
 const LIMITE_CACHE = 4;
@@ -49,17 +61,31 @@ const lerGeometria = (wkt) => {
 };
 
 /**
- * Mapa "nome normalizado da cidade" → arquivo do grafo, montado a partir da pasta.
+ * Mapa "nome normalizado da cidade" → { pasta, arquivo } do grafo, montado a partir de PASTAS_GRAFOS.
+ * Pasta ausente é ignorada (no Render não existe Rotas/). Na mesma pasta, o .json vale mais que o .gz.
  */
 let indiceArquivos = null;
 export const obterIndiceArquivos = async () => {
   if (indiceArquivos) return indiceArquivos;
-  const arquivos = await readdir(PASTA_ROTAS);
-  indiceArquivos = new Map(
-    arquivos
-      .filter((arq) => arq.endsWith('_graph.json'))
-      .map((arq) => [normalizar(arq.replace('_graph.json', '')), arq]),
-  );
+  const indice = new Map();
+  for (const pasta of PASTAS_GRAFOS) {
+    let arquivos;
+    try {
+      arquivos = await readdir(pasta);
+    } catch {
+      continue;
+    }
+    for (const arquivo of arquivos) {
+      const partes = ARQUIVO_GRAFO.exec(arquivo);
+      if (!partes) continue;
+      const cidade = normalizar(partes[1]);
+      const atual = indice.get(cidade);
+      const substitui = !atual || (atual.pasta === pasta && atual.arquivo.endsWith('.gz') && !partes[2]);
+      if (substitui) indice.set(cidade, { pasta, arquivo });
+    }
+  }
+  if (indice.size === 0) console.warn(`Nenhum grafo de rotas encontrado em: ${PASTAS_GRAFOS.join(' | ')}`);
+  indiceArquivos = indice;
   return indiceArquivos;
 };
 
@@ -285,19 +311,20 @@ export const arestasProximas = (grafo, lat, lng, raio) => {
 
 export const carregarGrafo = async (cidade) => {
   const indice = await obterIndiceArquivos();
-  const arquivo = indice.get(normalizar(cidade));
-  if (!arquivo) return null;
+  const entrada = indice.get(normalizar(cidade));
+  if (!entrada) return null;
+  const caminho = path.join(entrada.pasta, entrada.arquivo);
 
-  if (!cacheGrafos.has(arquivo)) {
+  if (!cacheGrafos.has(caminho)) {
     // Guarda a Promise para que requisições simultâneas não leiam o mesmo arquivo duas vezes
-    const promessa = readFile(path.join(PASTA_ROTAS, arquivo), 'utf-8').then((texto) =>
-      montarGrafo(JSON.parse(texto)),
-    );
-    promessa.catch(() => cacheGrafos.delete(arquivo));
-    cacheGrafos.set(arquivo, promessa);
+    const promessa = readFile(caminho)
+      .then((conteudo) => (caminho.endsWith('.gz') ? descomprimir(conteudo) : conteudo))
+      .then((conteudo) => montarGrafo(JSON.parse(conteudo.toString('utf-8'))));
+    promessa.catch(() => cacheGrafos.delete(caminho));
+    cacheGrafos.set(caminho, promessa);
     if (cacheGrafos.size > LIMITE_CACHE) {
       cacheGrafos.delete(cacheGrafos.keys().next().value);
     }
   }
-  return cacheGrafos.get(arquivo);
+  return cacheGrafos.get(caminho);
 };

@@ -30,18 +30,49 @@ export interface ResumoOcorrencia {
   rua: string | null;
   efeito: EfeitoOcorrencia;
   localizacao: LocalizacaoOcorrencia;
+  // Status do Feed ("Aguardando" = relato ainda não visto pela prefeitura) e data de publicação
+  status: string;
+  criadoEm: string;
 }
 
 // Ocorrência ativa do Feed já ligada às vias do grafo da cidade
 export interface OcorrenciaRota extends ResumoOcorrencia {
   bairro: string;
-  status: string;
-  criadoEm: string;
   posicao: Coordenada | null;
   raio: number | null;
   arestas: number[];
   // Geometria desenhada no mapa: só o pedaço das vias dentro do raio, não a aresta inteira
   trechos: Coordenada[][];
+}
+
+// Trânsito ao vivo (TomTom): 'lentidao' tem atraso medido, que já entra no tempo da rota;
+// 'bloqueio' (via fechada) e 'restricao' (faixa fechada, obra, acidente) só mudam o caminho
+export type EfeitoTransito = "lentidao" | "bloqueio" | "restricao";
+
+export interface IncidenteTransito {
+  id: string;
+  tipo: string;
+  descricao: string | null;
+  efeito: EfeitoTransito;
+  atrasoSegundos: number | null;
+  extensao: number | null;
+  // Onde o trânsito afetado começa e termina (nomes informados pela TomTom)
+  de: string | null;
+  ate: string | null;
+  inicio: string | null;
+  fim: string | null;
+  trecho: Coordenada[];
+}
+
+export interface TransitoRota {
+  // false = o backend tem chave da TomTom, mas o dado não veio agora (falha ou cota do dia)
+  disponivel: boolean;
+  fonte: string;
+  atualizadoEm: string | null;
+  // Lentidão medida que entrou no tempo desta rota (s)
+  atrasoSegundos: number;
+  naRota: IncidenteTransito[];
+  evitados: IncidenteTransito[];
 }
 
 export interface ResultadoRota {
@@ -57,6 +88,12 @@ export interface ResultadoRota {
     naRota: ResumoOcorrencia[];
     indisponiveis: boolean;
   };
+  // Trânsito ao vivo; null quando o backend não tem chave da TomTom configurada
+  transito?: TransitoRota | null;
+  // Ex.: o ponto marcado fica longe da via acessível mais próxima (a rota parte/chega dela)
+  avisos?: string[];
+  // Até 2 rotas diferentes da principal, no mesmo formato (só quando pedidas em calcularRota)
+  alternativas?: ResultadoRota[];
 }
 
 export interface DadosCidade {
@@ -78,8 +115,10 @@ export const mensagemDeErro = (err: unknown) =>
 const urlCidade = (cidade: string) => `${API_URL}/api/rotas/${encodeURIComponent(cidade)}`;
 
 const lerResposta = async <T>(resposta: Response, mensagemPadrao: string): Promise<T> => {
-  const dados = await resposta.json();
-  if (!resposta.ok) throw new Error(dados.error ?? mensagemPadrao);
+  // Um proxy ou o host fora do ar podem devolver HTML em vez de JSON: a mensagem padrão ajuda mais
+  // do que o erro de leitura ("Unexpected token <")
+  const dados = await resposta.json().catch(() => null);
+  if (!resposta.ok || dados === null) throw new Error(dados?.error ?? mensagemPadrao);
   return dados as T;
 };
 
@@ -93,12 +132,19 @@ export const listarCidadesComRotas = async () => {
 export const carregarDadosCidade = async (cidade: string) =>
   lerResposta<DadosCidade>(await fetch(urlCidade(cidade)), "Mapa indisponível para esta cidade.");
 
-export const calcularRota = async (cidade: string, origem: Ponto, destino: Ponto) =>
+// `alternativas` pede também até 2 rotas diferentes da principal — só no planejamento: num recálculo
+// da navegação basta a melhor rota a partir da posição atual
+export const calcularRota = async (
+  cidade: string,
+  origem: Ponto,
+  destino: Ponto,
+  { alternativas = false }: { alternativas?: boolean } = {},
+) =>
   lerResposta<ResultadoRota>(
     await fetch(`${urlCidade(cidade)}/calcular`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ origem, destino }),
+      body: JSON.stringify({ origem, destino, alternativas }),
     }),
     "Não foi possível calcular a rota.",
   );

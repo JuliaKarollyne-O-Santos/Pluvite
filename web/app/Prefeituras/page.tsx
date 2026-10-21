@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useEffectEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import {
@@ -269,6 +269,18 @@ export default function PainelServidor() {
   }, [meuMunicipio, prioridadePorTipo]);
 
   // ───── REALTIME — só dispara para ocorrências da própria cidade ─────
+  // O canal é assinado uma vez por município; via useEffectEvent a busca disparada por ele usa o
+  // mapeamento de prioridades ATUAL (a configuração pode chegar depois da assinatura — antes, um
+  // INSERT recebido nesse caso recolocava as prioridades padrão em todos os chamados)
+  const handleNovaOcorrencia = useEffectEvent(
+    (nova: { tipo?: string; bairro?: string | null; cidade?: string }) => {
+      dispararNotificacao(
+        `Nova ocorrência: ${nova.tipo} em ${nova.bairro || nova.cidade}`,
+      );
+      buscarDadosBanco();
+    },
+  );
+
   useEffect(() => {
     if (!meuMunicipio) return;
 
@@ -282,20 +294,13 @@ export default function PainelServidor() {
           table: "ocorrencias",
           filter: `cidade=eq.${meuMunicipio}`,
         },
-        (payload: any) => {
-          const nova = payload.new;
-          dispararNotificacao(
-            `Nova ocorrência: ${nova.tipo} em ${nova.bairro || nova.cidade}`,
-          );
-          buscarDadosBanco();
-        },
+        (payload) => handleNovaOcorrencia(payload.new),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(canal);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meuMunicipio]);
 
   // ───── AÇÕES: mudar status (grava no banco + histórico) ─────
@@ -305,23 +310,35 @@ export default function PainelServidor() {
     logMsg: string,
     corLog: string,
   ) => {
-    const { error: erroUpdate } = await supabase
+    // .select() devolve as linhas alteradas: quando o RLS barra o UPDATE o Supabase não retorna
+    // erro, só zero linhas — sem essa conferência o painel mostraria um status que não foi gravado
+    const { data: alteradas, error: erroUpdate } = await supabase
       .from("ocorrencias")
       .update({ status: novoStatus })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
-    if (erroUpdate) {
-      console.error("Erro ao atualizar status:", erroUpdate);
+    if (erroUpdate || !alteradas || alteradas.length === 0) {
+      console.error(
+        "Erro ao atualizar status:",
+        erroUpdate ?? "nenhuma linha alterada (sem permissão de escrita na ocorrência?)",
+      );
       alert("Não foi possível atualizar o status dessa ocorrência.");
+      // Desfaz a mudança otimista voltando ao que está gravado no banco
+      buscarDadosBanco();
       return;
     }
 
-    await supabase.from("historico_acoes").insert({
+    const { error: erroHistorico } = await supabase.from("historico_acoes").insert({
       ocorrencia_id: id,
       cidade: meuMunicipio,
       acao: logMsg,
       cor_acao: corLog,
     });
+    if (erroHistorico) {
+      // O status já foi gravado; só o registro no histórico falhou
+      console.error("Erro ao registrar a ação no histórico:", erroHistorico);
+    }
 
     buscarDadosBanco();
   };
@@ -445,26 +462,29 @@ export default function PainelServidor() {
     };
   }, [chamadosFiltrados]);
 
+  // Ocorrências registradas por dia (mesmos filtros dos cards) — antes contava o histórico de
+  // ações, que já tem a própria lista abaixo. A chave usa a data LOCAL: com toISOString (UTC) uma
+  // ocorrência das 21h em diante (horário de Brasília) cairia no dia seguinte
   const tendencia7dias = useMemo(() => {
+    const chaveDoDia = (data: Date) =>
+      `${data.getFullYear()}-${data.getMonth()}-${data.getDate()}`;
     const dias: { chave: string; label: string; total: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const data = new Date();
       data.setDate(data.getDate() - i);
-      const chave = data.toISOString().slice(0, 10);
       const label = data.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
       });
-      dias.push({ chave, label, total: 0 });
+      dias.push({ chave: chaveDoDia(data), label, total: 0 });
     }
-    historicoLogs.forEach((log) => {
-      if (!log.criado_at) return;
-      const chave = new Date(log.criado_at).toISOString().slice(0, 10);
-      const dia = dias.find((d) => d.chave === chave);
+    chamadosFiltrados.forEach((chamado) => {
+      if (!chamado.criadoEm) return;
+      const dia = dias.find((d) => d.chave === chaveDoDia(new Date(chamado.criadoEm)));
       if (dia) dia.total += 1;
     });
     return dias;
-  }, [historicoLogs]);
+  }, [chamadosFiltrados]);
 
   const abas: { id: Aba; label: string; icon: any }[] = [
     { id: "visao", label: "Visão Geral", icon: LayoutGrid },
@@ -499,9 +519,11 @@ export default function PainelServidor() {
         </div>
       )}
 
+      {/* No celular a sidebar vira a barra superior fixa (64px, TOPBAR_MOBILE_ALTURA): sem recuo
+          lateral e com espaço no topo para o cabeçalho não ficar escondido atrás dela */}
       <div
-        className={`pt-8 pr-6 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
-          sidebarExpandida ? "pl-64" : "pl-[84px]"
+        className={`pt-24 md:pt-8 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
+          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
         }`}
       >
       <div className="max-w-7xl mx-auto px-6 md:px-4">

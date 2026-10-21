@@ -274,11 +274,12 @@ manuais ficam identificados separadamente no banco.
 
 ### 2.1 Pelo painel do site
 
-1. Abra <http://localhost:3000/Servidor>.
+1. Entre em <http://localhost:3000/login> com uma conta de **servidor** (prefeitura) ou **admin**
+   (equipe Pluvite) e abra <http://localhost:3000/Servidor>. Sem login, a página manda para o login.
 2. Preencha o formulário **"🚨 Disparar Alerta Meteorológico"**:
    - Tipo: `Enchente`
    - Prioridade: `Crítica`
-   - Município: `Taubaté`
+   - Município: `Taubaté` (conta de servidor: já vem fixo no município da prefeitura)
    - Endereço: `Av. Tiradentes, altura do nº 500`
    - Descrição: `Rio Paraíba transbordou. Evacuar imediatamente as margens.`
 3. Clique em **Registrar e Disparar Alerta**.
@@ -295,9 +296,13 @@ Alerta disparado: [CRITICA] Alerta de Enchente - Taubaté
 
 ### 2.2 Pela API (sem interface)
 
+Fora do site, o disparo exige o `ADMIN_TOKEN` (defina um valor qualquer em `web/app/python/.env`
+e reinicie o backend) no header `X-Pluvite-Token`. Sem ele, a API responde `401`.
+
 ```powershell
 curl.exe -X POST http://localhost:8000/api/alertas/disparar `
   -H "Content-Type: application/json" `
+  -H "X-Pluvite-Token: valor_do_ADMIN_TOKEN" `
   -d "{\"tipo\":\"Deslizamento\",\"prioridade\":\"ALTA\",\"municipio\":\"Taubate\",\"endereco\":\"Bairro Alto\",\"descricao\":\"Encosta instavel apos chuva continua.\"}"
 ```
 
@@ -306,6 +311,7 @@ No Linux/macOS/Git Bash:
 ```bash
 curl -X POST http://localhost:8000/api/alertas/disparar \
   -H "Content-Type: application/json" \
+  -H "X-Pluvite-Token: valor_do_ADMIN_TOKEN" \
   -d '{"tipo":"Deslizamento","prioridade":"ALTA","municipio":"Taubate","endereco":"Bairro Alto","descricao":"Encosta instavel apos chuva continua."}'
 ```
 
@@ -318,9 +324,11 @@ order by criado_em desc
 limit 3;
 ```
 
-> **Produção:** defina `ADMIN_TOKEN` no `.env` do backend e
-> `NEXT_PUBLIC_ADMIN_TOKEN` no `web/.env.local`. Sem o header
-> `X-Pluvite-Token`, o endpoint passa a responder `401`.
+> **Quem pode disparar:** o backend confere o login do Supabase enviado pelo site
+> (`Authorization: Bearer`). Contas de **servidor** disparam só para o próprio município;
+> contas **admin**, para qualquer um dos 39. Município fora da lista → `400`; outra prefeitura →
+> `403`. O `ADMIN_TOKEN` serve só para scripts e `curl`: **nunca** o coloque em uma variável
+> `NEXT_PUBLIC_` (ela vai para o navegador e qualquer pessoa consegue ler).
 
 ---
 
@@ -423,8 +431,8 @@ O terminal mostra:
 ### 4.3 Disparar pelo site (pop-up + WhatsApp juntos)
 
 1. Abra o site em uma aba (pontinho verde = WebSocket conectado).
-2. Em outra aba, abra <http://localhost:3000/Servidor> e dispare um alerta
-   (passo 2.1).
+2. Em outra aba, logado como servidor ou admin, abra <http://localhost:3000/Servidor> e dispare
+   um alerta (passo 2.1).
 3. Confira:
 
 | Onde | Evidência |

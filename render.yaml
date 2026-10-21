@@ -9,7 +9,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
-      # Pasta com os grafos viários (Rotas/*.json). Ainda não decidido onde hospedá-los
-      # em produção — ver ROADMAP.md. Sem isso, /api/rotas fica sem dados.
+      # Opcional: outra pasta com grafos. Sem ela, o backend usa as cópias comprimidas versionadas
+      # em web/app/backend/grafos/*.json.gz (dentro do rootDir, que é tudo o que o Render enxerga).
       - key: ROTAS_DIR
         sync: false

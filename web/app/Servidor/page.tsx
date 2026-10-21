@@ -1,13 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   dispararAlertaManual,
   type Prioridade,
   type RelatorioDisparo,
 } from "@/app/lib/alertas";
+import { supabase } from "@/app/lib/banco";
+import { MUNICIPIOS } from "@/app/lib/constantes";
+
+// Quem pode disparar: servidor (prefeitura, só o próprio município) ou admin (equipe Pluvite).
+// O backend de alertas confere de novo pelo token de sessão — esta verificação só organiza a tela.
+interface Acesso {
+  papel: "admin" | "servidor";
+  municipio: string | null;
+}
 
 export default function PainelServidor() {
+  const router = useRouter();
+  const [acesso, setAcesso] = useState<Acesso | null>(null);
+
   const [tipo, setTipo] = useState("");
   const [prioridade, setPrioridade] = useState<Prioridade>("BAIXA");
   const [municipio, setMunicipio] = useState("");
@@ -17,6 +30,45 @@ export default function PainelServidor() {
   const [enviando, setEnviando] = useState(false);
   const [relatorio, setRelatorio] = useState<RelatorioDisparo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroConexao, setErroConexao] = useState(false);
+
+  // VERIFICAÇÃO DE ACESSO (mesmas tabelas de /Adm e /Prefeituras)
+  useEffect(() => {
+    const verificarAcesso = async () => {
+      const { data } = await supabase.auth.getUser();
+      const usuario = data.user;
+      if (!usuario) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: adminRow, error: erroAdmin } = await supabase
+        .from("admin")
+        .select("id")
+        .eq("auth_id", usuario.id)
+        .maybeSingle();
+      if (erroAdmin) console.error("Erro ao verificar conta admin:", erroAdmin);
+      if (adminRow) {
+        setAcesso({ papel: "admin", municipio: null });
+        return;
+      }
+
+      const { data: servidorRow, error: erroServidor } = await supabase
+        .from("servidor")
+        .select("municipio")
+        .eq("auth_id", usuario.id)
+        .maybeSingle();
+      if (erroServidor) console.error("Erro ao verificar conta de servidor:", erroServidor);
+      if (servidorRow) {
+        setAcesso({ papel: "servidor", municipio: servidorRow.municipio });
+        setMunicipio(servidorRow.municipio);
+        return;
+      }
+
+      router.replace("/login");
+    };
+    verificarAcesso();
+  }, [router]);
 
   /**
    * GATILHO MANUAL — chama o mesmo ponto central que o monitor automatico do
@@ -27,6 +79,7 @@ export default function PainelServidor() {
     e.preventDefault();
     setEnviando(true);
     setErro(null);
+    setErroConexao(false);
     setRelatorio(null);
 
     try {
@@ -41,13 +94,17 @@ export default function PainelServidor() {
       setRelatorio(resultado);
       setTipo("");
       setPrioridade("BAIXA");
-      setMunicipio("");
+      // Conta de servidor continua presa ao próprio município
+      setMunicipio(acesso?.papel === "servidor" ? (acesso.municipio ?? "") : "");
       setEndereco("");
       setDescricao("");
     } catch (e) {
       console.error("Falha ao disparar alerta:", e);
+      // fetch lança TypeError quando o backend de alertas não responde
+      const semConexao = e instanceof TypeError;
+      setErroConexao(semConexao);
       setErro(
-        e instanceof Error
+        e instanceof Error && !semConexao
           ? e.message
           : "Não foi possível falar com o servidor de alertas.",
       );
@@ -55,6 +112,14 @@ export default function PainelServidor() {
       setEnviando(false);
     }
   };
+
+  if (!acesso) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
+        <p className="text-gray-500 animate-pulse">Verificando acesso...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
@@ -100,15 +165,28 @@ export default function PainelServidor() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Município/Região</label>
-              <input
-                type="text"
-                placeholder="Ex: São José dos Campos"
+              <label className="block text-sm font-medium text-gray-700">Município</label>
+              <select
                 value={municipio}
                 onChange={(e) => setMunicipio(e.target.value)}
-                className="mt-1 p-2 w-full border rounded-md"
+                disabled={acesso.papel === "servidor"}
+                className="mt-1 p-2 w-full border rounded-md disabled:bg-gray-100 disabled:text-gray-600"
                 required
-              />
+              >
+                <option value="" disabled>
+                  Escolha o município
+                </option>
+                {(acesso.papel === "servidor" ? [municipio] : MUNICIPIOS).map((nome) => (
+                  <option key={nome} value={nome}>
+                    {nome}
+                  </option>
+                ))}
+              </select>
+              {acesso.papel === "servidor" && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Contas de prefeitura disparam alertas só para o próprio município.
+                </p>
+              )}
             </div>
 
             <div>
@@ -148,10 +226,12 @@ export default function PainelServidor() {
           {erro && (
             <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               <strong>Falha no disparo:</strong> {erro}
-              <p className="mt-1 text-xs text-red-500">
-                Confira se o backend Python está rodando em{" "}
-                <code>uvicorn backend.main:app --port 8000</code>.
-              </p>
+              {erroConexao && (
+                <p className="mt-1 text-xs text-red-500">
+                  Confira se o backend Python está rodando em{" "}
+                  <code>uvicorn backend.main:app --port 8000</code>.
+                </p>
+              )}
             </div>
           )}
 

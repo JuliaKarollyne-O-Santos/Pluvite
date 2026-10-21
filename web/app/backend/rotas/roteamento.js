@@ -52,12 +52,74 @@ const DESCRICAO_EVENTO = {
   passagemNivel: 'Passagem de nível',
 };
 
-// Nó com saída mais próximo de uma coordenada (busca linear — poucos milhares de nós por cidade)
-const noMaisProximo = (grafo, lat, lng, candidatos = grafo.saidas.keys()) => {
+// Maior componente fortemente conexo da malha, montado na primeira consulta de cada grafo. O OSMnx
+// guarda o maior componente FRACAMENTE conexo, então sobram pedaços sem ida e volta (mão única sem
+// saída, acessos de condomínio): com a origem ou o destino num deles a busca não acha caminho.
+const componentesPrincipais = new WeakMap();
+
+const componentePrincipal = (grafo) => {
+  let maior = componentesPrincipais.get(grafo);
+  if (maior) return maior;
+
+  // Kosaraju iterativo (recursão estouraria a pilha com dezenas de milhares de nós).
+  // 1ª passada: ordem de término da busca em profundidade no sentido das vias
+  const ordem = [];
+  const visitado = new Set();
+  for (const inicio of grafo.nos.keys()) {
+    if (visitado.has(inicio)) continue;
+    visitado.add(inicio);
+    const pilha = [[inicio, 0]];
+    while (pilha.length > 0) {
+      const topo = pilha[pilha.length - 1];
+      const saidas = grafo.saidas.get(topo[0]) ?? [];
+      if (topo[1] < saidas.length) {
+        const proximo = grafo.arestas[saidas[topo[1]++]].para;
+        if (!visitado.has(proximo)) {
+          visitado.add(proximo);
+          pilha.push([proximo, 0]);
+        }
+      } else {
+        ordem.push(topo[0]);
+        pilha.pop();
+      }
+    }
+  }
+
+  // 2ª passada: no sentido contrário das vias, na ordem inversa de término — cada árvore é um componente
+  const entradas = new Map();
+  for (const aresta of grafo.arestas) {
+    if (!entradas.has(aresta.para)) entradas.set(aresta.para, []);
+    entradas.get(aresta.para).push(aresta.de);
+  }
+  const atribuido = new Set();
+  maior = new Set();
+  for (let i = ordem.length - 1; i >= 0; i--) {
+    if (atribuido.has(ordem[i])) continue;
+    atribuido.add(ordem[i]);
+    const componente = new Set([ordem[i]]);
+    const pilha = [ordem[i]];
+    while (pilha.length > 0) {
+      for (const anterior of entradas.get(pilha.pop()) ?? []) {
+        if (atribuido.has(anterior)) continue;
+        atribuido.add(anterior);
+        componente.add(anterior);
+        pilha.push(anterior);
+      }
+    }
+    if (componente.size > maior.size) maior = componente;
+  }
+
+  componentesPrincipais.set(grafo, maior);
+  return maior;
+};
+
+// Nó com saída mais próximo de uma coordenada (busca linear — poucos milhares de nós por cidade).
+// `aceitos` (Set opcional) restringe os candidatos, ex.: ao componente principal da malha.
+const noMaisProximo = (grafo, lat, lng, candidatos = grafo.saidas.keys(), aceitos = null) => {
   let melhor = null;
   let menorDistancia = Infinity;
   for (const id of candidatos) {
-    if (!grafo.saidas.has(id)) continue;
+    if (!grafo.saidas.has(id) || (aceitos && !aceitos.has(id))) continue;
     const no = grafo.nos.get(id);
     const d = distanciaMetros(lat, lng, no.lat, no.lng);
     if (d < menorDistancia) {
@@ -68,10 +130,11 @@ const noMaisProximo = (grafo, lat, lng, candidatos = grafo.saidas.keys()) => {
   return { id: melhor, distancia: menorDistancia };
 };
 
-const noAFrente = (grafo, lat, lng, rumoVeiculo) => {
+const noAFrente = (grafo, lat, lng, rumoVeiculo, aceitos = null) => {
   let melhor = null;
   let menorDistancia = Infinity;
   for (const id of grafo.saidas.keys()) {
+    if (aceitos && !aceitos.has(id)) continue;
     const no = grafo.nos.get(id);
     const d = distanciaMetros(lat, lng, no.lat, no.lng);
     if (d > RAIO_NO_A_FRENTE || d >= menorDistancia) continue;
@@ -85,9 +148,14 @@ const noAFrente = (grafo, lat, lng, rumoVeiculo) => {
 
 /**
  * Converte o ponto enviado pelo front ({ rua } ou { lat, lng, rumo? }) em um nó do grafo.
- * Para uma rua, usa o nó dela mais próximo do "centro" da rua.
+ * Para uma rua, usa o nó dela mais próximo do "centro" da rua. Para uma coordenada, devolve também
+ * `distancia` (m) entre o ponto informado e o nó usado.
+ * Com `apenasComponentePrincipal`, só aceita nós do maior componente fortemente conexo (usado quando
+ * a busca falhou: ver `componentePrincipal`).
  */
-export const resolverPonto = (grafo, ponto) => {
+export const resolverPonto = (grafo, ponto, { apenasComponentePrincipal = false } = {}) => {
+  const aceitos = apenasComponentePrincipal ? componentePrincipal(grafo) : null;
+
   if (ponto?.rua) {
     const nosDaRua = grafo.nosPorRua.get(ponto.rua);
     if (!nosDaRua) return { erro: `Rua "${ponto.rua}" não encontrada nesta cidade.` };
@@ -96,20 +164,20 @@ export const resolverPonto = (grafo, ponto) => {
       somaLat += grafo.nos.get(id).lat;
       somaLng += grafo.nos.get(id).lng;
     }
-    const { id } = noMaisProximo(grafo, somaLat / nosDaRua.size, somaLng / nosDaRua.size, nosDaRua);
+    const { id } = noMaisProximo(grafo, somaLat / nosDaRua.size, somaLng / nosDaRua.size, nosDaRua, aceitos);
     return id ? { id } : { erro: `Rua "${ponto.rua}" não possui trecho navegável.` };
   }
 
   if (Number.isFinite(ponto?.lat) && Number.isFinite(ponto?.lng)) {
     if (Number.isFinite(ponto.rumo)) {
-      const id = noAFrente(grafo, ponto.lat, ponto.lng, ponto.rumo);
+      const id = noAFrente(grafo, ponto.lat, ponto.lng, ponto.rumo, aceitos);
       if (id) return { id };
     }
-    const { id, distancia } = noMaisProximo(grafo, ponto.lat, ponto.lng);
+    const { id, distancia } = noMaisProximo(grafo, ponto.lat, ponto.lng, undefined, aceitos);
     if (!id || distancia > DISTANCIA_MAXIMA_SNAP) {
       return { erro: 'O ponto informado está fora da área de ruas desta cidade.' };
     }
-    return { id };
+    return { id, distancia };
   }
 
   return { erro: 'Ponto inválido: informe uma rua ou uma coordenada.' };
@@ -151,6 +219,17 @@ class FilaPrioridade {
   }
 }
 
+/**
+ * Tempo de deslocamento na aresta: o do modelo (com horário de pico) ou, onde o trânsito ao vivo
+ * mediu lentidão (`atrasos`, transito.js), o tempo livre + o atraso medido — o maior dos dois, para
+ * não somar o pico estimado e a lentidão medida duas vezes.
+ */
+const tempoNaVia = (aresta, pico, atrasos) => {
+  const modelo = aresta.tempoLivre * multiplicadorPico(aresta, pico);
+  const atraso = atrasos?.get(aresta.id);
+  return atraso ? Math.max(modelo, aresta.tempoLivre + atraso) : modelo;
+};
+
 const fatorPreferencia = (aresta, preferencias) => {
   let fator = 1;
   if (preferencias.evitarTerra && aresta.semAsfalto) fator *= PESO_PREFERENCIA.evitarTerra;
@@ -170,9 +249,11 @@ const fatorPreferencia = (aresta, preferencias) => {
  * - `rumoInicial`: rumo do veículo em navegação; sair da origem num sentido diferente custa a
  *   conversão equivalente (retorno se for o sentido oposto).
  * Como as preferências, os dois mudam só a ESCOLHA do caminho, nunca o tempo exibido.
+ * - `atrasos`: Map<idAresta, segundos> da lentidão medida pelo trânsito ao vivo (transito.js). Este é
+ *   dado medido: muda a escolha E o tempo exibido (avaliarCaminho usa o mesmo `tempoNaVia`).
  * Devolve a lista de índices de arestas do caminho, ou null.
  */
-export const buscarCaminho = (grafo, origemId, destinoId, { pico, preferencias, penalidades, rumoInicial }) => {
+export const buscarCaminho = (grafo, origemId, destinoId, { pico, preferencias, penalidades, rumoInicial, atrasos }) => {
   const { arestas, saidas, nos } = grafo;
   const alvo = nos.get(destinoId);
   const porTempo = preferencias.criterio !== 'curta';
@@ -185,7 +266,7 @@ export const buscarCaminho = (grafo, origemId, destinoId, { pico, preferencias, 
     return porTempo ? d / grafo.velocidadeMaximaMs : d;
   };
   const pesoAresta = (aresta, transicao) => {
-    const tempo = aresta.tempoLivre * multiplicadorPico(aresta, pico);
+    const tempo = tempoNaVia(aresta, pico, atrasos);
     const ocorrencia = penalidades?.get(aresta.id);
     const fator = fatorPreferencia(aresta, preferencias) * (ocorrencia?.fator ?? 1);
     const peso = porTempo
@@ -289,7 +370,7 @@ const arredondar = (valor, casas = 0) => Math.round(valor * 10 ** casas) / 10 **
  * Recalcula o caminho escolhido com o modelo completo e monta a resposta: tempo total,
  * instruções e a ANÁLISE (composição do tempo, pontos lentos, relevo, limites).
  */
-export const avaliarCaminho = (grafo, caminho, { pico, preferencias, partida }) => {
+export const avaliarCaminho = (grafo, caminho, { pico, preferencias, partida, atrasos }) => {
   const arestasDoCaminho = caminho.map((id) => grafo.arestas[id]);
   const primeira = arestasDoCaminho[0];
   const ultima = arestasDoCaminho[arestasDoCaminho.length - 1];
@@ -298,6 +379,7 @@ export const avaliarCaminho = (grafo, caminho, { pico, preferencias, partida }) 
     deslocamento: 0, semaforo: 0, parada: 0, cruzamento: 0, rotatoria: 0, redutor: 0,
     travessia: 0, conversao: 0, retorno: 0, passagemNivel: 0,
     partidaChegada: custoPartida(primeira) + custoChegada(ultima),
+    transito: 0, // lentidão medida pelo trânsito ao vivo além do tempo do modelo
   };
   const eventos = [];
   const trechos = [];
@@ -315,8 +397,10 @@ export const avaliarCaminho = (grafo, caminho, { pico, preferencias, partida }) 
         eventos.push({ tipo, segundos, coordenada: [no.lat, no.lng], rua: aresta.nome ?? arestasDoCaminho[i - 1].nome });
       }
     }
-    const deslocamento = aresta.tempoLivre * multiplicadorPico(aresta, pico);
-    composicao.deslocamento += deslocamento;
+    const modelo = aresta.tempoLivre * multiplicadorPico(aresta, pico);
+    const deslocamento = tempoNaVia(aresta, pico, atrasos);
+    composicao.deslocamento += modelo;
+    composicao.transito += deslocamento - modelo;
     trechos.push({ aresta, tempo: deslocamento + transicao, inicio });
     inicio += aresta.coords.length - 1;
   });
@@ -422,4 +506,98 @@ export const avaliarCaminho = (grafo, caminho, { pico, preferencias, partida }) 
     arestas: trechos.map((trecho) => ({ id: trecho.aresta.id, inicio: trecho.inicio })),
     analise,
   };
+};
+
+/**
+ * ROTAS ALTERNATIVAS — método da penalidade (Akgün, Erkut & Batta, 2000, "On finding dissimilar
+ * paths", EJOR 121): cada caminho encontrado deixa as próprias arestas `fatorPenalidade` vezes mais
+ * caras e a busca é refeita. O candidato só vira alternativa se for admissível no sentido de Abraham
+ * et al. (2013, "Alternative routes in road networks"): pouco trecho em comum com as rotas já
+ * aceitas, tempo não muito maior que o da principal e sem zigue-zague local (`localmenteOtimo`).
+ * Os limites numéricos são estimativa.
+ */
+export const ALTERNATIVAS = {
+  maximo: 2, // além da rota principal
+  tentativas: 5, // buscas extras, no máximo
+  fatorPenalidade: 1.4,
+  sobreposicaoMaxima: 0.7, // fração do comprimento do candidato em comum com uma rota já aceita
+  esticamentoMaximo: 1.3, // tempo do candidato ≤ 130% do tempo da rota principal
+  janelaOtimalidade: 0.25, // trechos de até 25% do tempo do candidato precisam ser (quase) os mais rápidos
+  janelasVerificadas: 8, // pontos de partida das janelas, espalhados pelo candidato
+  desvioLocalMaximo: 30, // s a mais que o melhor caminho entre as pontas do trecho
+};
+
+// Otimalidade local (teste T de Abraham et al., 2013): a penalidade às vezes empurra o candidato para
+// um zigue-zague em volta de quarteirões que ninguém faria. Cada janela do candidato é comparada
+// com o caminho mais rápido entre as mesmas pontas, chegando no mesmo rumo.
+const localmenteOtimo = (grafo, candidato, opcoes, tempoCandidato) => {
+  const arestas = candidato.map((id) => grafo.arestas[id]);
+  const janela = tempoCandidato * ALTERNATIVAS.janelaOtimalidade;
+  const passo = Math.max(1, Math.floor(arestas.length / ALTERNATIVAS.janelasVerificadas));
+  for (let i = 0; i < arestas.length - 1; i += passo) {
+    // Fim da janela pelo tempo livre das arestas (só para dimensionar; a comparação usa o modelo)
+    let j = i;
+    for (let acumulado = 0; j < arestas.length - 1 && acumulado < janela; j++) acumulado += arestas[j].tempoLivre;
+    const rumoChegada = i > 0 ? arestas[i - 1].rumoFim : undefined;
+    const melhor = buscarCaminho(grafo, arestas[i].de, arestas[j].para, { ...opcoes, rumoInicial: rumoChegada });
+    if (!melhor) continue;
+    const manobra = (primeira) =>
+      Number.isFinite(rumoChegada) ? custoConversao(diferencaRumo(rumoChegada, primeira.rumoInicio)) : 0;
+    const tempoTrecho = avaliarCaminho(grafo, candidato.slice(i, j + 1), opcoes).duracaoSegundos + manobra(arestas[i]);
+    const tempoMelhor = avaliarCaminho(grafo, melhor, opcoes).duracaoSegundos + manobra(grafo.arestas[melhor[0]]);
+    if (tempoTrecho - tempoMelhor > ALTERNATIVAS.desvioLocalMaximo) return false;
+  }
+  return true;
+};
+
+// Trecho sem sentido de circulação: a mesma via nos dois sentidos conta como trecho em comum
+const chaveTrecho = ({ de, para }) => (de < para ? `${de}-${para}` : `${para}-${de}`);
+
+const fracaoEmComum = (grafo, candidato, aceito) => {
+  const trechosAceitos = new Set(aceito.map((id) => chaveTrecho(grafo.arestas[id])));
+  let emComum = 0, total = 0;
+  for (const id of candidato) {
+    const aresta = grafo.arestas[id];
+    total += aresta.comprimento;
+    if (trechosAceitos.has(chaveTrecho(aresta))) emComum += aresta.comprimento;
+  }
+  return total > 0 ? emComum / total : 1;
+};
+
+/**
+ * Até ALTERNATIVAS.maximo caminhos entre os mesmos nós, diferentes do `principal`, já avaliados pelo
+ * modelo: [{ caminho, avaliacao }]. Como as preferências, a penalidade muda só a ESCOLHA dos
+ * caminhos — o tempo de cada alternativa é o do modelo. Um candidato que use via afetada por
+ * ocorrência do Feed (`opcoes.penalidades`) que a principal não usa é descartado: a alternativa
+ * nunca pode levar para um bloqueio que a rota principal evitou.
+ */
+export const buscarAlternativas = (grafo, origemId, destinoId, opcoes, principal) => {
+  const tempoPrincipal = avaliarCaminho(grafo, principal, opcoes).duracaoSegundos;
+  const deOcorrencias = opcoes.penalidades ?? new Map();
+  const naPrincipal = new Set(principal);
+  const penalidades = new Map(deOcorrencias);
+  const penalizar = (caminho) => {
+    for (const id of caminho) {
+      const atual = penalidades.get(id) ?? { fator: 1, tempo: 0, distancia: 0 };
+      penalidades.set(id, { ...atual, fator: atual.fator * ALTERNATIVAS.fatorPenalidade });
+    }
+  };
+  penalizar(principal);
+
+  const aceitos = [principal];
+  const alternativas = [];
+  for (let i = 0; i < ALTERNATIVAS.tentativas && alternativas.length < ALTERNATIVAS.maximo; i++) {
+    const candidato = buscarCaminho(grafo, origemId, destinoId, { ...opcoes, penalidades });
+    if (!candidato) break;
+    // Penaliza mesmo se for descartado, para a próxima busca procurar em outro lugar
+    penalizar(candidato);
+    if (candidato.some((id) => deOcorrencias.has(id) && !naPrincipal.has(id))) continue;
+    if (aceitos.some((aceito) => fracaoEmComum(grafo, candidato, aceito) > ALTERNATIVAS.sobreposicaoMaxima)) continue;
+    const avaliacao = avaliarCaminho(grafo, candidato, opcoes);
+    if (avaliacao.duracaoSegundos > tempoPrincipal * ALTERNATIVAS.esticamentoMaximo) continue;
+    if (!localmenteOtimo(grafo, candidato, opcoes, avaliacao.duracaoSegundos)) continue;
+    aceitos.push(candidato);
+    alternativas.push({ caminho: candidato, avaliacao });
+  }
+  return alternativas;
 };

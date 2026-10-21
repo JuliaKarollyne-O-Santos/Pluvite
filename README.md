@@ -38,6 +38,9 @@ NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase_aqui
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_do_supabase_aqui
 ```
 
+   Opcional: para o trânsito ao vivo nas rotas, crie `web/app/backend/.env` com `TOMTOM_API_KEY=sua_chave_tomtom`
+   (passo a passo, teste em campo e calibração em [`GUIA-TESTE-CAMPO-ROTAS.md`](GUIA-TESTE-CAMPO-ROTAS.md)).
+
 4. Inicie o servidor de desenvolvimento:
 
 ```bash

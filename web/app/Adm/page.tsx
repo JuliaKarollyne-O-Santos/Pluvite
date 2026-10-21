@@ -102,9 +102,11 @@ export default function AdminPage() {
     <div className="min-h-screen -mt-15 w-full font-sans text-slate-800 bg-[#f4f5f7]">
       <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
 
+      {/* No celular a sidebar vira a barra superior fixa (64px, TOPBAR_MOBILE_ALTURA): sem recuo
+          lateral e com espaço no topo para as abas não ficarem escondidas atrás dela */}
       <div
-        className={`pt-8 pr-6 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
-          sidebarExpandida ? "pl-64" : "pl-[84px]"
+        className={`pt-24 md:pt-8 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
+          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
         }`}
       >
         <div className="max-w-4xl mx-auto px-6 md:px-4 space-y-6">

@@ -16,16 +16,27 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Coordenada } from "@/app/lib/geo";
 import type { PosicaoUsuario } from "@/app/lib/localizacao";
-import type { EfeitoOcorrencia, OcorrenciaRota } from "@/app/lib/rotas/api";
+import type {
+  EfeitoOcorrencia,
+  EfeitoTransito,
+  IncidenteTransito,
+  OcorrenciaRota,
+} from "@/app/lib/rotas/api";
+import { descreverConfirmacao, descreverIncidente } from "@/app/lib/rotas/navegacao";
 
 interface MapaRotasProps {
   limites: [Coordenada, Coordenada];
   // Trecho a percorrer (a rota inteira fora da navegação) e trecho já percorrido
   rota: Coordenada[] | null;
   percorrido: Coordenada[] | null;
+  // Opções de rota não escolhidas (planejamento); `indice` é a posição na lista de opções
+  alternativas: { indice: number; coordenadas: Coordenada[] }[];
+  onSelecionarAlternativa: ((indice: number) => void) | null;
   origem: Coordenada | null;
   destino: Coordenada | null;
   ocorrencias: OcorrenciaRota[];
+  // Incidentes do trânsito ao vivo (TomTom) no trajeto e os que a rota evitou
+  transito: IncidenteTransito[];
   usuario: PosicaoUsuario | null;
   navegando: boolean;
   seguirUsuario: boolean;
@@ -38,6 +49,20 @@ const ZOOM_NAVEGACAO = 17;
 const COR_OCORRENCIA: Record<EfeitoOcorrencia, string> = {
   bloqueio: "#ef4444",
   restricao: "#f59e0b",
+};
+
+// Trânsito ao vivo: vermelho contínuo (lentidão medida), vinho tracejado (via fechada), âmbar
+// tracejado (restrição) — por cima da rota, como nos apps de GPS
+const ESTILO_TRANSITO: Record<EfeitoTransito, L.PathOptions> = {
+  lentidao: { color: "#dc2626", weight: 6, opacity: 0.95 },
+  bloqueio: { color: "#7f1d1d", weight: 6, opacity: 0.95, dashArray: "6 6" },
+  restricao: { color: "#f59e0b", weight: 5, opacity: 0.95, dashArray: "6 6" },
+};
+
+const TEXTO_TRANSITO: Record<EfeitoTransito, string> = {
+  lentidao: "Lentidão medida — o atraso já entra no tempo da rota",
+  bloqueio: "Via fechada — a rota desvia deste trecho",
+  restricao: "Passagem dificultada — a rota evita quando possível",
 };
 
 // Alerta "!" (diferente do círculo vermelho do destino)
@@ -165,9 +190,12 @@ export default function MapaRotasComponent({
   limites,
   rota,
   percorrido,
+  alternativas,
+  onSelecionarAlternativa,
   origem,
   destino,
   ocorrencias,
+  transito,
   usuario,
   navegando,
   seguirUsuario,
@@ -213,6 +241,19 @@ export default function MapaRotasComponent({
       {percorrido && percorrido.length > 1 && (
         <Polyline positions={percorrido} pathOptions={{ color: "#94a3b8", weight: 6, opacity: 0.9 }} />
       )}
+      {/* OPÇÕES NÃO ESCOLHIDAS (cinza, abaixo da rota): o clique escolhe a opção e, sem propagar
+          para o mapa, não marca origem/destino */}
+      {alternativas.map(({ indice, coordenadas }) => (
+        <Polyline
+          key={`alternativa-${indice}`}
+          positions={coordenadas}
+          bubblingMouseEvents={false}
+          eventHandlers={{ click: () => onSelecionarAlternativa?.(indice) }}
+          pathOptions={{ color: "#64748b", weight: 6, opacity: 0.55 }}
+        >
+          <Tooltip sticky>Rota alternativa — clique para escolher</Tooltip>
+        </Polyline>
+      ))}
       {rota && (
         <>
           <Polyline positions={rota} pathOptions={{ color: "#ffffff", weight: 10, opacity: 0.9 }} />
@@ -220,13 +261,44 @@ export default function MapaRotasComponent({
         </>
       )}
 
+      {/* TRÂNSITO AO VIVO (TomTom), por cima da rota; o clique não marca origem/destino */}
+      {transito
+        .filter((incidente) => incidente.trecho.length > 1)
+        .map((incidente) => (
+          <Polyline
+            key={`transito-${incidente.id}`}
+            positions={incidente.trecho}
+            bubblingMouseEvents={false}
+            pathOptions={ESTILO_TRANSITO[incidente.efeito]}
+          >
+            <Tooltip sticky>
+              <strong>{descreverIncidente(incidente)}</strong>
+              <br />
+              {TEXTO_TRANSITO[incidente.efeito]}
+              {incidente.descricao && (
+                <>
+                  <br />
+                  <span className="text-slate-500">{incidente.descricao}</span>
+                </>
+              )}
+              <br />
+              <span className="text-slate-500">Dados de trânsito © TomTom</span>
+            </Tooltip>
+          </Polyline>
+        ))}
+
       {localizadas.map((o) => (
         <Marker key={o.id} position={o.posicao as Coordenada} icon={ICONE_OCORRENCIA[o.efeito]}>
           <Tooltip direction="top" offset={[0, -12]}>
             <strong>{o.tipo}</strong> · {o.rua ?? o.endereco}
             <br />
-            {o.efeito === "bloqueio" ? "Via bloqueada" : "Passagem difícil"}
-            {o.localizacao === "rua" ? " (rua inteira — sem local exato)" : ""}
+            {o.localizacao === "rua"
+              ? "Rua inteira — sem local exato: a rota evita quando possível"
+              : o.efeito === "bloqueio"
+                ? "Bloqueio relatado: a rota desvia deste trecho"
+                : "Passagem difícil: a rota evita quando possível"}
+            <br />
+            <span className="text-slate-500">{descreverConfirmacao(o)}</span>
           </Tooltip>
         </Marker>
       ))}

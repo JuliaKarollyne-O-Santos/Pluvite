@@ -18,13 +18,15 @@ Execute com:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import secrets
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -82,9 +84,11 @@ app.add_middleware(
 # municipio. ADMIN_TOKEN (header X-Pluvite-Token) vale so para scripts e testes com curl:
 # nunca coloque esse valor no site (variavel NEXT_PUBLIC_ fica visivel no navegador).
 
+# -- Autenticacao do monitoramento -------------------------------------------
+
 @dataclass(frozen=True)
 class Responsavel:
-    papel: str  # "admin" | "servidor" | "token"
+    papel: str
     municipio: str | None = None
 
 
@@ -114,28 +118,74 @@ async def exigir_responsavel(
     return Responsavel(papel=conta["papel"], municipio=conta["municipio"])
 
 
-async def exigir_equipe(responsavel: Responsavel = Depends(exigir_responsavel)) -> Responsavel:
+async def exigir_equipe(
+    authorization: str | None = Header(default=None),
+    x_pluvite_token: str | None = Header(default=None),
+) -> Responsavel:
+    responsavel = await exigir_responsavel(authorization, x_pluvite_token)
     if responsavel.papel == "servidor":
         raise HTTPException(status_code=403, detail="Somente a equipe Pluvite pode forcar o monitor.")
     return responsavel
 
 
 def municipio_oficial(nome: str) -> str | None:
-    """Nome oficial (com acento) de um dos 39 municipios, aceitando "Taubate" ou "TAUBATÉ"."""
     alvo = supabase_client._normalizar_municipio(nome)
     return next(
-        (m for m in config.MUNICIPIOS if supabase_client._normalizar_municipio(m) == alvo), None
+        (
+            municipio
+            for municipio in config.MUNICIPIOS
+            if supabase_client._normalizar_municipio(municipio) == alvo
+        ),
+        None,
+    )
+
+
+def _credencial_fcm_disponivel() -> bool:
+    if not config.PUSH_ATIVO or not config.FCM_SERVICE_ACCOUNT_FILE:
+        return False
+    caminho = Path(config.FCM_SERVICE_ACCOUNT_FILE)
+    if not caminho.is_absolute():
+        caminho = config.RAIZ_PYTHON / caminho
+    try:
+        credencial = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    campos_obrigatorios = ("type", "project_id", "private_key", "client_email")
+    return isinstance(credencial, dict) and all(
+        credencial.get(campo) for campo in campos_obrigatorios
     )
 
 
 # -- Schemas -----------------------------------------------------------------
 
 class AlertaManual(BaseModel):
-    tipo: str = Field(..., min_length=2, examples=["Enchente"])
-    prioridade: str = Field(default="MEDIA", examples=["CRITICA"])
-    municipio: str = Field(..., min_length=2, examples=["Taubate"])
-    endereco: str = Field(default="Toda a area do municipio")
-    descricao: str = Field(..., min_length=5)
+    tipo: Literal[
+        "Acidente",
+        "Alagamento",
+        "Árvore caída",
+        "Buraco na via",
+        "Chuva forte",
+        "Chuva torrencial",
+        "Deslizamento de terra",
+        "Enchente",
+        "Tempestade",
+        "Vendaval",
+        "Via interditada",
+        "Outros",
+    ]
+    prioridade: Literal[
+        "Zona Segura",
+        "Atenção Crítica",
+        "Estado de Alerta",
+        "Alerta Máximo",
+        "BAIXA",
+        "MEDIA",
+        "ALTA",
+        "CRITICA",
+    ]
+    municipio: str = Field(..., min_length=2)
+    endereco: str = Field(default="Toda a area do municipio", max_length=200)
+    descricao: str = Field(..., min_length=5, max_length=2000)
     statusatual: str = Field(default="Ativo")
 
 
@@ -150,6 +200,27 @@ class RegistroDispositivo(BaseModel):
 
 @app.get("/api/status")
 async def status() -> dict[str, Any]:
+    whatsapp = (
+        await status_chatbot() if config.WHATSAPP_PROVEDOR == "qr" else None
+    )
+    if config.WHATSAPP_PROVEDOR == "qr":
+        whatsapp_configurado = bool(whatsapp and whatsapp.get("online") and whatsapp.get("conectado"))
+        whatsapp_motivo = None if whatsapp_configurado else "Chatbot offline ou WhatsApp desconectado."
+    elif config.WHATSAPP_PROVEDOR == "evolution":
+        whatsapp_configurado = bool(
+            config.EVOLUTION_URL and config.EVOLUTION_INSTANCIA and config.EVOLUTION_APIKEY
+        )
+        whatsapp_motivo = (
+            "Configurada; a conexão não é consultada."
+            if whatsapp_configurado
+            else "Evolution API sem configuração completa."
+        )
+    else:
+        whatsapp_configurado = False
+        whatsapp_motivo = "Canal WhatsApp desativado."
+
+    push_configurado = _credencial_fcm_disponivel()
+
     return {
         "servico": "pluvite-alertas",
         "navegadores_conectados": hub.total,
@@ -158,10 +229,15 @@ async def status() -> dict[str, Any]:
         "cidades_monitoradas": config.MONITOR_CIDADES,
         "whatsapp_provedor": config.WHATSAPP_PROVEDOR,
         "whatsapp_somente_teste": config.WHATSAPP_SOMENTE_TESTE,
-        "whatsapp_chatbot": (
-            await status_chatbot() if config.WHATSAPP_PROVEDOR == "qr" else None
-        ),
+        "whatsapp_chatbot": whatsapp,
+        "whatsapp_configurado": whatsapp_configurado,
+        "whatsapp_motivo": whatsapp_motivo,
         "push_ativo": config.PUSH_ATIVO,
+        "push_configurado": push_configurado,
+        "push_motivo": None if push_configurado else (
+            "Canal desativado." if not config.PUSH_ATIVO
+            else "Credencial de serviço Firebase ausente, inválida ou não encontrada."
+        ),
         "ultimo_alerta": ultimo_payload(),
     }
 
@@ -191,24 +267,85 @@ async def websocket_alertas(websocket: WebSocket) -> None:
 
 @app.post("/api/alertas/disparar")
 async def disparar_manual(
-    alerta: AlertaManual, responsavel: Responsavel = Depends(exigir_responsavel)
+    alerta: AlertaManual,
+    responsavel: Responsavel = Depends(exigir_responsavel),
 ) -> dict[str, Any]:
-    """GATILHO MANUAL - usado pelo painel do servidor no site (/Servidor)."""
+    """Dispara alerta real para servidor no proprio municipio ou admin."""
     municipio = municipio_oficial(alerta.municipio)
     if not municipio:
-        raise HTTPException(
-            status_code=400,
-            detail="Municipio fora da lista dos 39 do Vale do Paraiba e Litoral Norte.",
-        )
+        raise HTTPException(status_code=400, detail="Municipio invalido.")
     if responsavel.papel == "servidor" and municipio != municipio_oficial(
         responsavel.municipio or ""
     ):
         raise HTTPException(
             status_code=403,
-            detail=f"Contas de servidor so disparam alertas para o proprio municipio ({responsavel.municipio}).",
+            detail="O servidor só pode emitir alertas para o próprio município.",
         )
-    log.info("Disparo manual por conta '%s' para %s", responsavel.papel, municipio)
-    return await disparar_alerta(alerta.model_dump() | {"municipio": municipio}, origem="manual")
+    return await disparar_alerta(
+        alerta.model_dump() | {"municipio": municipio},
+        origem="manual",
+    )
+
+
+@app.post("/api/alertas/simular")
+async def simular_alerta_manual(
+    alerta: AlertaManual,
+    responsavel: Responsavel = Depends(exigir_responsavel),
+) -> dict[str, Any]:
+    """Exibe um popup de teste sem persistencia ou notificacao externa."""
+    municipio = municipio_oficial(alerta.municipio)
+    if not municipio:
+        raise HTTPException(status_code=400, detail="Municipio invalido.")
+    if responsavel.papel == "servidor" and municipio != municipio_oficial(
+        responsavel.municipio or ""
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="O servidor só pode simular alertas para o próprio município.",
+        )
+    payload = montar_payload(alerta.model_dump() | {"municipio": municipio}, origem="simulacao")
+    payload["titulo"] = f"[SIMULAÇÃO] {payload['titulo']}"
+    payload["mensagem"] = f"SIMULAÇÃO — NÃO É UM ALERTA REAL\n\n{payload['mensagem']}"
+    return {
+        "ok": True,
+        "simulacao": True,
+        "persistido": False,
+        "alerta": payload,
+        "canais": {
+            "web": {
+                "ok": False,
+                "entregues": 0,
+                "conectados": hub.total,
+                "motivo": "Prévia local; nenhum outro navegador foi notificado.",
+            },
+            "whatsapp": {"ok": False, "enviados": 0, "motivo": "Simulação: canal não acionado."},
+            "push": {"ok": False, "enviados": 0, "motivo": "Simulação: canal não acionado."},
+        },
+    }
+
+
+@app.get("/api/alertas/historico")
+async def historico_alertas(
+    limite: int = Query(default=30, ge=1, le=100),
+    municipio_solicitado: str | None = Query(default=None, alias="municipio"),
+    responsavel: Responsavel = Depends(exigir_responsavel),
+) -> dict[str, Any]:
+    """Historico restrito ao municipio do servidor ou ao municipio escolhido pelo admin."""
+    if responsavel.papel == "servidor":
+        municipio = municipio_oficial(responsavel.municipio or "")
+    else:
+        municipio = municipio_oficial(municipio_solicitado or "")
+        if not municipio:
+            raise HTTPException(status_code=400, detail="Informe um município válido.")
+    try:
+        alertas = await supabase_client.historico_alertas(municipio, limite)
+    except Exception as erro:
+        log.exception("Falha ao consultar historico de alertas.")
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível carregar o histórico de alertas.",
+        ) from erro
+    return {"alertas": alertas}
 
 
 @app.get("/api/alertas/ultimo")

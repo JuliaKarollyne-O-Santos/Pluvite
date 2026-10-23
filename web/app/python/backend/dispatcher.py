@@ -46,6 +46,27 @@ async def disparar_alerta(
     global _ultimo_payload, _ultimo_payload_openweather
 
     payload = montar_payload(dados, origem=origem)
+    if origem == "openweather_mock":
+        payload["titulo"] = f"[SIMULAÇÃO] {payload['titulo']}"
+        payload["mensagem"] = f"SIMULAÇÃO — NÃO É UM ALERTA REAL\n\n{payload['mensagem']}"
+        motivo = "Mock de desenvolvimento: nenhum canal externo foi acionado."
+        return {
+            "ok": True,
+            "simulacao": True,
+            "persistido": False,
+            "alerta": payload,
+            "canais": {
+                nome: {
+                    "canal": nome,
+                    "ok": False,
+                    "enviados": 0,
+                    "entregues": 0,
+                    "motivo": motivo,
+                }
+                for nome in ("web", "whatsapp", "push")
+            },
+        }
+
     log.info(">> Disparando alerta [%s] %s", origem, payload["titulo"])
 
     # 1. Persistencia (nao bloqueia o disparo se falhar)

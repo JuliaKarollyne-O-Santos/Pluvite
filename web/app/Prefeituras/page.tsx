@@ -32,6 +32,7 @@ import {
   Bell,
   Loader2,
   X,
+  Send,
 } from "lucide-react";
 import Navbar3 from "../components/sidebar";
 import { CORES_PRIORIDADE, PRIORIDADE_POR_TIPO_PADRAO } from "@/app/lib/constantes";
@@ -541,6 +542,15 @@ export default function PainelServidor() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/Servidor")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0d163b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2a8f] focus-visible:ring-offset-2"
+            >
+              <Send size={16} />
+              Emitir alerta manual
+            </button>
+
             {/* SININHO DE NOTIFICAÇÕES */}
             <div className="relative">
               <button

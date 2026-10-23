@@ -75,7 +75,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 
 ## Fase 3 — Alertas e notificações 🔴
 
-- [ ] Servidor cria e dispara alertas por município com nível de prioridade (Zona Segura → Alerta Máximo)
+- [x] Servidor cria e dispara alertas por município com nível de prioridade (Zona Segura → Alerta Máximo)
 - [ ] Corrigir o listener de alertas do Mapa (usa cidadão fixo `id = 1`); filtrar pelo usuário/município logado
 - [ ] Componente React de pop-up de alerta (portar `python/teste chat/alerta_desastre.js`)
 - [x] Alerta automático por limiar de chuva (job agendado no backend, monitorando os 39 municípios)

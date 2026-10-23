@@ -72,4 +72,9 @@ hub = HubWebSocket()
 async def enviar_alerta_web(payload: dict[str, Any]) -> dict[str, Any]:
     """Interface usada pelo despachante central."""
     entregues = await hub.broadcast("alerta_emergencia", payload)
-    return {"canal": "web", "ok": True, "entregues": entregues, "conectados": hub.total}
+    return {
+        "canal": "web",
+        "ok": entregues > 0,
+        "entregues": entregues,
+        "conectados": hub.total,
+    }

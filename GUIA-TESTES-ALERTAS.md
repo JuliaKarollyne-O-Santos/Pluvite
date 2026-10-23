@@ -177,8 +177,8 @@ está em `mobile/pluvite/README.md`.
 
 ## Teste 1 — Gatilho automático (mock do OpenWeather)
 
-**Objetivo:** provar que uma emergência climática detectada pela API dispara
-o alerta sozinho, sem ninguém apertar botão.
+**Objetivo:** validar a classificação da emergência pelo monitor sem enviar
+uma simulação à população.
 
 Já existe um mock pronto em `web/app/python/mocks/openweather_tempestade.json`
 (código `212` = trovoada intensa, ventos de 70 km/h, 42 mm de chuva → prioridade
@@ -199,16 +199,21 @@ automaticamente mudanças nesse arquivo. No log deve aparecer:
 
 ```
 WARNING | pluvite.openweather | MOCK_OPENWEATHER ativo - lendo ...openweather_tempestade.json
-INFO    | pluvite.dispatcher  | >> Disparando alerta [openweather_mock] [CRITICA] Alerta de Tempestade - Taubate
 ```
 
-No WhatsApp de teste, a mensagem começa com **"SIMULAÇÃO — dados de teste"**
-para não ser confundida com um alerta real.
+O mock serve para testar somente a classificação: não grava alertas nem envia
+popup, WhatsApp ou push. Para conferir o visual, use **Testar popup
+(simulação)** no painel do servidor; essa prévia aparece só na própria tela.
 
 ### 1.2 Forçar um ciclo sem esperar o próximo monitoramento
 
+Configure um `ADMIN_TOKEN` não vazio no `.env` do backend e reinicie o serviço
+para chamar a rota por script. Um admin autenticado também pode usar essa rota.
+
 ```powershell
-curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true"
+$adminToken = "<ADMIN_TOKEN configurado no .env>"
+curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true" `
+  -H "X-Pluvite-Token: $adminToken"
 ```
 
 Resposta esperada:
@@ -221,7 +226,8 @@ Resposta esperada:
       "cidade": "Taubate",
       "consultado": true,
       "emergencia": true,
-      "disparados": ["[CRITICA] Alerta de Tempestade - Taubate"]
+      "disparados": [],
+      "simulados": ["[SIMULAÇÃO] [Alerta Máximo] Alerta de Tempestade - Taubate"]
     }
   ]
 }
@@ -257,7 +263,9 @@ MONITOR_CIDADES=Taubaté
 Reinicie `npm run dev` e force uma consulta:
 
 ```powershell
-curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true"
+$adminToken = "<ADMIN_TOKEN configurado no .env>"
+curl.exe -X POST "http://localhost:8000/api/monitor/verificar-agora?forcar=true" `
+  -H "X-Pluvite-Token: $adminToken"
 ```
 
 O monitor consulta as condições atuais. Se elas não atingirem os critérios de
@@ -274,15 +282,17 @@ manuais ficam identificados separadamente no banco.
 
 ### 2.1 Pelo painel do site
 
-1. Entre em <http://localhost:3000/login> com uma conta de **servidor** (prefeitura) ou **admin**
-   (equipe Pluvite) e abra <http://localhost:3000/Servidor>. Sem login, a página manda para o login.
-2. Preencha o formulário **"🚨 Disparar Alerta Meteorológico"**:
+1. Entre em <http://localhost:3000/login> com uma conta de servidor ou admin e abra
+   <http://localhost:3000/Servidor>. Servidores ficam restritos ao município do perfil; admins
+   podem selecionar um dos municípios autorizados.
+2. Preencha o formulário **"Emitir alerta manual"**:
    - Tipo: `Enchente`
-   - Prioridade: `Crítica`
-   - Município: `Taubaté` (conta de servidor: já vem fixo no município da prefeitura)
+   - Prioridade: `Alerta Máximo`
+   - Município: preenchido pelo perfil do servidor ou selecionado pelo admin
    - Endereço: `Av. Tiradentes, altura do nº 500`
    - Descrição: `Rio Paraíba transbordou. Evacuar imediatamente as margens.`
-3. Clique em **Registrar e Disparar Alerta**.
+4. Clique em **Revisar alerta real**, confira os dados e só então confirme o
+   envio. A tela apresenta o resultado de cada canal e o histórico do município.
 
 O próprio painel mostra o relatório de entrega por canal:
 
@@ -296,26 +306,37 @@ Alerta disparado: [CRITICA] Alerta de Enchente - Taubaté
 
 ### 2.2 Pela API (sem interface)
 
-Fora do site, o disparo exige o `ADMIN_TOKEN` (defina um valor qualquer em `web/app/python/.env`
-e reinicie o backend) no header `X-Pluvite-Token`. Sem ele, a API responde `401`.
+O endpoint aceita o `access_token` da sessão de uma conta servidor ou admin.
+Servidores ficam limitados ao próprio município; admins podem escolher qualquer
+município da lista oficial. Scripts de backend também podem usar o `ADMIN_TOKEN`.
+Use a simulação da interface para conferir o visual sem enviar alertas reais.
+Não coloque tokens em arquivos versionados nem compartilhe-os.
 
 ```powershell
+$accessToken = "<access_token da sessão Supabase>"
 curl.exe -X POST http://localhost:8000/api/alertas/disparar `
   -H "Content-Type: application/json" `
-  -H "X-Pluvite-Token: valor_do_ADMIN_TOKEN" `
-  -d "{\"tipo\":\"Deslizamento\",\"prioridade\":\"ALTA\",\"municipio\":\"Taubate\",\"endereco\":\"Bairro Alto\",\"descricao\":\"Encosta instavel apos chuva continua.\"}"
+  -H "Authorization: Bearer $accessToken" `
+  -d "{\"tipo\":\"Deslizamento de terra\",\"prioridade\":\"Estado de Alerta\",\"municipio\":\"Taubaté\",\"endereco\":\"Bairro Alto\",\"descricao\":\"Encosta instável após chuva contínua.\"}"
 ```
 
 No Linux/macOS/Git Bash:
 
 ```bash
+access_token="<access_token da sessão Supabase>"
 curl -X POST http://localhost:8000/api/alertas/disparar \
   -H "Content-Type: application/json" \
-  -H "X-Pluvite-Token: valor_do_ADMIN_TOKEN" \
-  -d '{"tipo":"Deslizamento","prioridade":"ALTA","municipio":"Taubate","endereco":"Bairro Alto","descricao":"Encosta instavel apos chuva continua."}'
+  -H "Authorization: Bearer $access_token" \
+  -d '{"tipo":"Deslizamento de terra","prioridade":"Estado de Alerta","municipio":"Taubaté","endereco":"Bairro Alto","descricao":"Encosta instável após chuva contínua."}'
 ```
 
-### 2.3 Confirmar a gravação no banco
+### 2.3 Prévia sem envio real
+
+No painel, preencha os campos e clique em **Testar popup (simulação)**. A
+prévia marcada como teste aparece somente na tela do servidor: não é transmitida
+por WebSocket, não grava no banco e não aciona WhatsApp ou push.
+
+### 2.4 Confirmar a gravação no banco
 
 ```sql
 select tipo, prioridade, municipio, statusatual, criado_em
@@ -324,11 +345,9 @@ order by criado_em desc
 limit 3;
 ```
 
-> **Quem pode disparar:** o backend confere o login do Supabase enviado pelo site
-> (`Authorization: Bearer`). Contas de **servidor** disparam só para o próprio município;
-> contas **admin**, para qualquer um dos 39. Município fora da lista → `400`; outra prefeitura →
-> `403`. O `ADMIN_TOKEN` serve só para scripts e `curl`: **nunca** o coloque em uma variável
-> `NEXT_PUBLIC_` (ela vai para o navegador e qualquer pessoa consegue ler).
+> O backend valida o perfil Supabase. Servidores só operam no próprio município; admins podem
+> escolher um município cadastrado. Scripts podem usar `ADMIN_TOKEN`, que nunca deve ser enviado
+> ao navegador. A verificação do monitor também exige uma conta admin quando não usa esse token.
 
 ---
 
@@ -358,8 +377,8 @@ No console do navegador (F12 → Network → WS) deve haver uma conexão
 Com as abas abertas e **sem tocar nelas**, dispare pelo terminal (passo 2.2).
 O pop-up deve surgir nas duas abas em menos de 1 segundo, com:
 
-- faixa colorida conforme a prioridade (vermelho `CRITICA`, laranja `ALTA`,
-  amarelo `MEDIA`, azul `BAIXA`);
+- faixa colorida conforme a prioridade (verde `Zona Segura`, amarelo
+  `Atenção Crítica`, vermelho `Estado de Alerta`, roxo `Alerta Máximo`);
 - Localização, Endereço/Região, Nível de Prioridade, Status Atual e Descrição
   — exatamente os campos do modelo `notificacao_popup/popups.py`;
 - botão **Estou Ciente**.

@@ -38,6 +38,28 @@ def _filtrar_por_municipio(
     ]
 
 
+def _historico_alertas_sync(municipio: str, limite: int) -> list[dict[str, Any]]:
+    sb = cliente()
+    if sb is None:
+        raise RuntimeError("Supabase nao configurado para consultar o historico.")
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select(
+            "id,tipo,prioridade,municipio,endereco,descricao,statusatual,origem,criado_em"
+        )
+        .eq("municipio", municipio)
+        .order("criado_em", desc=True)
+        .limit(limite)
+        .execute()
+    )
+    return resposta.data or []
+
+
+async def historico_alertas(municipio: str, limite: int = 30) -> list[dict[str, Any]]:
+    """Historico recente de alertas restrito ao municipio do servidor."""
+    return await asyncio.to_thread(_historico_alertas_sync, municipio, limite)
+
+
 def cliente() -> Client | None:
     """Cliente singleton. Devolve None se as credenciais nao estiverem no .env."""
     global _cliente

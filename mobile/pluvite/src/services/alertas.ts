@@ -7,7 +7,15 @@
 
 import { API_ALERTAS } from "../lib/configuracao";
 
-export type Prioridade = "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
+export type Prioridade =
+  | "Zona Segura"
+  | "Atenção Crítica"
+  | "Estado de Alerta"
+  | "Alerta Máximo"
+  | "BAIXA"
+  | "MEDIA"
+  | "ALTA"
+  | "CRITICA";
 
 export interface Alerta {
   id: string;
@@ -18,7 +26,7 @@ export interface Alerta {
   descricao: string;
   statusatual: string;
   criado_em: string;
-  origem: "openweather" | "openweather_mock" | "manual" | "banco";
+  origem: "openweather" | "openweather_mock" | "manual" | "simulacao" | "banco";
   titulo: string;
   mensagem: string;
   rotulo_severidade: string;

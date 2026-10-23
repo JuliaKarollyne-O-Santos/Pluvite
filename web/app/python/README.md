@@ -9,7 +9,7 @@ desativado por padrão:
 |---|---|---|
 | 🖥️ Pop-up no site | WebSocket | `backend/canais/websocket_hub.py` |
 | 💬 WhatsApp | Chatbot QR em `chatbot/` (`WHATSAPP_PROVEDOR=qr`) ou Evolution API | `backend/canais/whatsapp.py` |
-| 📱 App mobile | Expo Push → FCM/APNs | `backend/canais/push_mobile.py` |
+| 📱 App mobile | Firebase Cloud Messaging (FCM) | `backend/canais/push_mobile.py` |
 
 ## Estrutura
 
@@ -54,6 +54,10 @@ desconectar o aparelho pelo celular).
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
    `python -m backend.canais.whatsapp`
 
+Esse comando isolado envia somente aos números configurados em
+`WHATSAPP_NUMEROS_TESTE`; não envia aos inscritos do chatbot. Sem números de
+teste, nenhum destinatário recebe a mensagem.
+
 Em conversa privada, qualquer pessoa também pode perguntar **"Qual foi o
 último alerta real do OpenWeather?"**. A resposta consulta apenas alertas do
 monitoramento com dados reais; mocks e disparos manuais são excluídos. Execute
@@ -87,13 +91,36 @@ uvicorn backend.main:app --reload --port 8000
 
 Antes do primeiro uso, rode `sql/alertas.sql` no SQL Editor do Supabase.
 
+O painel exige uma sessão Supabase válida de uma conta cadastrada como
+`servidor` ou `admin`. O backend valida o perfil: servidores só podem emitir
+alertas para o próprio município, enquanto admins podem selecionar qualquer
+município da lista. A política `servidor le a propria linha` da migration
+`supabase/migrations/20260923200000_painel_admin.sql` precisa estar aplicada.
+Para scripts de backend, `ADMIN_TOKEN` também pode autorizar chamadas manuais;
+ele nunca deve ser exposto no navegador nem em variáveis `NEXT_PUBLIC_`.
+
+No painel, **Revisar alerta real** abre uma confirmação com os dados completos
+antes de notificar moradores. **Testar popup (simulação)** abre uma prévia local
+marcada como teste: não grava no banco, não aparece para outros usuários e
+nunca aciona WebSocket, WhatsApp ou push.
+
+O status dos canais é consultivo: WhatsApp só aparece pronto se o chatbot QR
+estiver conectado (ou informa que a Evolution API está configurada, sem testar
+a conexão), e push só aparece pronto quando `PUSH_ATIVO=true` e o arquivo de
+conta de serviço Firebase apontado por `FCM_SERVICE_ACCOUNT_FILE` existir e
+contiver os campos esperados. `EXPO_ACCESS_TOKEN` não configura esse canal.
+Admins autenticados também podem verificar o monitor; `ADMIN_TOKEN` é necessário
+para scripts sem sessão Supabase.
+
 ## Rotas
 
 | Método | Rota | Para que serve |
 |---|---|---|
 | `GET` | `/api/status` | Saúde do serviço, canais e navegadores conectados |
 | `WS` | `/ws/alertas` | Pop-up do site em tempo real |
-| `POST` | `/api/alertas/disparar` | **Gatilho manual** (painel do servidor) |
+| `POST` | `/api/alertas/disparar` | Alerta real autenticado; servidor restrito ao próprio município |
+| `POST` | `/api/alertas/simular` | Payload para prévia local; sem broadcast, persistência ou outros canais |
+| `GET` | `/api/alertas/historico` | Histórico recente do município do servidor autenticado |
 | `GET` | `/api/alertas/ultimo` | Último alerta (site/app que abrem depois) |
 | `GET` | `/api/alertas/ultimo-openweather` | Último alerta real do monitor (exclui mocks e disparos manuais) |
 | `POST` | `/api/monitor/verificar-agora?forcar=true` | Força um ciclo do monitor |
@@ -111,7 +138,7 @@ Painel web (POST manual)     ─┘         │
                                         └─ asyncio.gather:
                                              ├─ WebSocket  -> pop-up no site
                                              ├─ WhatsApp   -> chatbot QR ou Evolution API (desligado por padrão)
-                                             └─ Expo Push  -> app mobile
+                                             └─ FCM Push    -> app mobile
 ```
 
 O guia passo a passo de homologação está em

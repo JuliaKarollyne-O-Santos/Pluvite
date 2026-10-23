@@ -1,7 +1,16 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from backend.main import ultimo_alerta_openweather
+from fastapi import HTTPException
+
+from backend.dispatcher import disparar_alerta
+from backend.main import (
+    AlertaManual,
+    Responsavel,
+    disparar_manual,
+    simular_alerta_manual,
+    ultimo_alerta_openweather,
+)
 
 
 class UltimoAlertaOpenWeatherTests(unittest.IsolatedAsyncioTestCase):
@@ -37,6 +46,82 @@ class UltimoAlertaOpenWeatherTests(unittest.IsolatedAsyncioTestCase):
             resultado = await ultimo_alerta_openweather()
 
         self.assertIsNone(resultado["alerta"])
+
+
+class DisparoManualTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.servidor = Responsavel("servidor", "Taubaté")
+        self.alerta = AlertaManual(
+            tipo="Tempestade",
+            prioridade="Alerta Máximo",
+            municipio="Taubaté",
+            endereco="Centro",
+            descricao="Risco imediato de alagamento.",
+        )
+
+    async def test_simulacao_nao_emite_popup_publico_nem_persiste(self):
+        with patch(
+            "backend.main.hub.broadcast", new=AsyncMock(return_value=1)
+        ) as broadcast:
+            resultado = await simular_alerta_manual(self.alerta, self.servidor)
+
+        broadcast.assert_not_awaited()
+        self.assertEqual(resultado["alerta"]["origem"], "simulacao")
+        self.assertIn("SIMULAÇÃO", resultado["alerta"]["titulo"])
+        self.assertTrue(resultado["simulacao"])
+        self.assertFalse(resultado["persistido"])
+        self.assertEqual(resultado["canais"]["web"]["entregues"], 0)
+
+    async def test_bloqueia_alerta_para_outro_municipio(self):
+        with patch("backend.main.disparar_alerta", new=AsyncMock()) as disparar:
+            with self.assertRaises(HTTPException) as contexto:
+                await disparar_manual(self.alerta.model_copy(update={"municipio": "Ubatuba"}), self.servidor)
+
+        self.assertEqual(contexto.exception.status_code, 403)
+        disparar.assert_not_awaited()
+
+    async def test_bloqueia_simulacao_para_outro_municipio(self):
+        with patch("backend.main.hub.broadcast", new=AsyncMock()) as broadcast:
+            with self.assertRaises(HTTPException) as contexto:
+                await simular_alerta_manual(
+                    self.alerta.model_copy(update={"municipio": "Ubatuba"}),
+                    self.servidor,
+                )
+
+        self.assertEqual(contexto.exception.status_code, 403)
+        broadcast.assert_not_awaited()
+
+    async def test_mock_openweather_nao_persiste_nem_aciona_canais(self):
+        with (
+            patch(
+                "backend.dispatcher.supabase_client.salvar_alerta",
+                new=AsyncMock(),
+            ) as salvar,
+            patch(
+                "backend.dispatcher.enviar_alerta_web",
+                new=AsyncMock(),
+            ) as web,
+            patch(
+                "backend.dispatcher.enviar_alerta_whatsapp",
+                new=AsyncMock(),
+            ) as whatsapp,
+            patch(
+                "backend.dispatcher.enviar_alerta_push",
+                new=AsyncMock(),
+            ) as push,
+        ):
+            resultado = await disparar_alerta(
+                self.alerta.model_dump(),
+                origem="openweather_mock",
+            )
+
+        salvar.assert_not_awaited()
+        web.assert_not_awaited()
+        whatsapp.assert_not_awaited()
+        push.assert_not_awaited()
+        self.assertTrue(resultado["simulacao"])
+        self.assertFalse(resultado["persistido"])
+        self.assertIn("SIMULAÇÃO", resultado["alerta"]["titulo"])
 
 
 if __name__ == "__main__":

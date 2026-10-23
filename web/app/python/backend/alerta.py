@@ -15,19 +15,19 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-# Escala de severidade -> identidade visual usada nos 3 canais
+# Prioridades oficiais -> identidade visual usada nos 3 canais
 ESTILOS_PRIORIDADE: dict[str, dict[str, str]] = {
-    "CRITICA": {"cor": "#b91c1c", "icone": "🚨", "rotulo": "ALERTA VERMELHO — Perigo Extremo"},
-    "ALTA": {"cor": "#c2410c", "icone": "🔶", "rotulo": "ALERTA LARANJA — Alto Risco"},
-    "MEDIA": {"cor": "#a16207", "icone": "⚠️", "rotulo": "ATENÇÃO — Risco Moderado"},
-    "BAIXA": {"cor": "#1447c4", "icone": "ℹ️", "rotulo": "AVISO — Risco Baixo"},
+    "Zona Segura": {"cor": "#0a9667", "icone": "ℹ️", "rotulo": "ZONA SEGURA"},
+    "Atenção Crítica": {"cor": "#f59e0b", "icone": "⚠️", "rotulo": "ATENÇÃO CRÍTICA"},
+    "Estado de Alerta": {"cor": "#ef4444", "icone": "🔶", "rotulo": "ESTADO DE ALERTA"},
+    "Alerta Máximo": {"cor": "#653dc2", "icone": "🚨", "rotulo": "ALERTA MÁXIMO"},
 }
 
-PRIORIDADE_PADRAO = "MEDIA"
+PRIORIDADE_PADRAO = "Atenção Crítica"
 
 
 def normalizar_prioridade(valor: Any) -> str:
-    """Aceita 'critica', 'Crítica', 'CRITICA'... e devolve a chave canonica."""
+    """Aceita prioridades atuais e legadas, devolvendo o nome oficial."""
     texto = str(valor or "").strip().upper()
     substituicoes = {
         "Á": "A", "À": "A", "Â": "A", "Ã": "A",
@@ -35,14 +35,24 @@ def normalizar_prioridade(valor: Any) -> str:
     }
     for acentuada, simples in substituicoes.items():
         texto = texto.replace(acentuada, simples)
-    if texto in ESTILOS_PRIORIDADE:
-        return texto
-    if texto in ("URGENTE", "EXTREMA", "VERMELHO"):
-        return "CRITICA"
-    if texto in ("LARANJA",):
-        return "ALTA"
-    if texto in ("AMARELO", "MODERADA"):
-        return "MEDIA"
+    prioridades = {
+        "ZONA SEGURA": "Zona Segura",
+        "BAIXA": "Zona Segura",
+        "ATENCAO CRITICA": "Atenção Crítica",
+        "MEDIA": "Atenção Crítica",
+        "AMARELO": "Atenção Crítica",
+        "MODERADA": "Atenção Crítica",
+        "ESTADO DE ALERTA": "Estado de Alerta",
+        "ALTA": "Estado de Alerta",
+        "LARANJA": "Estado de Alerta",
+        "ALERTA MAXIMO": "Alerta Máximo",
+        "CRITICA": "Alerta Máximo",
+        "URGENTE": "Alerta Máximo",
+        "EXTREMA": "Alerta Máximo",
+        "VERMELHO": "Alerta Máximo",
+    }
+    if texto in prioridades:
+        return prioridades[texto]
     return PRIORIDADE_PADRAO
 
 

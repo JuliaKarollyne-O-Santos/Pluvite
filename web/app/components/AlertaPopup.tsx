@@ -175,7 +175,9 @@ export default function AlertaPopup() {
           <span className="text-2xl leading-none">{alerta.icone}</span>
           <div className="flex-1">
             <p className="text-[11px] font-bold uppercase tracking-wider opacity-90">
-              {alerta.rotulo_severidade}
+              {alerta.origem === "simulacao" || alerta.origem === "openweather_mock"
+                ? "SIMULAÇÃO — NÃO É UM ALERTA REAL"
+                : alerta.rotulo_severidade}
             </p>
             <h2 id="titulo-alerta" className="text-lg font-black leading-tight">
               {alerta.tipo.toUpperCase()}
@@ -241,7 +243,11 @@ export default function AlertaPopup() {
         {/* Rodape */}
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
           <span className="text-[11px] text-slate-400">
-            {alerta.origem === "openweather" ? "Detecção automática" : "Emitido pela prefeitura"}
+            {alerta.origem === "simulacao" || alerta.origem === "openweather_mock"
+              ? "Teste visual · sem envio externo"
+              : alerta.origem === "openweather"
+                ? "Detecção automática"
+                : "Emitido pela prefeitura"}
             {" · "}
             {new Date(alerta.criado_em).toLocaleString("pt-BR", {
               day: "2-digit",

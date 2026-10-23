@@ -256,6 +256,7 @@ async def verificar_cidade(cliente: httpx.AsyncClient, cidade: str) -> dict[str,
         return {"cidade": cidade, "consultado": True, "emergencia": False}
 
     disparados = []
+    simulados = []
     for candidato in candidatos:
         if _em_cooldown(candidato["municipio"], candidato["tipo"]):
             log.info("%s: %s ainda em cooldown, nao redisparado", cidade, candidato["tipo"])
@@ -263,13 +264,15 @@ async def verificar_cidade(cliente: httpx.AsyncClient, cidade: str) -> dict[str,
         _marcar_disparo(candidato["municipio"], candidato["tipo"])
         origem = "openweather_mock" if config.MOCK_OPENWEATHER else "openweather"
         relatorio = await disparar_alerta(candidato, origem=origem)
-        disparados.append(relatorio["alerta"]["titulo"])
+        destino = simulados if config.MOCK_OPENWEATHER else disparados
+        destino.append(relatorio["alerta"]["titulo"])
 
     return {
         "cidade": cidade,
         "consultado": True,
         "emergencia": True,
         "disparados": disparados,
+        "simulados": simulados,
     }
 
 

@@ -14,6 +14,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, MapPin, Navigation, Activity, X } from "lucide-react";
+import { supabase } from "@/app/lib/banco";
+import { MUNICIPIOS, normalizar } from "@/app/lib/constantes";
 import {
   buscarUltimoAlerta,
   WS_ALERTAS,
@@ -53,16 +55,20 @@ function aindaVale(alerta: Alerta): boolean {
 export default function AlertaPopup() {
   const [alerta, setAlerta] = useState<Alerta | null>(null);
   const [conectado, setConectado] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconexaoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const desmontadoRef = useRef(false);
+  const [municipioAlertas, setMunicipioAlertas] = useState<string | null>(null);
+  const municipioAtualRef = useRef<string | null>(null);
 
   const exibir = useCallback((novo: Alerta) => {
+    if (
+      !municipioAlertas ||
+      normalizar(novo.municipio) !== normalizar(municipioAlertas)
+    ) {
+      return;
+    }
     if (lerVistos().includes(novo.id)) return;
     if (!aindaVale(novo)) return;
     setAlerta(novo);
-  }, []);
+  }, [municipioAlertas]);
 
   const fechar = useCallback(() => {
     setAlerta((atual) => {
@@ -71,69 +77,151 @@ export default function AlertaPopup() {
     });
   }, []);
 
-  /* Conexao WebSocket com reconexao automatica */
+  /* Município de alertas do cidadão; a cidade do perfil é o padrão. */
   useEffect(() => {
-    desmontadoRef.current = false;
+    let ativo = true;
 
-    const conectar = () => {
-      if (desmontadoRef.current) return;
+    const carregarMunicipio = async (authId?: string | null) => {
+      let id = authId;
+      if (id === undefined) {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Erro ao identificar cidadão para alertas:", error);
+          if (ativo) {
+            municipioAtualRef.current = null;
+            setAlerta(null);
+            setConectado(false);
+            setMunicipioAlertas(null);
+          }
+          return;
+        }
+        id = data.user?.id ?? null;
+      }
 
-      let socket: WebSocket;
-      try {
-        socket = new WebSocket(WS_ALERTAS);
-      } catch {
-        reconexaoRef.current = setTimeout(conectar, RECONECTAR_MS);
+      if (!id) {
+        if (ativo) {
+          municipioAtualRef.current = null;
+          setAlerta(null);
+          setConectado(false);
+          setMunicipioAlertas(null);
+        }
         return;
       }
-      socketRef.current = socket;
 
-      socket.onopen = () => {
-        setConectado(true);
-        pingRef.current = setInterval(() => {
-          if (socket.readyState === WebSocket.OPEN) socket.send("ping");
-        }, PING_MS);
-      };
+      const { data, error } = await supabase
+        .from("cidadao")
+        .select("municipio_alertas, cidade")
+        .eq("auth_id", id)
+        .maybeSingle();
 
-      socket.onmessage = (evento) => {
-        try {
-          const mensagem: EventoAlerta = JSON.parse(evento.data);
-          if (mensagem.evento === "alerta_emergencia" && mensagem.dados) {
-            exibir(mensagem.dados as Alerta);
+      if (error) {
+        console.error("Erro ao carregar município para alertas:", error);
+        if (ativo) {
+          municipioAtualRef.current = null;
+          setAlerta(null);
+          setConectado(false);
+          setMunicipioAlertas(null);
+        }
+        return;
+      }
+
+      const municipioInformado = data?.municipio_alertas || data?.cidade;
+      const municipio =
+        MUNICIPIOS.find(
+          (nome) => normalizar(nome) === normalizar(municipioInformado || ""),
+        ) ?? null;
+      if (ativo) {
+        if (municipioAtualRef.current !== municipio) {
+          setAlerta(null);
+          setConectado(false);
+        }
+        municipioAtualRef.current = municipio;
+        setMunicipioAlertas(municipio);
+      }
+    };
+
+    void carregarMunicipio();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_evento, sessao) => {
+        window.setTimeout(() => {
+          void carregarMunicipio(sessao?.user.id ?? null);
+        }, 0);
+      },
+    );
+
+    return () => {
+      ativo = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  /* Conexão WebSocket restrita ao município, com reconexão automática. */
+  useEffect(() => {
+    if (!municipioAlertas) return;
+    let desmontado = false;
+    let reconexao: ReturnType<typeof setTimeout> | null = null;
+    let ping: ReturnType<typeof setInterval> | null = null;
+    let socket: WebSocket | null = null;
+
+    const conectar = () => {
+      if (desmontado) return;
+
+      try {
+        const parametros = new URLSearchParams({ municipio: municipioAlertas });
+        const socketAtual = new WebSocket(`${WS_ALERTAS}?${parametros}`);
+        socket = socketAtual;
+        socketAtual.onopen = () => {
+          if (desmontado) {
+            socketAtual.close();
+            return;
           }
-        } catch {
-          /* mensagem fora do formato esperado */
-        }
-      };
+          setConectado(true);
+          ping = setInterval(() => {
+            if (socketAtual.readyState === WebSocket.OPEN) socketAtual.send("ping");
+          }, PING_MS);
+        };
 
-      const encerrar = () => {
-        setConectado(false);
-        if (pingRef.current) clearInterval(pingRef.current);
-        socketRef.current = null;
-        if (!desmontadoRef.current) {
-          reconexaoRef.current = setTimeout(conectar, RECONECTAR_MS);
-        }
-      };
+        socketAtual.onmessage = (evento) => {
+          try {
+            const mensagem: EventoAlerta = JSON.parse(evento.data);
+            if (mensagem.evento === "alerta_emergencia" && mensagem.dados) {
+              exibir(mensagem.dados as Alerta);
+            }
+          } catch {
+            /* mensagem fora do formato esperado */
+          }
+        };
 
-      socket.onclose = encerrar;
-      socket.onerror = () => socket.close();
+        const encerrar = () => {
+          if (desmontado) return;
+          setConectado(false);
+          if (ping) clearInterval(ping);
+          reconexao = setTimeout(conectar, RECONECTAR_MS);
+        };
+
+        socketAtual.onclose = encerrar;
+        socketAtual.onerror = () => socketAtual.close();
+      } catch {
+        reconexao = setTimeout(conectar, RECONECTAR_MS);
+      }
     };
 
     conectar();
 
     // Rede fora do ar quando o alerta foi emitido? Busca o ultimo ao abrir.
-    buscarUltimoAlerta()
+    buscarUltimoAlerta(municipioAlertas)
       .then((ultimo) => ultimo && exibir(ultimo))
       .catch(() => {
-        /* backend offline: o WebSocket segue tentando */
+        console.error("Não foi possível buscar o último alerta; o WebSocket continuará tentando.");
       });
 
     return () => {
-      desmontadoRef.current = true;
-      if (reconexaoRef.current) clearTimeout(reconexaoRef.current);
-      if (pingRef.current) clearInterval(pingRef.current);
-      socketRef.current?.close();
+      desmontado = true;
+      if (reconexao) clearTimeout(reconexao);
+      if (ping) clearInterval(ping);
+      socket?.close();
     };
-  }, [exibir]);
+  }, [exibir, municipioAlertas]);
 
   /* Fecha com ESC */
   useEffect(() => {

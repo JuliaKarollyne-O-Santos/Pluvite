@@ -35,12 +35,21 @@ export interface Alerta {
   botao: string;
 }
 
-export const WS_ALERTAS = `${API_ALERTAS.replace(/^http/, "ws")}/ws/alertas`;
+export function urlWebSocketAlertas(municipio: string): string {
+  const parametros = new URLSearchParams({ municipio });
+  return `${API_ALERTAS.replace(/^http/, "ws")}/ws/alertas?${parametros}`;
+}
 
 /** Ultimo alerta ativo — chamado quando o app abre. */
-export async function buscarUltimoAlerta(): Promise<Alerta | null> {
+export async function buscarUltimoAlerta(
+  municipio: string | null,
+): Promise<Alerta | null> {
+  if (!municipio) return null;
   try {
-    const resposta = await fetch(`${API_ALERTAS}/api/alertas/ultimo`);
+    const parametros = new URLSearchParams({ municipio });
+    const resposta = await fetch(
+      `${API_ALERTAS}/api/alertas/ultimo?${parametros}`,
+    );
     if (!resposta.ok) return null;
     const corpo = (await resposta.json()) as { alerta: Alerta | null };
     return corpo.alerta;

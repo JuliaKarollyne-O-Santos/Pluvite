@@ -2,10 +2,10 @@
 
 Rotas:
     GET  /api/status                  -> saude do servico e canais configurados
-    WS   /ws/alertas                  -> pop-up do site em tempo real
+    WS   /ws/alertas?municipio=...    -> pop-up do site em tempo real, por município
     POST /api/alertas/disparar        -> gatilho MANUAL (painel do servidor; exige login de
                                          servidor ou admin, ou ADMIN_TOKEN em scripts)
-    GET  /api/alertas/ultimo          -> ultimo alerta (site/app que abrem depois)
+    GET  /api/alertas/ultimo?municipio=... -> ultimo alerta do município (site/app)
     GET  /api/alertas/ultimo-openweather -> ultimo alerta real do monitor
     POST /api/monitor/verificar-agora -> forca um ciclo do monitor OpenWeather
     POST /api/dispositivos            -> app mobile registra seu token de push
@@ -244,11 +244,16 @@ async def status() -> dict[str, Any]:
 
 @app.websocket("/ws/alertas")
 async def websocket_alertas(websocket: WebSocket) -> None:
-    """Canal do pop-up: o navegador abre e fica escutando."""
-    await hub.conectar(websocket)
+    """Canal do pop-up, inscrito em um único município."""
+    municipio_parametro = websocket.query_params.get("municipio", "")
+    municipio = municipio_oficial(municipio_parametro)
+    if not municipio:
+        await websocket.close(code=1008, reason="Informe um município válido.")
+        return
+
+    await hub.conectar(websocket, municipio)
     try:
-        # Quem acabou de abrir o site ja recebe o ultimo alerta ativo, se houver
-        pendente = ultimo_payload()
+        pendente = await ultimo_alerta_do_municipio(municipio)
         if pendente:
             await hub.enviar_para(websocket, "alerta_emergencia", pendente)
         else:
@@ -263,6 +268,22 @@ async def websocket_alertas(websocket: WebSocket) -> None:
     except Exception as erro:
         log.debug("WebSocket encerrado: %s", erro)
         await hub.desconectar(websocket)
+
+
+async def ultimo_alerta_do_municipio(municipio: str) -> dict[str, Any] | None:
+    """Resolve o último alerta em memória ou no banco para un único município."""
+    pendente = ultimo_payload()
+    if (
+        pendente
+        and supabase_client._normalizar_municipio(pendente.get("municipio"))
+        == supabase_client._normalizar_municipio(municipio)
+    ):
+        return pendente
+
+    registro = await supabase_client.ultimo_alerta(municipio)
+    if not registro:
+        return None
+    return montar_payload(registro, origem=registro.get("origem") or "banco")
 
 
 @app.post("/api/alertas/disparar")
@@ -349,16 +370,14 @@ async def historico_alertas(
 
 
 @app.get("/api/alertas/ultimo")
-async def ultimo_alerta() -> dict[str, Any]:
-    """Ultimo alerta conhecido - memoria do processo ou, se vazio, Supabase."""
-    payload = ultimo_payload()
-    if payload:
-        return {"alerta": payload}
-
-    registro = await supabase_client.ultimo_alerta()
-    if not registro:
-        return {"alerta": None}
-    return {"alerta": montar_payload(registro, origem="banco")}
+async def ultimo_alerta(
+    municipio_solicitado: str | None = Query(default=None, alias="municipio"),
+) -> dict[str, Any]:
+    """Último alerta conhecido, restrito ao município informado."""
+    municipio = municipio_oficial(municipio_solicitado or "")
+    if not municipio:
+        raise HTTPException(status_code=400, detail="Informe um município válido.")
+    return {"alerta": await ultimo_alerta_do_municipio(municipio)}
 
 
 @app.get("/api/alertas/ultimo-openweather")

@@ -148,7 +148,6 @@ const plural = (n: number, singular: string, pluralTxt: string) =>
 export default function PluviteVale() {
   const [localAberto, setLocalAberto] = useState<string | null>(null);
   const [dadosBairros, setDadosBairros] = useState<any>(null);
-  const [exibirAlerta, setExibirAlerta] = useState(false);
   const [buscaCidade, setBuscaCidade] = useState("");
   const [cidadeSelecionada, setCidadeSelecionada] = useState("");
   const [painelAberto, setPainelAberto] = useState(false);
@@ -174,13 +173,6 @@ export default function PluviteVale() {
     [key: string]: { dados: any; ts: number };
   }>({});
   const [erroClima, setErroClima] = useState(false);
-
-  const [dadosAlerta, setDadosAlerta] = useState<{
-    cidade: string;
-    condicao: string;
-    temperatura: string;
-    nome: string;
-  } | null>(null);
 
   // CARREGAMENTO DOS DADOS GEOGRÁFICOS DO MAPA
   useEffect(() => {
@@ -271,36 +263,6 @@ export default function PluviteVale() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localAberto]);
-
-  // CONFIGURAÇÃO DO CANAL DE REALTIME DO SUPABASE
-  useEffect(() => {
-    const idCidadaoLogado = 1;
-    const nomeCidadaoLogado = "Quezia";
-
-    const canalRealtimes = supabase
-      .channel("canal-pluvite")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "alertas_tempo_real" },
-        (payload) => {
-          const novoAlerta = payload.new;
-          if (novoAlerta.id_cidadao === idCidadaoLogado) {
-            setDadosAlerta({
-              cidade: novoAlerta.cidade_alerta,
-              condicao: novoAlerta.condicao,
-              temperatura: novoAlerta.temperatura,
-              nome: nomeCidadaoLogado,
-            });
-            setExibirAlerta(true);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canalRealtimes);
-    };
-  }, []);
 
   // TRATAMENTO E EXTRAÇÃO DOS DADOS DE CLIMA DA CIDADE SELECIONADA
   const climaCidadeAberta = localAberto ? climaWeather[localAberto]?.dados : null;

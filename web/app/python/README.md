@@ -117,11 +117,11 @@ para scripts sem sessão Supabase.
 | Método | Rota | Para que serve |
 |---|---|---|
 | `GET` | `/api/status` | Saúde do serviço, canais e navegadores conectados |
-| `WS` | `/ws/alertas` | Pop-up do site em tempo real |
+| `WS` | `/ws/alertas?municipio=Taubaté` | Pop-up em tempo real, restrito ao município inscrito |
 | `POST` | `/api/alertas/disparar` | Alerta real autenticado; servidor restrito ao próprio município |
 | `POST` | `/api/alertas/simular` | Payload para prévia local; sem broadcast, persistência ou outros canais |
 | `GET` | `/api/alertas/historico` | Histórico recente do município do servidor autenticado |
-| `GET` | `/api/alertas/ultimo` | Último alerta (site/app que abrem depois) |
+| `GET` | `/api/alertas/ultimo?municipio=Taubaté` | Último alerta do município (site/app que abrem depois) |
 | `GET` | `/api/alertas/ultimo-openweather` | Último alerta real do monitor (exclui mocks e disparos manuais) |
 | `POST` | `/api/monitor/verificar-agora?forcar=true` | Força um ciclo do monitor |
 | `POST` | `/api/dispositivos` | App mobile registra o token de push |
@@ -143,3 +143,8 @@ Painel web (POST manual)     ─┘         │
 
 O guia passo a passo de homologação está em
 [`GUIA-TESTES-ALERTAS.md`](../../../GUIA-TESTES-ALERTAS.md).
+
+O popup do site e a consulta do último alerta exigem o município de inscrição.
+No site, `cidadao.municipio_alertas` tem precedência; quando não estiver
+definido, é usada a cidade do perfil (`cidadao.cidade`). Clientes sem um
+município válido não recebem alertas pelo WebSocket.

@@ -23,7 +23,7 @@ import {
   alertaAindaVale,
   buscarUltimoAlerta,
   registrarDispositivo,
-  WS_ALERTAS,
+  urlWebSocketAlertas,
   type Alerta,
 } from "../services/alertas";
 import {
@@ -70,10 +70,6 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
 
   const dispensadosRef = useRef<Set<string>>(new Set());
   const municipioRef = useRef<string | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const reconexaoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const desmontadoRef = useRef(false);
 
   const receber = useCallback((novo: Alerta | null) => {
     if (!novo) return;
@@ -104,6 +100,7 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
     async (municipio: string, authId: string) => {
       municipioRef.current = municipio;
       setMunicipioAlertas(municipio);
+      setConectado(false);
       setAlerta((atual) =>
         atual && normalizar(atual.municipio) !== normalizar(municipio) ? null : atual,
       );
@@ -118,7 +115,7 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
           auth_id: authId,
           municipio,
         }));
-      if (atualizado) await buscarUltimoAlerta().then(receber);
+      if (atualizado) await buscarUltimoAlerta(municipio).then(receber);
       return atualizado;
     },
     [pushToken, receber],
@@ -142,14 +139,14 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
         if (user) {
           const { data, error } = await supabase
             .from("cidadao")
-            .select("municipio_alertas")
+            .select("municipio_alertas, cidade")
             .eq("auth_id", user.id)
             .maybeSingle();
           if (error) {
             console.error("Erro ao carregar município dos alertas:", error);
             return;
           } else {
-            municipio = data?.municipio_alertas ?? null;
+            municipio = data?.municipio_alertas || data?.cidade || null;
           }
         }
 
@@ -173,7 +170,7 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
         }
         if (ativo) setPushToken(token);
         await alertaQueAbriuOApp().then(receber);
-        await buscarUltimoAlerta().then(receber);
+        await buscarUltimoAlerta(municipio).then(receber);
       } catch (error) {
         console.error("Erro ao iniciar notificações de alerta:", error);
       }
@@ -185,72 +182,77 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
 
   /* 2. WebSocket com reconexao automatica */
   useEffect(() => {
-    desmontadoRef.current = false;
+    if (!municipioAlertas) return;
+    let desmontado = false;
+    let reconexao: ReturnType<typeof setTimeout> | null = null;
+    let ping: ReturnType<typeof setInterval> | null = null;
+    let socket: WebSocket | null = null;
 
     const conectar = () => {
-      if (desmontadoRef.current) return;
+      if (desmontado) return;
 
-      let socket: WebSocket;
       try {
-        socket = new WebSocket(WS_ALERTAS);
-      } catch {
-        reconexaoRef.current = setTimeout(conectar, RECONECTAR_MS);
-        return;
-      }
-      socketRef.current = socket;
-
-      socket.onopen = () => {
-        setConectado(true);
-        pingRef.current = setInterval(() => {
-          if (socket.readyState === WebSocket.OPEN) socket.send("ping");
-        }, PING_MS);
-      };
-
-      socket.onmessage = (evento) => {
-        try {
-          const mensagem = JSON.parse(evento.data as string);
-          if (mensagem.evento === "alerta_emergencia" && mensagem.dados) {
-            receber(mensagem.dados as Alerta);
+        const socketAtual = new WebSocket(urlWebSocketAlertas(municipioAlertas));
+        socket = socketAtual;
+        socketAtual.onopen = () => {
+          if (desmontado) {
+            socketAtual.close();
+            return;
           }
-        } catch {
-          /* mensagem fora do formato esperado */
-        }
-      };
+          setConectado(true);
+          ping = setInterval(() => {
+            if (socketAtual.readyState === WebSocket.OPEN) socketAtual.send("ping");
+          }, PING_MS);
+        };
 
-      const encerrar = () => {
-        setConectado(false);
-        if (pingRef.current) clearInterval(pingRef.current);
-        socketRef.current = null;
-        if (!desmontadoRef.current) {
-          reconexaoRef.current = setTimeout(conectar, RECONECTAR_MS);
-        }
-      };
+        socketAtual.onmessage = (evento) => {
+          try {
+            const mensagem = JSON.parse(evento.data as string);
+            if (mensagem.evento === "alerta_emergencia" && mensagem.dados) {
+              receber(mensagem.dados as Alerta);
+            }
+          } catch {
+            /* mensagem fora do formato esperado */
+          }
+        };
 
-      socket.onclose = encerrar;
-      socket.onerror = () => socket.close();
+        const encerrar = () => {
+          if (desmontado) return;
+          setConectado(false);
+          if (ping) clearInterval(ping);
+          reconexao = setTimeout(conectar, RECONECTAR_MS);
+        };
+
+        socketAtual.onclose = encerrar;
+        socketAtual.onerror = () => socketAtual.close();
+      } catch {
+        reconexao = setTimeout(conectar, RECONECTAR_MS);
+      }
     };
 
     conectar();
 
     return () => {
-      desmontadoRef.current = true;
-      if (reconexaoRef.current) clearTimeout(reconexaoRef.current);
-      if (pingRef.current) clearInterval(pingRef.current);
-      socketRef.current?.close();
+      desmontado = true;
+      if (reconexao) clearTimeout(reconexao);
+      if (ping) clearInterval(ping);
+      socket?.close();
     };
-  }, [receber]);
+  }, [municipioAlertas, receber]);
 
   /* 3. Consulta ao abrir e cada vez que o app volta do segundo plano */
   useEffect(() => {
-    buscarUltimoAlerta().then(receber);
+    buscarUltimoAlerta(municipioAlertas).then(receber);
 
     const aoMudarEstado = (estado: AppStateStatus) => {
-      if (estado === "active") buscarUltimoAlerta().then(receber);
+      if (estado === "active") {
+        buscarUltimoAlerta(municipioRef.current).then(receber);
+      }
     };
 
     const inscricao = AppState.addEventListener("change", aoMudarEstado);
     return () => inscricao.remove();
-  }, [receber]);
+  }, [municipioAlertas, receber]);
 
   return (
     <AlertaContext.Provider

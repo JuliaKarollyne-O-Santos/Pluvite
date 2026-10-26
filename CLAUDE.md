@@ -213,7 +213,6 @@ Read the matching skill **before** generating code:
 - `/Servidor` dispatches alerts through the Python backend (`lib/alertas.ts`). It requires a logged-in
   `servidor` (own municipality only) or `admin` account, and the backend re-checks the Supabase token;
   `ADMIN_TOKEN` (header `X-Pluvite-Token`) is only for scripts — never a `NEXT_PUBLIC_` variable.
-- `Mapa/page.tsx` realtime listener uses a hardcoded citizen id (`1`).
 - `components/sidebar.tsx` has placeholder prefeitura data and links with wrong casing.
 - `/Rotas` needs the backend running and the graphs: the untracked root `Rotas/*.json` locally, or the
   versioned gzip copies in `web/app/backend/grafos/*.json.gz` (what Render uses — it only sees the

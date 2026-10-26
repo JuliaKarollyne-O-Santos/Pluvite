@@ -182,11 +182,17 @@ export async function buscarStatusCanais(): Promise<StatusCanaisAlerta> {
 }
 
 /** Ultimo alerta conhecido — usado por quem abre o site depois do evento. */
-export async function buscarUltimoAlerta(): Promise<Alerta | null> {
-  const resposta = await fetch(`${API_ALERTAS}/api/alertas/ultimo`, {
+export async function buscarUltimoAlerta(
+  municipio: string,
+): Promise<Alerta | null> {
+  const parametros = new URLSearchParams({ municipio });
+  const resposta = await fetch(`${API_ALERTAS}/api/alertas/ultimo?${parametros}`, {
     cache: "no-store",
   });
-  if (!resposta.ok) return null;
+  if (!resposta.ok) {
+    const detalhe = await resposta.text();
+    throw new Error(`Não foi possível carregar o último alerta (${resposta.status}): ${detalhe}`);
+  }
   const corpo = (await resposta.json()) as { alerta: Alerta | null };
   return corpo.alerta;
 }

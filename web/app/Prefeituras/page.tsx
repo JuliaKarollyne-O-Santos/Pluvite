@@ -539,6 +539,10 @@ export default function PainelServidor() {
             <p className="text-slate-500 text-sm font-medium mt-1">
               Acompanhe ocorrências, tendências e despache equipes em tempo real
             </p>
+            <p className="text-slate-500 text-xs mt-2">
+              Atualizar uma ocorrência não envia alerta à população. Para isso,
+              use “Emitir alerta manual” e revise a mensagem antes do envio.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">

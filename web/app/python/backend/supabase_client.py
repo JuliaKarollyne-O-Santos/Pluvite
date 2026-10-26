@@ -90,24 +90,26 @@ async def salvar_alerta(registro: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
 
-def _ultimo_alerta_sync() -> dict[str, Any] | None:
+def _ultimo_alerta_sync(municipio: str | None = None) -> dict[str, Any] | None:
     sb = cliente()
     if sb is None:
         return None
     resposta = (
         sb.table("alertas_tempo_real")
-        .select("*")
-        .order("criado_em", desc=True)
-        .limit(1)
-        .execute()
+        .select(
+            "id,tipo,prioridade,municipio,endereco,descricao,statusatual,origem,criado_em"
+        )
     )
+    if municipio:
+        resposta = resposta.eq("municipio", municipio)
+    resposta = resposta.order("criado_em", desc=True).limit(1).execute()
     return resposta.data[0] if resposta.data else None
 
 
-async def ultimo_alerta() -> dict[str, Any] | None:
-    """Alerta mais recente — mesma consulta que o `popups.py` original fazia."""
+async def ultimo_alerta(municipio: str | None = None) -> dict[str, Any] | None:
+    """Alerta mais recente, opcionalmente restrito ao município selecionado."""
     try:
-        return await asyncio.to_thread(_ultimo_alerta_sync)
+        return await asyncio.to_thread(_ultimo_alerta_sync, municipio)
     except Exception as erro:
         log.error("Falha ao buscar ultimo alerta: %s", erro)
         return None

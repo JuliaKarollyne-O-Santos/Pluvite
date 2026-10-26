@@ -402,11 +402,14 @@ O pop-up deve surgir nas duas abas em menos de 1 segundo, com:
 No console do navegador (qualquer página):
 
 ```js
-const ws = new WebSocket("ws://localhost:8000/ws/alertas");
+const ws = new WebSocket("ws://localhost:8000/ws/alertas?municipio=Taubat%C3%A9");
 ws.onmessage = (e) => console.log("recebido:", JSON.parse(e.data));
 ```
 
-Dispare um alerta e observe o objeto chegando com `evento: "alerta_emergencia"`.
+Dispare um alerta para Taubaté e observe o objeto chegando com
+`evento: "alerta_emergencia"`. Repita com outro navegador inscrito em Ubatuba:
+ele não deve receber o alerta de Taubaté. Sem município ou com município fora
+da lista oficial, o servidor deve recusar a conexão.
 
 ---
 

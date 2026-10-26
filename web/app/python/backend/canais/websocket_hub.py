@@ -12,23 +12,25 @@ from typing import Any
 
 from fastapi import WebSocket
 
+from .. import supabase_client
+
 log = logging.getLogger("pluvite.websocket")
 
 
 class HubWebSocket:
     def __init__(self) -> None:
-        self._conexoes: set[WebSocket] = set()
+        self._conexoes: dict[WebSocket, str] = {}
         self._trava = asyncio.Lock()
 
-    async def conectar(self, ws: WebSocket) -> None:
+    async def conectar(self, ws: WebSocket, municipio: str) -> None:
         await ws.accept()
         async with self._trava:
-            self._conexoes.add(ws)
+            self._conexoes[ws] = municipio
         log.info("Navegador conectado (total: %d)", len(self._conexoes))
 
     async def desconectar(self, ws: WebSocket) -> None:
         async with self._trava:
-            self._conexoes.discard(ws)
+            self._conexoes.pop(ws, None)
         log.info("Navegador desconectado (total: %d)", len(self._conexoes))
 
     @property
@@ -38,13 +40,18 @@ class HubWebSocket:
     async def enviar_para(self, ws: WebSocket, evento: str, dados: Any) -> None:
         await ws.send_json({"evento": evento, "dados": dados})
 
-    async def broadcast(self, evento: str, dados: Any) -> int:
-        """Envia o evento para todos os navegadores conectados.
+    async def broadcast(self, evento: str, dados: Any, municipio: str) -> int:
+        """Envia o evento somente aos navegadores inscritos no município.
 
         Devolve quantos receberam. Conexoes mortas sao descartadas.
         """
         async with self._trava:
-            alvos = list(self._conexoes)
+            alvo_normalizado = supabase_client._normalizar_municipio(municipio)
+            alvos = [
+                ws
+                for ws, inscrito in self._conexoes.items()
+                if supabase_client._normalizar_municipio(inscrito) == alvo_normalizado
+            ]
 
         if not alvos:
             log.info("Nenhum navegador conectado para receber '%s'", evento)
@@ -59,7 +66,7 @@ class HubWebSocket:
         if mortos:
             async with self._trava:
                 for ws in mortos:
-                    self._conexoes.discard(ws)
+                    self._conexoes.pop(ws, None)
 
         entregues = len(alvos) - len(mortos)
         log.info("Broadcast '%s' entregue a %d navegador(es)", evento, entregues)
@@ -71,7 +78,9 @@ hub = HubWebSocket()
 
 async def enviar_alerta_web(payload: dict[str, Any]) -> dict[str, Any]:
     """Interface usada pelo despachante central."""
-    entregues = await hub.broadcast("alerta_emergencia", payload)
+    entregues = await hub.broadcast(
+        "alerta_emergencia", payload, str(payload.get("municipio") or "")
+    )
     return {
         "canal": "web",
         "ok": entregues > 0,

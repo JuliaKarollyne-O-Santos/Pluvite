@@ -9,6 +9,7 @@ from backend.main import (
     Responsavel,
     disparar_manual,
     simular_alerta_manual,
+    ultimo_alerta,
     ultimo_alerta_openweather,
 )
 
@@ -46,6 +47,48 @@ class UltimoAlertaOpenWeatherTests(unittest.IsolatedAsyncioTestCase):
             resultado = await ultimo_alerta_openweather()
 
         self.assertIsNone(resultado["alerta"])
+
+
+class UltimoAlertaMunicipalTests(unittest.IsolatedAsyncioTestCase):
+    async def test_retorna_alerta_em_memoria_apenas_para_o_mesmo_municipio(self):
+        alerta = {"id": "alerta-1", "municipio": "Taubaté"}
+        with (
+            patch("backend.main.ultimo_payload", return_value=alerta),
+            patch("backend.main.supabase_client.ultimo_alerta") as buscar_banco,
+        ):
+            resultado = await ultimo_alerta("TAUBATE")
+
+        self.assertEqual(resultado["alerta"], alerta)
+        buscar_banco.assert_not_awaited()
+
+    async def test_nao_retorna_alerta_de_outro_municipio_em_memoria(self):
+        registro = {
+            "id": "alerta-2",
+            "tipo": "Enchente",
+            "prioridade": "Alerta Máximo",
+            "municipio": "Ubatuba",
+            "origem": "manual",
+        }
+        with (
+            patch(
+                "backend.main.ultimo_payload",
+                return_value={"id": "alerta-1", "municipio": "Taubaté"},
+            ),
+            patch(
+                "backend.main.supabase_client.ultimo_alerta",
+                new=AsyncMock(return_value=registro),
+            ) as buscar_banco,
+        ):
+            resultado = await ultimo_alerta("Ubatuba")
+
+        buscar_banco.assert_awaited_once_with("Ubatuba")
+        self.assertEqual(resultado["alerta"]["municipio"], "Ubatuba")
+
+    async def test_rejeita_municipio_invalido(self):
+        with self.assertRaises(HTTPException) as contexto:
+            await ultimo_alerta("Campinas")
+
+        self.assertEqual(contexto.exception.status_code, 400)
 
 
 class DisparoManualTests(unittest.IsolatedAsyncioTestCase):

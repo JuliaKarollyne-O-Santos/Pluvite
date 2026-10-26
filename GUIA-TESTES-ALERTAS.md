@@ -41,22 +41,7 @@ Arquivos principais:
 
 ## Passo 0 — Preparação (fazer uma vez)
 
-### 0.1 Banco de dados
-
-No painel do Supabase → **SQL Editor** → **New query**, cole e execute o
-conteúdo de `web/app/python/sql/alertas.sql`. Ele cria a tabela
-`dispositivos` (tokens de push) e garante as colunas usadas pelos 3 canais.
-Se já tiver executado esse script, execute-o novamente para adicionar a coluna
-`origem`, usada para diferenciar alertas reais de mocks e disparos manuais.
-
-Confira:
-
-```sql
-select * from dispositivos;                 -- deve existir, vazia
-select * from alertas_tempo_real limit 5;   -- deve existir
-```
-
-### 0.2 Backend Python
+### 0.1 Backend Python
 
 ```powershell
 cd web\app\python
@@ -86,7 +71,7 @@ npm install
 Com `WHATSAPP_PROVEDOR=off`, o chatbot apenas avisa que está desligado e o
 resto do projeto sobe normalmente.
 
-O backend é iniciado junto com o site no passo 0.3. Não inicie outro Uvicorn
+O backend é iniciado junto com o site no passo 0.2. Não inicie outro Uvicorn
 manualmente, pois ele tentará usar a mesma porta 8000.
 
 O padrão monitora os **39 municípios do Vale do Paraíba e Litoral Norte** uma
@@ -97,7 +82,7 @@ plano OpenWeather antes de aumentar a frequência.
 
 ### Executar os testes automatizados (Windows PowerShell)
 
-Com as dependências instaladas no passo 0.2, a partir da raiz do repositório:
+Com as dependências instaladas no passo 0.1, a partir da raiz do repositório:
 
 ```powershell
 cd web\app\python
@@ -122,7 +107,7 @@ Uvicorn running on http://0.0.0.0:8000
 Teste rápido: abra <http://localhost:8000/api/status>. Deve responder um JSON
 com `navegadores_conectados: 0`.
 
-### 0.3 Site (Next.js)
+### 0.2 Site (Next.js)
 
 Na raiz do repositório:
 
@@ -160,7 +145,7 @@ Se o backend Python não estiver em `http://localhost:8000`, crie
 NEXT_PUBLIC_API_ALERTAS=http://192.168.0.10:8000
 ```
 
-### 0.4 App mobile (React Native nativo)
+### 0.3 App mobile (React Native nativo)
 
 ```powershell
 cd mobile\pluvite
@@ -339,7 +324,7 @@ por WebSocket, não grava no banco e não aciona WhatsApp ou push.
 ### 2.4 Confirmar a gravação no banco
 
 ```sql
-select tipo, prioridade, municipio, statusatual, criado_em
+select tipo, prioridade, municipio, origem, statusatual, criado_em
 from alertas_tempo_real
 order by criado_em desc
 limit 3;
@@ -426,7 +411,7 @@ nesse modo.
 
 ### 4.1 Conectar
 
-Com `npm run dev` rodando (passo 0.3), o `[whatsapp]` deve mostrar
+Com `npm run dev` rodando (passo 0.2), o `[whatsapp]` deve mostrar
 `✅ Tudo certo! WhatsApp conectado.` Confira em
 <http://localhost:8000/api/status>:
 
@@ -475,18 +460,16 @@ API real. Disparos manuais e alertas simulados no Teste 1 não entram nessa
 resposta. A consulta funciona em conversa privada, mesmo antes de escolher
 município para receber alertas.
 
-1. Confirme que `web/app/python/sql/alertas.sql` foi executado após a inclusão
-   da coluna `origem`.
-2. No `.env`, defina `MOCK_OPENWEATHER=false` e informe uma chave válida em
+1. No `.env`, defina `MOCK_OPENWEATHER=false` e informe uma chave válida em
    `OPENWEATHER_KEY`; reinicie `npm run dev`.
-3. Consulte <http://localhost:8000/api/alertas/ultimo-openweather>. A resposta
+2. Consulte <http://localhost:8000/api/alertas/ultimo-openweather>. A resposta
    terá `"alerta": null` se nenhum alerta real foi registrado desde que a
    origem passou a ser gravada. Registros antigos sem origem não podem ser
    classificados retroativamente.
-4. De outro celular, pergunte **"Qual foi o último alerta real do OpenWeather?"**.
+3. De outro celular, pergunte **"Qual foi o último alerta real do OpenWeather?"**.
    Com um registro, a resposta mostra tipo, município, prioridade, horário de
    registro e descrição. Sem registro, informa que ainda não há alerta real.
-5. Para tentar gerar um registro usando condições atuais, execute o ciclo do
+4. Para tentar gerar um registro usando condições atuais, execute o ciclo do
    passo 1.4. O alerta só será criado se o clima real atingir os critérios;
    mock e disparo manual não servem para validar essa consulta.
 
@@ -658,7 +641,7 @@ Cenário final de homologação:
 | Pop-up não aparece, pontinho amarelo | Backend fora do ar ou porta errada | `curl http://localhost:8000/api/status`; ajuste `NEXT_PUBLIC_API_ALERTAS` |
 | `CORS policy` no console do navegador | Origem não liberada | Inclua a URL em `CORS_ORIGENS` no `.env` |
 | Alerta dispara uma vez e para | Cooldown de 3h | Use `?forcar=true` ou reduza `MONITOR_COOLDOWN_SEGUNDOS` |
-| `Falha ao gravar alerta no Supabase` | RLS bloqueando a escrita | Rode `sql/alertas.sql`; em produção prefira a `service_role key` |
+| `Falha ao gravar alerta no Supabase` | Permissões RLS ou configuração de acesso incorreta | Verifique as políticas de acesso no Supabase; em produção prefira a `service_role key` |
 | WhatsApp `nenhum inscrito` | Ninguém mandou `pluvite` | Mande `pluvite` de outro celular ou use `WHATSAPP_NUMEROS_TESTE` |
 | WhatsApp `chatbot QR indisponivel` | `[whatsapp]` não subiu | Veja a mensagem dele no terminal; rode `npm install` em `web/app/python/chatbot` |
 | `[whatsapp] WhatsApp por QR desligado` | `WHATSAPP_PROVEDOR` diferente de `qr` | Ajuste o `.env` e reinicie |
@@ -674,7 +657,6 @@ Cenário final de homologação:
 
 ## Checklist de homologação
 
-- [ ] `sql/alertas.sql` executado no Supabase
 - [ ] Backend Python sobe sem erro e `/api/status` responde
 - [ ] Mock do OpenWeather dispara alerta automático (`Teste 1`)
 - [ ] Céu limpo **não** dispara alerta (`Teste 1.3`)

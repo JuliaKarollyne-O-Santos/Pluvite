@@ -548,7 +548,7 @@ export default function PainelServidor() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push("/Servidor")}
+              onClick={() => router.push("/Servidor/Emitir")}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0d163b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2a8f] focus-visible:ring-offset-2"
             >
               <Send size={16} />

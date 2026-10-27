@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import {
+  BellRing,
   Building2,
   Loader2,
   Rss,
@@ -110,6 +112,16 @@ export default function AdminPage() {
         }`}
       >
         <div className="max-w-4xl mx-auto px-6 md:px-4 space-y-6">
+          <div className="flex justify-end">
+            <Link
+              href="/Servidor/Emitir"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#0d163b]"
+            >
+              <BellRing size={18} />
+              Emitir alerta
+            </Link>
+          </div>
+
           {/* Abas do painel admin */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit overflow-x-auto max-w-full">
             {ABAS.map(({ id, label, icon: Icon }) => (

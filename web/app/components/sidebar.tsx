@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/app/lib/banco";
 import {
   AlertTriangle,
+  BellRing,
   Map,
   Rss,
   UserRound,
@@ -32,6 +33,7 @@ interface Navbar3Props {
 // é o mesmo nos dois — só muda o que aparece.
 const navItemsAdmin = [
   { href: "/Adm", label: "Prefeituras", icon: Building2 },
+  { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
   { href: "/Feed", label: "Feed", icon: Rss },
   { href: "/Mapa", label: "Mapa", icon: Map },
 ];

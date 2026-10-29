@@ -112,7 +112,13 @@ async def exigir_responsavel(
     usuario = await supabase_client.usuario_do_token(token)
     if not usuario:
         raise HTTPException(status_code=401, detail="Sessao invalida ou expirada. Entre de novo.")
-    conta = await supabase_client.papel_da_conta(usuario["id"])
+    try:
+        conta = await supabase_client.papel_da_conta(usuario["id"], token)
+    except RuntimeError as erro:
+        raise HTTPException(
+            status_code=503,
+            detail="Nao foi possivel verificar a permissao da conta. Tente novamente.",
+        ) from erro
     if not conta:
         raise HTTPException(status_code=403, detail="Esta conta nao pode disparar alertas.")
     return Responsavel(papel=conta["papel"], municipio=conta["municipio"])

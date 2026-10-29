@@ -42,11 +42,12 @@ desconectar o aparelho pelo celular).
 
 1. No `.env`: `WHATSAPP_PROVEDOR=qr` e um `CHATBOT_TOKEN` qualquer (secreto).
    `WHATSAPP_NUMEROS_TESTE` é opcional (números que sempre recebem).
-2. `cd chatbot && npm install` (uma vez). Depois, `npm run dev` em `web/` já sobe
-   o chatbot junto com o site (prefixo `[whatsapp]`): escaneie o QR com o número
-   que vai enviar os alertas. O chatbot lê o mesmo `.env` e abre a API local em
-   `http://127.0.0.1:3010` (`POST /enviar`, `GET /inscritos`, `GET /status`).
-   Para rodar sozinho: `npm start` dentro de `chatbot/`.
+2. `cd chatbot && npm install` (uma vez). Inicie o chatbot em um terminal:
+   `cd chatbot && node chatbot.js` (ou `npm start`). O QR Code será exibido
+   nesse terminal; escaneie com o número que vai enviar os alertas. Em outro
+   terminal, execute `npm run dev` em `web/` para iniciar o site e os backends.
+   O chatbot lê o mesmo `.env` e abre a API local em `http://127.0.0.1:3010`
+   (`POST /enviar`, `GET /inscritos`, `GET /status`).
 3. De outro celular, mande `pluvite` para esse número e responda com a cidade
    desejada entre os 39 municípios do Vale do Paraíba e Litoral Norte.
 4. Dispare um alerta no painel `/Servidor` do site: sai o pop-up e, junto, o

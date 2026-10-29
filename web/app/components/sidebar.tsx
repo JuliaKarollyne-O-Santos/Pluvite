@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   BellRing,
   Map,
+  MessageCircle,
   Rss,
   UserRound,
   LogOut,
@@ -34,6 +35,7 @@ interface Navbar3Props {
 const navItemsAdmin = [
   { href: "/Adm", label: "Prefeituras", icon: Building2 },
   { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
+  { href: "/Adm/WhatsApp", label: "Conectar WhatsApp", icon: MessageCircle },
   { href: "/Feed", label: "Feed", icon: Rss },
   { href: "/Mapa", label: "Mapa", icon: Map },
 ];

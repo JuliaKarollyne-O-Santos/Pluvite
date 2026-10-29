@@ -13,8 +13,7 @@ if (existsSync(arquivoEnv)) process.loadEnvFile(arquivoEnv);
 
 // =====================================
 // CANAL DESLIGADO OU DEPENDÊNCIAS AUSENTES
-// No `npm run dev` o chatbot sobe junto com o site: aqui ele só avisa e sai
-// com código 0, para não derrubar o Next, o Express e o Uvicorn.
+// O chatbot roda em um terminal separado; com o canal desligado, não inicializa.
 // =====================================
 const provedor = (process.env.WHATSAPP_PROVEDOR || "off").trim().toLowerCase();
 if (provedor !== "qr") {
@@ -22,9 +21,9 @@ if (provedor !== "qr") {
   process.exit(0);
 }
 
-let qrcode;
 let Client;
 let LocalAuth;
+let qrcode;
 try {
   qrcode = require("qrcode-terminal");
   ({ Client, LocalAuth } = require("whatsapp-web.js"));
@@ -255,7 +254,7 @@ inicializar().catch(async (error) => {
   } catch (erroAoFechar) {
     console.error("❌ Erro ao fechar o navegador após a falha:", erroAoFechar);
   }
-  // Sai com código 0: no `npm run dev` uma falha do WhatsApp não derruba o site
+  // Fecha os recursos do processo se a inicialização do WhatsApp falhar.
   terminal.close();
   servidorApi.close();
 });
@@ -268,7 +267,10 @@ const TOKEN_API = process.env.CHATBOT_TOKEN || "";
 const URL_API_ALERTAS = `http://127.0.0.1:${process.env.API_PORT || 8000}`;
 
 function responder(res, status, corpo) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
   res.end(JSON.stringify(corpo));
 }
 
@@ -340,7 +342,11 @@ const servidorApi = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && req.url === "/status") {
-    return responder(res, 200, { ok: true, conectado, inscritos: inscritos.size });
+    return responder(res, 200, {
+      ok: true,
+      conectado,
+      inscritos: inscritos.size,
+    });
   }
 
   const url = new URL(req.url, "http://127.0.0.1");

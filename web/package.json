@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail -i --default-input-target whatsapp -n web,api,alertas,whatsapp -c blue,green,yellow,magenta \"next dev --webpack\" \"node app/backend/server.js\" \".\\app\\python\\.venv\\Scripts\\python.exe -m uvicorn backend.main:app --app-dir app/python --reload --host 0.0.0.0 --port 8000\" \"node app/python/chatbot/chatbot.js\"",
+    "dev": "concurrently --kill-others-on-fail -n web,api,alertas -c blue,green,yellow \"next dev --webpack\" \"node app/backend/server.js\" \".\\app\\python\\.venv\\Scripts\\python.exe -m uvicorn backend.main:app --app-dir app/python --reload --host 0.0.0.0 --port 8000\"",
     "dev:site": "concurrently --kill-others-on-fail -n web,api -c blue,green \"next dev --webpack\" \"node app/backend/server.js\"",
     "build": "next build --webpack",
     "start": "next start",

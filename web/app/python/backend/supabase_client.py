@@ -11,7 +11,10 @@ import logging
 import unicodedata
 from typing import Any
 
-from supabase import Client, create_client
+import httpx
+from postgrest.exceptions import APIError
+from supabase import Client, SupabaseException, create_client
+from supabase.lib.client_options import SyncClientOptions
 
 from . import config
 
@@ -227,28 +230,41 @@ async def usuario_do_token(token: str) -> dict[str, Any] | None:
     return await asyncio.to_thread(_usuario_do_token_sync, token)
 
 
-def _papel_da_conta_sync(auth_id: str) -> dict[str, Any] | None:
-    sb = cliente()
-    if sb is None:
-        return None
-    admin = sb.table("admin").select("id").eq("auth_id", auth_id).limit(1).execute()
-    if admin.data:
-        return {"papel": "admin", "municipio": None}
-    servidor = (
-        sb.table("servidor").select("municipio").eq("auth_id", auth_id).limit(1).execute()
+def _papel_da_conta_sync(auth_id: str, token: str) -> dict[str, Any] | None:
+    if not config.SUPABASE_URL or not config.SUPABASE_KEY:
+        raise RuntimeError("Supabase nao configurado para validar a conta.")
+
+    sb = create_client(
+        config.SUPABASE_URL,
+        config.SUPABASE_KEY,
+        SyncClientOptions(auto_refresh_token=False, persist_session=False),
     )
-    if servidor.data:
-        return {"papel": "servidor", "municipio": servidor.data[0].get("municipio")}
-    return None
+    sb.postgrest.auth(token)
+    try:
+        admin = sb.table("admin").select("id").eq("auth_id", auth_id).limit(1).execute()
+        if admin.data:
+            return {"papel": "admin", "municipio": None}
+        servidor = (
+            sb.table("servidor")
+            .select("municipio")
+            .eq("auth_id", auth_id)
+            .limit(1)
+            .execute()
+        )
+        if servidor.data:
+            return {"papel": "servidor", "municipio": servidor.data[0].get("municipio")}
+        return None
+    finally:
+        sb.postgrest.aclose()
 
 
-async def papel_da_conta(auth_id: str) -> dict[str, Any] | None:
+async def papel_da_conta(auth_id: str, token: str) -> dict[str, Any] | None:
     """'admin' (equipe Pluvite) ou 'servidor' (prefeitura, com o municipio), ou None.
 
-    As mesmas tabelas que /Adm e /Prefeituras conferem no site.
+    Usa o token da sessao na consulta para que o RLS permita ler o proprio perfil.
     """
     try:
-        return await asyncio.to_thread(_papel_da_conta_sync, auth_id)
-    except Exception as erro:
+        return await asyncio.to_thread(_papel_da_conta_sync, auth_id, token)
+    except (APIError, httpx.HTTPError, RuntimeError, SupabaseException) as erro:
         log.error("Falha ao consultar o papel da conta: %s", erro)
-        return None
+        raise RuntimeError("Nao foi possivel validar o perfil da conta.") from erro

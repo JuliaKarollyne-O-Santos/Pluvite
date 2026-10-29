@@ -61,10 +61,18 @@ class DisparoManualTests(unittest.TestCase):
         self.assertEqual(resposta.status_code, 403)
         self.disparar.assert_not_called()
 
+    def test_falha_ao_consultar_perfil_responde_503(self):
+        self.papel.side_effect = RuntimeError("falha de consulta")
+        resposta = self.enviar(cabecalhos={"Authorization": "Bearer token-teste"})
+        self.assertEqual(resposta.status_code, 503)
+        self.disparar.assert_not_called()
+
     def test_servidor_dispara_para_o_proprio_municipio_com_nome_oficial(self):
         self.papel.return_value = {"papel": "servidor", "municipio": "Taubaté"}
         resposta = self.enviar(cabecalhos={"Authorization": "Bearer token-servidor"})
         self.assertEqual(resposta.status_code, 200)
+        self.papel.assert_awaited_once()
+        self.assertEqual(self.papel.await_args.args[1], self.usuario.await_args.args[0])
         dados, = self.disparar.call_args.args
         self.assertEqual(dados["municipio"], "Taubaté")
         self.assertEqual(self.disparar.call_args.kwargs["origem"], "manual")

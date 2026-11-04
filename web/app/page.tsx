@@ -34,7 +34,7 @@ const scrollTo = (id: string) => {
 
 export default function Home() {
   return (
-    <div className="fixed h-screen w-full overflow-y-auto bg-slate pt-12 font-sans antialiased text-slate-800 -mt-10">
+    <div className="tela-cheia overflow-y-auto bg-slate font-sans antialiased text-slate-800">
       <main>
         {/* ── HERO ──────────────────────────────────────────────────────────── */}
         <section
@@ -46,7 +46,7 @@ export default function Home() {
             Monitoramento do Vale do Paraíba e Litoral Norte
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-slate-950 leading-[1.1] max-w-3xl -mt-3">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-950 leading-[1.1] max-w-3xl -mt-3">
             Sistema de Monitoramento{" "}
             <span className="text-[#0d43af]">de Riscos do Vale do Paraíba</span>
           </h1>
@@ -92,7 +92,7 @@ export default function Home() {
               <span className="text-md font-bold text-[#2C4A6F] uppercase tracking-widest">
                 Dados unificados
               </span>
-              <h2 className="text-5xl font-extrabold text-slate-950 mt-4 leading-snug">
+              <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-950 mt-4 leading-snug">
                 Análise e Despacho Integrado
               </h2>
               <p className="text-base text-slate-800 font-medium mt-5">
@@ -174,7 +174,7 @@ export default function Home() {
           <span className="text-sm font-bold text-[#2C4A6F] uppercase tracking-widest">
             Recursos
           </span>
-          <h2 className="text-5xl font-extrabold mt-4 mb-12 text-slate-950">
+          <h2 className="text-4xl sm:text-5xl font-extrabold mt-4 mb-12 text-slate-950">
             Ecossistema do Sistema
           </h2>
 
@@ -237,7 +237,7 @@ export default function Home() {
           <span className="text-sm font-bold text-[#2C4A6F] uppercase tracking-widest">
             Comunicação
           </span>
-          <h2 className="text-5xl font-extrabold text-slate-950 mt-4 mb-3">
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-950 mt-4 mb-3">
             Comunicação Direta com as Prefeituras
           </h2>
           <p className="text-base text-slate-800 font-medium max-w-2xl mb-12">
@@ -284,11 +284,12 @@ export default function Home() {
           </div>
 
           {/* Fluxo de comunicação */}
-          <div className="border border-slate-200 bg-white rounded-2xl p-8 mb-10 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-8">
+          <div className="border border-slate-200 bg-white rounded-2xl p-5 sm:p-8 mb-10 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900 mb-6 sm:mb-8">
               Fluxo de Comunicação
             </h3>
-            <div className="grid grid-cols-5 gap-3 items-start">
+            {/* No celular as 5 etapas viram uma lista (em 5 colunas os nomes se embolavam) */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-start">
               {[
                 {
                   icon: Users,
@@ -328,10 +329,10 @@ export default function Home() {
               ].map(({ icon: Icon, titulo, desc, color, bgColor }, i) => (
                 <div
                   key={i}
-                  className="flex flex-col items-center text-center gap-3 relative"
+                  className="flex sm:flex-col items-center text-left sm:text-center gap-3 relative"
                 >
                   <div
-                    className={`w-11 h-11 border border-slate-300 ${bgColor} rounded-xl flex items-center justify-center`}
+                    className={`w-11 h-11 shrink-0 border border-slate-300 ${bgColor} rounded-xl flex items-center justify-center`}
                   >
                     <Icon size={18} className={color} />
                   </div>
@@ -353,8 +354,8 @@ export default function Home() {
           </div>
 
           {/* Municípios */}
-          <div className="border border-slate-200 bg-white rounded-2xl p-8 mb-14 shadow-sm">
-            <div className="flex items-center justify-between mb-7">
+          <div className="border border-slate-200 bg-white rounded-2xl p-5 sm:p-8 mb-14 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-7">
               <h3 className="text-base font-bold text-slate-900">
                 Principais Municípios Monitorados
               </h3>
@@ -363,7 +364,7 @@ export default function Home() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 sm:gap-x-8">
               {[
                 "Taubaté",
                 "São José dos Campos",
@@ -384,7 +385,7 @@ export default function Home() {
               ].map((cidade) => (
                 <div
                   key={cidade}
-                  className="flex items-center gap-2.5 text-sm text-slate-700 py-3 font-semibold border-b border-slate-100 last:sm:border-b last:border-0"
+                  className="flex items-center gap-2 sm:gap-2.5 text-[13px] sm:text-sm text-slate-700 py-3 font-semibold border-b border-slate-100 last:sm:border-b last:border-0"
                 >
                   <img
                     src="/localizacao-vermelha.png"
@@ -435,7 +436,7 @@ export default function Home() {
           <span className="text-sm font-bold text-[#2C4A6F] uppercase tracking-widest">
             Categorização
           </span>
-          <h2 className="text-5xl font-extrabold text-slate-950 mt-4 mb-3">
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-950 mt-4 mb-3">
             Categorização de Riscos
           </h2>
           <p className="text-base text-slate-800 font-medium max-w-xl mb-12">
@@ -665,7 +666,7 @@ export default function Home() {
               </div>
 
               {/* QR Code */}
-              <div className="mt-6 flex items-center gap-5 select-none">
+              <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-5 select-none">
                 <div className="w-[200px] h-[200px] bg-white border border-zinc-200 shadow-[1px_1px_5px_0px_rgba(9,28,75,0.2)] rounded-xl overflow-hidden flex-shrink-0">
                   <img
                     src="/qrcode-pluvite.png"
@@ -760,7 +761,7 @@ export default function Home() {
         {/* ── BOTÃO SCROLL TO TOP ─────────────────────────────────────────────── */}
         <button
           onClick={() => scrollTo("hero")}
-          className="fixed bottom-6 right-6 p-3.5 rounded-full bg-[#0d43af] hover:bg-[#133986] text-white shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 z-50 group cursor-pointer"
+          className="fixed bottom-[calc(1.5rem_+_env(safe-area-inset-bottom))] right-6 p-3.5 rounded-full bg-[#0d43af] hover:bg-[#133986] text-white shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 z-50 group cursor-pointer"
           title="Voltar ao topo"
         >
           <img

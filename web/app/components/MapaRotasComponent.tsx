@@ -46,6 +46,12 @@ interface MapaRotasProps {
 
 const ZOOM_NAVEGACAO = 17;
 
+// No celular o painel de rota é uma gaveta embaixo (max-h-[60%] em Rotas/page.tsx; antes de haver
+// rota ela é mais baixa): o enquadramento usa só a parte do mapa acima dela
+const LARGURA_TELA_LARGA = 768;
+const FRACAO_GAVETA_SEM_ROTA = 0.4;
+const FRACAO_GAVETA_COM_ROTA = 0.6;
+
 const COR_OCORRENCIA: Record<EfeitoOcorrencia, string> = {
   bloqueio: "#ef4444",
   restricao: "#f59e0b",
@@ -105,17 +111,25 @@ function Enquadramento({
   const map = useMap();
 
   useEffect(() => {
-    map.fitBounds(limites, { padding: [20, 20] });
+    const { x: largura, y: altura } = map.getSize();
+    map.fitBounds(
+      limites,
+      largura >= LARGURA_TELA_LARGA
+        ? { padding: [20, 20] }
+        : { paddingTopLeft: [20, 20], paddingBottomRight: [20, Math.round(altura * FRACAO_GAVETA_SEM_ROTA)] },
+    );
   }, [map, limites]);
 
   useEffect(() => {
-    // Deixa espaço para o painel flutuante: à esquerda no desktop, em cima no celular
+    // Deixa espaço para o painel: à esquerda no computador, embaixo (gaveta) no celular
     if (!navegando && rota && rota.length > 1) {
-      const telaLarga = map.getSize().x >= 768;
-      map.fitBounds(rota, {
-        paddingTopLeft: telaLarga ? [420, 40] : [20, 320],
-        paddingBottomRight: [40, 40],
-      });
+      const { x: largura, y: altura } = map.getSize();
+      map.fitBounds(
+        rota,
+        largura >= LARGURA_TELA_LARGA
+          ? { paddingTopLeft: [420, 40], paddingBottomRight: [40, 40] }
+          : { paddingTopLeft: [20, 20], paddingBottomRight: [20, Math.round(altura * FRACAO_GAVETA_COM_ROTA) + 20] },
+      );
     }
   }, [map, rota, navegando]);
 

@@ -51,7 +51,7 @@ export default function RedefinirSenha() {
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 font-sans antialiased relative overflow-hidden">
+    <main className="min-h-dvh w-full flex items-center justify-center -mt-[var(--altura-navbar)] bg-slate-50 p-4 font-sans antialiased relative overflow-hidden">
       
       {/* Elementos visuais de fundo */}
       <div className="absolute -top-[50px] -left-15 w-72 h-72 bg-[#0f35a0]/10 rounded-full blur-2xl pointer-events-none" />

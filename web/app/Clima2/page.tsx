@@ -158,7 +158,7 @@ export default function ClimaPage() {
 
   if (!cidadeAtual) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="h-[calc(100dvh-var(--altura-navbar))] flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="flex flex-col items-center gap-3 text-gray-500">
           <Loader2 className="animate-spin" size={28} />
           <p className="text-sm font-medium">Carregando previsão...</p>

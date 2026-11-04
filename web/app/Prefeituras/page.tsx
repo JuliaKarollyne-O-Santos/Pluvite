@@ -494,14 +494,14 @@ export default function PainelServidor() {
 
   if (verificandoLogin) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#fbfcfe]">
+      <div className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#fbfcfe]">
         <Loader2 size={22} className="text-[#0d43af] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen -mt-15 w-full font-sans text-slate-800 bg-[#fbfcfe]">
+    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-[#fbfcfe]">
       <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
 
       {/* TOAST — notificação de nova ocorrência */}

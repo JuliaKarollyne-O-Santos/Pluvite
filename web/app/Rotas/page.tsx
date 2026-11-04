@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import {
   AlertTriangle,
@@ -203,6 +203,7 @@ function CampoRua({
 }) {
   const [focado, setFocado] = useState(false);
   const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const campoRef = useRef<HTMLInputElement>(null);
 
   const sugestoes = useMemo(() => {
     const termo = normalizar(valor.texto);
@@ -224,6 +225,8 @@ function CampoRua({
   const selecionar = (rua: string) => {
     onChange({ texto: rua, ponto: { rua } });
     setFocado(false);
+    // No celular fecha o teclado: a gaveta volta ao tamanho normal e o mapa reaparece
+    if (window.matchMedia("(pointer: coarse)").matches) campoRef.current?.blur();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -249,6 +252,7 @@ function CampoRua({
         style={{ backgroundColor: corMarcador }}
       />
       <input
+        ref={campoRef}
         id={id}
         type="text"
         autoComplete="off"
@@ -351,7 +355,7 @@ function ModalCidade({
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-modal-cidade"
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88dvh] flex flex-col overflow-hidden"
       >
         {/* CABEÇALHO: título e busca na mesma faixa (empilham no celular) */}
         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
@@ -744,7 +748,7 @@ function ResumoNavegacao({
 }) {
   if (etapa === "chegada") {
     return (
-      <div className={`${PAINEL_NAVEGACAO} bottom-3 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3`}>
+      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-[#0a9667]/10 text-[#0a9667] flex items-center justify-center shrink-0">
             <Flag size={20} />
@@ -769,7 +773,7 @@ function ResumoNavegacao({
   const tempo = progresso?.tempoRestante ?? rota.duracaoSegundos;
   const distancia = progresso?.restante ?? rota.distanciaMetros;
   return (
-    <div className={`${PAINEL_NAVEGACAO} bottom-3 bg-white rounded-2xl border border-slate-200 shadow-xl p-4`}>
+    <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-2xl font-black text-slate-900 leading-none">{formatarDuracao(tempo)}</p>
@@ -964,7 +968,8 @@ export default function RotasPage() {
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 top-[68px] bg-slate-100">
+      {/* TELA CHEIA abaixo da navbar (tela-cheia no globals.css), sem rolar a página */}
+      <div className="tela-cheia overflow-hidden bg-slate-100">
         {/* MAPA */}
         {dadosCidade ? (
           <MapaRotasSemSSR
@@ -993,9 +998,15 @@ export default function RotasPage() {
           />
         )}
 
-        {/* PAINEL DE ROTA (estilo GPS) */}
+        {/* PAINEL DE ROTA (estilo GPS): gaveta embaixo no celular, que cresce para a tela toda
+            enquanto se digita (a lista de ruas cabe acima do teclado), e painel à esquerda no computador */}
         {cidade && !modalAberto && !navegando && (
-          <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[380px] max-h-[calc(100%-1.5rem)] overflow-y-auto z-[1000] bg-white rounded-2xl border border-slate-200 shadow-xl">
+          <div className="absolute z-[1000] inset-x-0 bottom-0 max-h-[60%] max-md:has-[input:focus]:h-full max-md:has-[input:focus]:max-h-full overflow-y-auto bg-white rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_30px_rgba(15,23,42,0.18)] pb-[env(safe-area-inset-bottom)] md:inset-x-auto md:bottom-auto md:top-3 md:left-3 md:w-[380px] md:max-h-[calc(100%-1.5rem)] md:rounded-2xl md:border md:shadow-xl md:pb-0">
+            {/* ALÇA DA GAVETA (só no celular) */}
+            <div className="md:hidden flex justify-center pt-2.5" aria-hidden="true">
+              <span className="w-10 h-1.5 rounded-full bg-slate-300" />
+            </div>
+
             {/* CABEÇALHO */}
             <div className="p-4 pb-3 flex items-center justify-between gap-2 border-b border-slate-100">
               <div className="min-w-0">
@@ -1191,24 +1202,30 @@ export default function RotasPage() {
               </PainelManobra>
             )}
 
-            {etapa === "navegacao" && !seguirUsuario && (
-              <button
-                type="button"
-                onClick={() => setSeguirUsuario(true)}
-                className="absolute right-3 bottom-32 z-[1000] flex items-center gap-1.5 bg-white border border-slate-200 shadow-lg text-[#0f35a0] text-xs font-bold px-3.5 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer"
-              >
-                <LocateFixed size={15} />
-                Recentralizar
-              </button>
-            )}
+            {/* RODAPÉ: o botão de recentralizar fica logo acima do resumo (nunca por cima dele) e
+                tudo fica acima da barra de gestos do iPhone */}
+            <div
+              className={`${PAINEL_NAVEGACAO} bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col items-end gap-2`}
+            >
+              {etapa === "navegacao" && !seguirUsuario && (
+                <button
+                  type="button"
+                  onClick={() => setSeguirUsuario(true)}
+                  className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-lg text-[#0f35a0] text-xs font-bold px-3.5 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                >
+                  <LocateFixed size={15} />
+                  Recentralizar
+                </button>
+              )}
 
-            <ResumoNavegacao
-              rota={rota}
-              progresso={progresso}
-              etapa={etapa}
-              onEncerrar={navegacao.encerrarNavegacao}
-              onBaixarRegistro={navegacao.baixarRegistro}
-            />
+              <ResumoNavegacao
+                rota={rota}
+                progresso={progresso}
+                etapa={etapa}
+                onEncerrar={navegacao.encerrarNavegacao}
+                onBaixarRegistro={navegacao.baixarRegistro}
+              />
+            </div>
           </>
         )}
       </div>

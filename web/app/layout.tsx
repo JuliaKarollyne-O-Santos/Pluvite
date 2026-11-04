@@ -1,5 +1,5 @@
 /* NÃO TIRAR NADA DAQUI. COLOCAR COISAS QUE PRECISAM SER FIXAS NO SITE.*/
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NavbarWrapper from "./components/NavbarWrapper";
 import AlertaPopup from "./components/AlertaPopup";
@@ -24,6 +24,15 @@ export const metadata: Metadata = {
   },
 };
 
+// Celular: a página usa a tela toda (o "notch" do iPhone é tratado com env(safe-area-inset-*) no
+// globals.css) e, no Android, o teclado encolhe a tela em vez de cobrir as gavetas do Mapa e de Rotas
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body className="overflow-x-hidden ">
-        <div className="mb-15 z-[9999]">
+        <div className="mb-[var(--altura-navbar)] z-[9999]">
           <NavbarWrapper />
         </div>
         <main>{children}</main>

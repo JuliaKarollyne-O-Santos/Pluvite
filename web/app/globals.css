@@ -2,6 +2,51 @@
 
 @import "tailwindcss" source("../");
 
+/* --- Altura da navbar (navbar.tsx e navbar2.tsx) ---
+   Uma medida só para a barra e para tudo que fica abaixo dela: o espaço reservado no layout.tsx,
+   as telas cheias (Mapa, Rotas e a página inicial) e as partes do Feed que grudam no topo.
+   Mudou a altura da navbar? Mude só --altura-barra-navbar.
+   No iPhone com "notch" (site salvo na tela inicial), env(safe-area-inset-top) soma a área da
+   barra de status; nos outros aparelhos vale 0. */
+:root {
+  --altura-barra-navbar: 68px;
+  --altura-navbar: calc(var(--altura-barra-navbar) + env(safe-area-inset-top, 0px));
+}
+
+/* Laterais seguras do iPhone deitado (o "notch" fica de lado); com o celular em pé valem 0 */
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Nada pode alargar a página no celular: quando uma caixa passava da largura da tela (as do Mapa),
+   o navegador alargava a página inteira, a navbar esticava junto e o botão do menu saía da tela.
+   "clip" corta sem criar barra de rolagem, então o sticky do Feed continua funcionando. */
+body > main {
+  overflow-x: clip;
+}
+
+/* Campos de digitar com 16px no celular: com fonte menor o Safari do iPhone dá zoom sozinho ao tocar
+   no campo, e o zoom continua na página seguinte (o login levava ao Mapa ainda ampliado, com o menu
+   fora da tela). Fora de @layer, esta regra vence as classes text-xs/text-sm do Tailwind. */
+@media (max-width: 639px), (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Tela cheia abaixo da navbar (Mapa, Rotas e página inicial): do fim da navbar até o pé da tela, sem
+   rolar a página. Usa top/bottom em vez de 100vh, que no celular inclui a barra do navegador. */
+@utility tela-cheia {
+  position: fixed;
+  top: var(--altura-navbar);
+  bottom: 0;
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+}
+
 @keyframes float {
   0% {
     transform: translateY(0px) translateX(0px);

@@ -13,7 +13,7 @@ export default function ContaNaoEncontrada() {
   const email = searchParams.get("email");
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center -mt-15 bg-slate-50 p-4 sm:p-6 md:p-7 font-sans antialiased relative overflow-hidden">
+    <main className="min-h-dvh w-full flex items-center justify-center -mt-[var(--altura-navbar)] bg-slate-50 px-4 pb-4 pt-16 sm:p-6 md:p-7 font-sans antialiased relative overflow-hidden">
       {/* BOTÃO VOLTAR */}
       <Link
         href="/"

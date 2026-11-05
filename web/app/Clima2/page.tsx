@@ -288,7 +288,7 @@ export default function ClimaPage() {
           {/* PRÓXIMOS DIAS */}
           <div className="p-5 pb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
             <span className="text-sm font-bold text-gray-800 block mb-3">
-              Próximos 7 dias
+              Próximos 2 dias
             </span>
             <div className="flex flex-col gap-1">
               {forecast.forecastday.map((item: any, idx: number) => (

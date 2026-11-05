@@ -55,6 +55,7 @@ import {
   type CampoPonto,
 } from "@/app/lib/rotas/sessao";
 import { useNavegacao, type AvisoRota, type EtapaNavegacao } from "@/app/lib/rotas/useNavegacao";
+import { useTransitoDaCidade } from "@/app/lib/rotas/useTransito";
 
 const MapaRotasSemSSR = dynamic(() => import("@/app/components/MapaRotasComponent"), {
   ssr: false,
@@ -831,6 +832,7 @@ export default function RotasPage() {
   const { rota, opcoes, etapa, progresso, calculando, aviso } = navegacao;
   const erro = erroPagina ?? navegacao.erro;
   const navegando = etapa !== "planejamento";
+  const transitoCidade = useTransitoDaCidade(cidade);
 
   const dadosCidade = mapaCidade && mapaCidade.cidade === cidade ? mapaCidade.dados : null;
   const carregandoCidade = cidade !== null && !dadosCidade && !erroPagina;
@@ -955,7 +957,15 @@ export default function RotasPage() {
           opcao === rota ? [] : [{ indice, coordenadas: opcao.coordenadas }],
         );
   const rotaMaisRapida = !rota || opcoes.every((opcao) => rota.duracaoSegundos <= opcao.duracaoSegundos);
-  const transitoNoMapa = rota?.transito ? [...rota.transito.naRota, ...rota.transito.evitados] : [];
+  // Todo o trânsito da cidade aparece no mapa, com ou sem rota; os da rota podem ser de uma consulta
+  // mais recente, então entram também (sem repetir o mesmo incidente)
+  const transitoNoMapa = [
+    ...new Map(
+      [...transitoCidade, ...(rota?.transito ? [...rota.transito.naRota, ...rota.transito.evitados] : [])].map(
+        (incidente) => [incidente.id, incidente],
+      ),
+    ).values(),
+  ];
 
   const avisoRecalculo = aviso && (
     <AvisoRecalculo

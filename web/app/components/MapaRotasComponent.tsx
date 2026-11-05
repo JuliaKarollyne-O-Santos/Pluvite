@@ -35,7 +35,7 @@ interface MapaRotasProps {
   origem: Coordenada | null;
   destino: Coordenada | null;
   ocorrencias: OcorrenciaRota[];
-  // Incidentes do trânsito ao vivo (TomTom) no trajeto e os que a rota evitou
+  // Incidentes do trânsito ao vivo (TomTom) de toda a cidade, com ou sem rota
   transito: IncidenteTransito[];
   usuario: PosicaoUsuario | null;
   navegando: boolean;
@@ -276,30 +276,47 @@ export default function MapaRotasComponent({
       )}
 
       {/* TRÂNSITO AO VIVO (TomTom), por cima da rota; o clique não marca origem/destino */}
-      {transito
-        .filter((incidente) => incidente.trecho.length > 1)
-        .map((incidente) => (
+      {transito.map((incidente) => {
+        const dica = (
+          <Tooltip sticky>
+            <strong>{descreverIncidente(incidente)}</strong>
+            <br />
+            {TEXTO_TRANSITO[incidente.efeito]}
+            {incidente.descricao && (
+              <>
+                <br />
+                <span className="text-slate-500">{incidente.descricao}</span>
+              </>
+            )}
+            <br />
+            <span className="text-slate-500">Dados de trânsito © TomTom</span>
+          </Tooltip>
+        );
+        // Incidente pontual (sem extensão): um círculo no local
+        if (incidente.trecho.length === 1) {
+          return (
+            <CircleMarker
+              key={`transito-${incidente.id}`}
+              center={incidente.trecho[0]}
+              radius={7}
+              bubblingMouseEvents={false}
+              pathOptions={{ ...ESTILO_TRANSITO[incidente.efeito], weight: 3, fillOpacity: 0.6, dashArray: undefined }}
+            >
+              {dica}
+            </CircleMarker>
+          );
+        }
+        return (
           <Polyline
             key={`transito-${incidente.id}`}
             positions={incidente.trecho}
             bubblingMouseEvents={false}
             pathOptions={ESTILO_TRANSITO[incidente.efeito]}
           >
-            <Tooltip sticky>
-              <strong>{descreverIncidente(incidente)}</strong>
-              <br />
-              {TEXTO_TRANSITO[incidente.efeito]}
-              {incidente.descricao && (
-                <>
-                  <br />
-                  <span className="text-slate-500">{incidente.descricao}</span>
-                </>
-              )}
-              <br />
-              <span className="text-slate-500">Dados de trânsito © TomTom</span>
-            </Tooltip>
+            {dica}
           </Polyline>
-        ))}
+        );
+      })}
 
       {localizadas.map((o) => (
         <Marker key={o.id} position={o.posicao as Coordenada} icon={ICONE_OCORRENCIA[o.efeito]}>

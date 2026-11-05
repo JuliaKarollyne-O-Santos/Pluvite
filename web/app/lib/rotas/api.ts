@@ -75,6 +75,15 @@ export interface TransitoRota {
   evitados: IncidenteTransito[];
 }
 
+// Trânsito ao vivo de toda a cidade (mapa sem rota). `configurado` false = backend sem chave da TomTom
+export interface TransitoCidade {
+  configurado: boolean;
+  disponivel: boolean;
+  fonte: string;
+  atualizadoEm: string | null;
+  incidentes: IncidenteTransito[];
+}
+
 export interface ResultadoRota {
   distanciaMetros: number;
   duracaoSegundos: number;
@@ -153,4 +162,10 @@ export const buscarOcorrenciasDaCidade = async (cidade: string, sinal?: AbortSig
   lerResposta<OcorrenciaRota[]>(
     await fetch(`${urlCidade(cidade)}/ocorrencias`, { signal: sinal }),
     "Não foi possível carregar as ocorrências do Feed.",
+  );
+
+export const buscarTransitoDaCidade = async (cidade: string, sinal?: AbortSignal) =>
+  lerResposta<TransitoCidade>(
+    await fetch(`${urlCidade(cidade)}/transito`, { signal: sinal }),
+    "Não foi possível carregar o trânsito ao vivo.",
   );

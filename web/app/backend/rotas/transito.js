@@ -304,6 +304,18 @@ const resumirIncidente = ({ id, tipo, descricao, efeito, atrasoSegundos, extensa
   id, tipo, descricao, efeito, atrasoSegundos, extensao, de, ate, inicio, fim, trecho,
 });
 
+/**
+ * Todos os incidentes da cidade para o mapa, mesmo sem rota calculada. `configurado: false` quando
+ * não há TOMTOM_API_KEY (o front não mostra nada).
+ */
+export const transitoDaCidade = (transito) => ({
+  configurado: transito !== null,
+  disponivel: transito?.disponivel ?? false,
+  fonte: 'TomTom',
+  atualizadoEm: transito?.atualizadoEm ?? null,
+  incidentes: (transito?.incidentes ?? []).map(resumirIncidente),
+});
+
 const incidentesNoCaminho = (incidentes, caminho) => {
   const noCaminho = new Set(caminho);
   return incidentes.filter((incidente) => incidente.arestas.some((id) => noCaminho.has(id)));

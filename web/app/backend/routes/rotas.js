@@ -13,7 +13,7 @@ import {
   buscarCaminho,
   resolverPonto,
 } from '../rotas/roteamento.js';
-import { aplicarTransito, obterTransito, transitoDaRota } from '../rotas/transito.js';
+import { aplicarTransito, obterTransito, transitoDaCidade, transitoDaRota } from '../rotas/transito.js';
 
 const router = Router();
 
@@ -91,7 +91,22 @@ router.get('/:cidade/ocorrencias', async (req, res) => {
 });
 
 /**
- * 4. ROTA POST: Calcula a rota e projeta o tempo de viagem com o modelo realista, desviando das
+ * 4. ROTA GET: Trânsito ao vivo (TomTom) de toda a cidade para o mapa, mesmo sem rota.
+ * Usa o mesmo cache do cálculo da rota (no máximo uma consulta à TomTom por cidade a cada 10 min)
+ */
+router.get('/:cidade/transito', async (req, res) => {
+  try {
+    const grafo = await carregarGrafo(req.params.cidade);
+    if (!grafo) return res.status(404).json({ error: "Mapa de rotas indisponível para esta cidade." });
+    return res.json(transitoDaCidade(await obterTransito(req.params.cidade, grafo)));
+  } catch (err) {
+    console.error("Erro ao carregar trânsito da cidade:", err);
+    return res.status(500).json({ error: "Não foi possível carregar o trânsito ao vivo." });
+  }
+});
+
+/**
+ * 5. ROTA POST: Calcula a rota e projeta o tempo de viagem com o modelo realista, desviando das
  * vias afetadas por ocorrências ativas do Feed e, com TOMTOM_API_KEY, considerando o trânsito ao
  * vivo (lentidão medida entra no tempo; vias fechadas são evitadas)
  * Corpo: {

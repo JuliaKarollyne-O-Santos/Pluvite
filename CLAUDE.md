@@ -35,7 +35,7 @@ Pluvite/
 │   │   ├── backend/         Express 5 API (plain JS, ESM) on :3001
 │   │   └── python/          Prototypes: SMS + WhatsApp (Twilio), desktop popup, rain test, SSE chat alert
 │   └── public/              Images, map.json / bairros.json (GeoJSON)
-├── mobile/pluvite/          Expo 54 / React Native 0.81 app (React Navigation 7)
+├── mobile/pluvite/          React Native 0.81 app with native Android Studio/Gradle project
 │   └── src/{pages,navigation,assets}
 ├── Rotas/                   Road graphs per municipality (*.json, OSM + SRTM elevation) + gerar_grafos.py
 ├── supabase/migrations/     SQL migrations (apply in the Supabase SQL Editor; idempotent)
@@ -60,10 +60,14 @@ account for:
 - **Signals & intersections** — Webster/HCM signal delay, PARE, yield by road hierarchy, right-hand
   priority, roundabouts, railway crossings, speed bumps (CONTRAN), pedestrian crossings.
 - **Turns** — angle-based turn cost and U-turns (OSRM), via edge-based A*.
-- **Peak hours** — CET-SP windows (weekdays 7–10h, 17–20h).
+- **Peak hours** — CET-SP windows (weekdays 7–10h, 17–20h); multipliers calibrated with TomTom
+  historic times for the Vale (Oct 2026 — see the skill).
 - **Preferences** — change the chosen path only, never the reported ETA.
 - **Feed occurrences** — active `ocorrencias` become blocked/restricted edges (`rotas/ocorrencias.js`);
   like preferences they change the path only. Navigation re-routes when one hits the remaining path.
+- **Live traffic (optional)** — with `TOMTOM_API_KEY`, TomTom incidents (`rotas/transito.js`): closures
+  and restrictions change the path; a *measured* jam delay is the only input that also adds to the
+  ETA (`max(model with peak, free flow + delay)`). Without the key nothing changes.
 
 Every constant lives in `PARAMETROS` with its source; unmeasured values are labelled "estimativa".
 These factors are **calculation logic only** — the map shows just the route and endpoints. Any
@@ -77,14 +81,14 @@ routing change must re-run the reference scenarios in the skill and keep urban a
 | Web      | Next.js 16.2 (App Router, **webpack** build), React 19, TypeScript 5.9 (strict), Tailwind CSS 4 |
 | UI libs  | lucide-react (icons), react-leaflet 4 + Leaflet (maps), Recharts 3 (charts), framer-motion |
 | Backend  | Node + Express 5 (JavaScript ESM), `@supabase/supabase-js` |
-| Mobile   | Expo SDK 54, React Native 0.81, React Navigation 7 (native-stack + bottom-tabs), lucide-react-native |
+| Mobile   | React Native 0.81 without Expo, Android Studio/Gradle, React Navigation 7, Firebase Messaging |
 | Data     | Supabase: Postgres, Auth (email + Google/Facebook OAuth), Storage, Realtime |
 | Weather  | WeatherAPI (web Clima), OpenWeather (web Mapa), Open-Meteo (mobile) — see ROADMAP to unify |
 | Scripts  | Python 3 (osmnx, networkx, twilio, supabase-py, pyautogui) |
 
 **Framework versions differ from training data.** Before writing Next.js code read
-`web/node_modules/next/dist/docs/` (see `web/AGENTS.md`); before writing Expo code check
-https://docs.expo.dev/versions/v54.0.0/ (see `mobile/pluvite/AGENTS.md`).
+`web/node_modules/next/dist/docs/` (see `web/AGENTS.md`). For mobile, follow
+`mobile/pluvite/AGENTS.md` and the native Android project.
 
 ## Commands
 
@@ -98,8 +102,14 @@ npm run lint         # eslint (next core-web-vitals + typescript)
 # Backend alone
 cd web/app/backend && npm install && npm start
 
-# Mobile
-cd mobile/pluvite && npm install && npx expo start   # scan QR with Expo Go
+# Routing field test on a phone / demo data / travel-time calibration (GUIA-TESTE-CAMPO-ROTAS.md)
+cd web && npm run dev:celular                                  # + HTTPS tunnel, open /Rotas?registrar
+cd web/app/backend && node scripts/ocorrencias-demonstracao.js criar   # or: remover
+cd web/app/backend && node scripts/calibrar-tempos.js [--registros <pasta>]
+
+# Mobile Android
+cd mobile/pluvite && npm install && npm run android
+# Or open mobile/pluvite/android directly in Android Studio
 
 # Regenerate road graphs with OSM tags + SRTM elevation (Python, needs osmnx; run from repo root)
 python Rotas/gerar_grafos.py                 # all 39 cities
@@ -149,9 +159,10 @@ Always check the real columns in Supabase before writing queries against a table
 7. **Shared constants** (municipalities, types, statuses, colors) are currently duplicated per page.
    New code must import them from `web/app/lib/` (create the module the first time you need it — see
    `SKILLS/pluvite-domain`) instead of adding another copy.
-8. **Secrets**: never add new keys to source. Use `NEXT_PUBLIC_*` in `web/.env.local`, `.env` for the
-   backend/Python, and `EXPO_PUBLIC_*` for mobile. `.env*` is git-ignored. (Existing hardcoded keys are
-   tracked as tech debt in ROADMAP.)
+8. **Secrets**: never add new keys to source. Use `NEXT_PUBLIC_*` in `web/.env.local` and `.env` for
+   the backend/Python. Keep Android Firebase client config in the ignored
+   `mobile/pluvite/android/app/google-services.json` and server credentials outside Git. `.env*` is
+   git-ignored. (Existing hardcoded keys are tracked as tech debt in ROADMAP.)
 
 ## Code conventions (summary — details in SKILLS)
 
@@ -183,7 +194,7 @@ Read the matching skill **before** generating code:
 | `SKILLS/web-page-patterns/SKILL.md`    | New/edited Next.js page or component |
 | `SKILLS/supabase-data/SKILL.md`        | Queries, inserts, storage uploads, auth, realtime |
 | `SKILLS/backend-api/SKILL.md`          | Express routes in `web/app/backend` |
-| `SKILLS/mobile-screens/SKILL.md`       | Expo / React Native screens |
+| `SKILLS/mobile-screens/SKILL.md`       | React Native Android screens and native integrations |
 | `SKILLS/pluvite-domain/SKILL.md`       | Municipalities, statuses, occurrence types, priorities |
 | `SKILLS/rotas-tempo-viagem/SKILL.md`   | Routing, road graphs, travel-time model (core requirement) |
 | `SKILLS/dev-workflow/SKILL.md`         | Running, validating, committing, updating the roadmap |
@@ -197,17 +208,20 @@ Read the matching skill **before** generating code:
   routing backend falls back to the street named in `endereco` (whole street).
 - Browser geolocation (Rotas navigation, Feed "usar minha localização") only works on HTTPS or localhost.
   `/Rotas?simular=15` drives the navigation along the route at 15 m/s for demos.
-- The Servidor dashboard reads `alertas_tempo_real`, while citizens write to `ocorrencias` — they are
-  not connected yet (see ROADMAP).
-- `Servidor/page.tsx` polls the backend every 5 s with hardcoded `http://localhost:3001`.
-- `Mapa/page.tsx` realtime listener uses a hardcoded citizen id (`1`).
+- `/Prefeituras` (prefeitura panel) reads the citizens' `ocorrencias`; `alertas_tempo_real` holds the
+  alerts dispatched by the Python backend (`web/app/python`).
+- `/Servidor` dispatches alerts through the Python backend (`lib/alertas.ts`). It requires a logged-in
+  `servidor` (own municipality only) or `admin` account, and the backend re-checks the Supabase token;
+  `ADMIN_TOKEN` (header `X-Pluvite-Token`) is only for scripts — never a `NEXT_PUBLIC_` variable.
 - `components/sidebar.tsx` has placeholder prefeitura data and links with wrong casing.
-- `/Rotas` needs the backend running and the untracked root `Rotas/*.json` graphs (override the
-  folder with `ROTAS_DIR`). Graphs are loaded lazily and cached (max 4 cities) in `rotas/grafo.js`.
+- `/Rotas` needs the backend running and the graphs: the untracked root `Rotas/*.json` locally, or the
+  versioned gzip copies in `web/app/backend/grafos/*.json.gz` (what Render uses — it only sees the
+  backend `rootDir`). Override with `ROTAS_DIR`. After regenerating a graph, commit its `.gz` too.
+  Graphs are loaded lazily and cached (max 4 cities) in `rotas/grafo.js`.
 - `Rotas/routs.py` is the legacy generator (no tags/elevation) — use `gerar_grafos.py`.
 - Geocoding by free text can hit homonyms (e.g. "Cunha"); the generator validates the Vale bbox.
 - `reactStrictMode` is `false` in `next.config.ts` — effects run once in dev.
-- `web/package.json` contains unused deps (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`).
+- `web/package.json` contains unused deps (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`); the mobile app itself no longer uses Expo.
 - `cache/` (root) holds the OSMnx HTTP cache and SRTM tiles (`cache/srtm/`) — never commit it.
 
 ## Working agreement

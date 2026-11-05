@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { MUNICIPIOS } from "@/app/lib/constantes";
 import { exigirAdmin, supabaseAdminClient } from "../admin/_auth";
 
 // Rota ADMIN — só quem está logado com uma conta cadastrada na tabela "admin"
@@ -52,6 +53,21 @@ export async function POST(request: Request) {
     if (!nome || !email || !senha || !municipio) {
       return NextResponse.json(
         { error: "Preencha nome, e-mail, senha e município." },
+        { status: 400 },
+      );
+    }
+
+    // Mesmas regras do formulário em /Adm: o painel da prefeitura filtra tudo pelo município, então
+    // um nome fora da lista deixaria a conta sem nenhuma ocorrência
+    if (!(MUNICIPIOS as readonly string[]).includes(municipio)) {
+      return NextResponse.json(
+        { error: "Município inválido: escolha um dos 39 municípios do Vale do Paraíba e Litoral Norte." },
+        { status: 400 },
+      );
+    }
+    if (typeof senha !== "string" || senha.length < 6) {
+      return NextResponse.json(
+        { error: "A senha precisa ter pelo menos 6 caracteres." },
         { status: 400 },
       );
     }

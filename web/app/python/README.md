@@ -9,7 +9,7 @@ desativado por padrão:
 |---|---|---|
 | 🖥️ Pop-up no site | WebSocket | `backend/canais/websocket_hub.py` |
 | 💬 WhatsApp | Chatbot QR em `chatbot/` (`WHATSAPP_PROVEDOR=qr`) ou Evolution API | `backend/canais/whatsapp.py` |
-| 📱 App mobile | Expo Push → FCM/APNs | `backend/canais/push_mobile.py` |
+| 📱 App mobile | Firebase Cloud Messaging (FCM) | `backend/canais/push_mobile.py` |
 
 ## Estrutura
 
@@ -42,17 +42,27 @@ desconectar o aparelho pelo celular).
 
 1. No `.env`: `WHATSAPP_PROVEDOR=qr` e um `CHATBOT_TOKEN` qualquer (secreto).
    `WHATSAPP_NUMEROS_TESTE` é opcional (números que sempre recebem).
-2. `cd chatbot && npm install` (uma vez). Depois, `npm run dev` em `web/` já sobe
-   o chatbot junto com o site (prefixo `[whatsapp]`): escaneie o QR com o número
-   que vai enviar os alertas. O chatbot lê o mesmo `.env` e abre a API local em
-   `http://127.0.0.1:3010` (`POST /enviar`, `GET /inscritos`, `GET /status`).
-   Para rodar sozinho: `npm start` dentro de `chatbot/`.
+2. `cd chatbot && npm install` (uma vez). Inicie o chatbot em um terminal:
+   `cd chatbot && node chatbot.js` (ou `npm start`). O QR Code será exibido
+   nesse terminal; escaneie com o número que vai enviar os alertas. Em outro
+   terminal, execute `npm run dev` em `web/` para iniciar o site e os backends.
+   O chatbot lê o mesmo `.env` e abre a API local em `http://127.0.0.1:3010`
+   (`POST /enviar`, `GET /inscritos`, `GET /status`).
 3. De outro celular, mande `pluvite` para esse número e responda com a cidade
    desejada entre os 39 municípios do Vale do Paraíba e Litoral Norte.
 4. Dispare um alerta no painel `/Servidor` do site: sai o pop-up e, junto, o
    WhatsApp para os inscritos. `/api/status` mostra `whatsapp_chatbot`.
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
    `python -m backend.canais.whatsapp`
+
+Esse comando isolado envia somente aos números configurados em
+`WHATSAPP_NUMEROS_TESTE`; não envia aos inscritos do chatbot. Sem números de
+teste, nenhum destinatário recebe a mensagem.
+
+Em conversa privada, qualquer pessoa também pode perguntar **"Qual foi o
+último alerta real do OpenWeather?"**. A resposta consulta apenas alertas do
+monitoramento com dados reais; mocks e disparos manuais são excluídos. Execute
+`sql/alertas.sql` no Supabase para gravar a origem dos novos alertas.
 
 Roteiro completo: `GUIA-TESTES-ALERTAS.md` (Teste 4). Os envios saem um por vez
 (`CHATBOT_INTERVALO_SEGUNDOS`) para reduzir o risco de bloqueio do número.
@@ -82,14 +92,38 @@ uvicorn backend.main:app --reload --port 8000
 
 Antes do primeiro uso, rode `sql/alertas.sql` no SQL Editor do Supabase.
 
+O painel exige uma sessão Supabase válida de uma conta cadastrada como
+`servidor` ou `admin`. O backend valida o perfil: servidores só podem emitir
+alertas para o próprio município, enquanto admins podem selecionar qualquer
+município da lista. A política `servidor le a propria linha` da migration
+`supabase/migrations/20260923200000_painel_admin.sql` precisa estar aplicada.
+Para scripts de backend, `ADMIN_TOKEN` também pode autorizar chamadas manuais;
+ele nunca deve ser exposto no navegador nem em variáveis `NEXT_PUBLIC_`.
+
+No painel, **Revisar alerta real** abre uma confirmação com os dados completos
+antes de notificar moradores. **Testar popup (simulação)** abre uma prévia local
+marcada como teste: não grava no banco, não aparece para outros usuários e
+nunca aciona WebSocket, WhatsApp ou push.
+
+O status dos canais é consultivo: WhatsApp só aparece pronto se o chatbot QR
+estiver conectado (ou informa que a Evolution API está configurada, sem testar
+a conexão), e push só aparece pronto quando `PUSH_ATIVO=true` e o arquivo de
+conta de serviço Firebase apontado por `FCM_SERVICE_ACCOUNT_FILE` existir e
+contiver os campos esperados. `EXPO_ACCESS_TOKEN` não configura esse canal.
+Admins autenticados também podem verificar o monitor; `ADMIN_TOKEN` é necessário
+para scripts sem sessão Supabase.
+
 ## Rotas
 
 | Método | Rota | Para que serve |
 |---|---|---|
 | `GET` | `/api/status` | Saúde do serviço, canais e navegadores conectados |
-| `WS` | `/ws/alertas` | Pop-up do site em tempo real |
-| `POST` | `/api/alertas/disparar` | **Gatilho manual** (painel do servidor) |
-| `GET` | `/api/alertas/ultimo` | Último alerta (site/app que abrem depois) |
+| `WS` | `/ws/alertas?municipio=Taubaté` | Pop-up em tempo real, restrito ao município inscrito |
+| `POST` | `/api/alertas/disparar` | Alerta real autenticado; servidor restrito ao próprio município |
+| `POST` | `/api/alertas/simular` | Payload para prévia local; sem broadcast, persistência ou outros canais |
+| `GET` | `/api/alertas/historico` | Histórico recente do município do servidor autenticado |
+| `GET` | `/api/alertas/ultimo?municipio=Taubaté` | Último alerta do município (site/app que abrem depois) |
+| `GET` | `/api/alertas/ultimo-openweather` | Último alerta real do monitor (exclui mocks e disparos manuais) |
 | `POST` | `/api/monitor/verificar-agora?forcar=true` | Força um ciclo do monitor |
 | `POST` | `/api/dispositivos` | App mobile registra o token de push |
 
@@ -98,15 +132,20 @@ Documentação interativa: <http://localhost:8000/docs>.
 ## Fluxo
 
 ```
-OpenWeather (a cada 10 min)  ─┐
+OpenWeather (a cada 1 hora)  ─┐
                               ├─> dispatcher.disparar_alerta()
 Painel web (POST manual)     ─┘         │
                                         ├─ grava em alertas_tempo_real
                                         └─ asyncio.gather:
                                              ├─ WebSocket  -> pop-up no site
                                              ├─ WhatsApp   -> chatbot QR ou Evolution API (desligado por padrão)
-                                             └─ Expo Push  -> app mobile
+                                             └─ FCM Push    -> app mobile
 ```
 
 O guia passo a passo de homologação está em
 [`GUIA-TESTES-ALERTAS.md`](../../../GUIA-TESTES-ALERTAS.md).
+
+O popup do site e a consulta do último alerta exigem o município de inscrição.
+No site, `cidadao.municipio_alertas` tem precedência; quando não estiver
+definido, é usada a cidade do perfil (`cidadao.cidade`). Clientes sem um
+município válido não recebem alertas pelo WebSocket.

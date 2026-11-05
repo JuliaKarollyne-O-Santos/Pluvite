@@ -149,7 +149,7 @@ export default function Login() {
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center -mt-15 bg-slate-50 p-4 sm:p-6 md:p-7 font-sans antialiased relative overflow-hidden">
+    <main className="min-h-dvh w-full flex items-center justify-center -mt-[var(--altura-navbar)] bg-slate-50 px-4 pb-4 pt-16 sm:p-6 md:p-7 font-sans antialiased relative overflow-hidden">
       {/* BOTÃO VOLTAR */}
       <Link
         href="/"
@@ -202,7 +202,7 @@ export default function Login() {
               <img
                 src="/PluviteIcon.jpg"
                 alt="Pluvite Icon"
-                className="absolute top-4 right-4 w-10 h-10 rounded-lg object-cover select-none cursor-pointer hover:opacity-90 transition-opacity"
+                className="hidden sm:block absolute top-4 right-4 w-10 h-10 rounded-lg object-cover select-none cursor-pointer hover:opacity-90 transition-opacity"
                 draggable="false"
               />
             </Link>

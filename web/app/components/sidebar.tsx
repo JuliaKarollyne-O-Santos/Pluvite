@@ -6,7 +6,9 @@ import Link from "next/link";
 import { supabase } from "@/app/lib/banco";
 import {
   AlertTriangle,
+  BellRing,
   Map,
+  MessageCircle,
   Rss,
   UserRound,
   LogOut,
@@ -32,6 +34,8 @@ interface Navbar3Props {
 // é o mesmo nos dois — só muda o que aparece.
 const navItemsAdmin = [
   { href: "/Adm", label: "Prefeituras", icon: Building2 },
+  { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
+  { href: "/Adm/WhatsApp", label: "Conectar WhatsApp", icon: MessageCircle },
   { href: "/Feed", label: "Feed", icon: Rss },
   { href: "/Mapa", label: "Mapa", icon: Map },
 ];
@@ -230,7 +234,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
 
       {/* Drawer mobile — desliza da esquerda */}
       <aside
-        className={`md:hidden fixed top-0 left-0 h-screen w-64 z-[10002] flex flex-col justify-between
+        className={`md:hidden fixed top-0 left-0 h-dvh w-64 z-[10002] flex flex-col justify-between pb-[env(safe-area-inset-bottom)]
           shadow-[2px_0_10px_rgba(0,0,0,0.15)] transition-transform duration-300 ease-in-out
           ${menuMobileAberto ? "translate-x-0" : "-translate-x-full"}`}
         style={{ backgroundColor: "#091c4b" }}

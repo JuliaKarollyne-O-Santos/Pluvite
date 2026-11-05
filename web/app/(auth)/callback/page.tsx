@@ -64,7 +64,7 @@ export default function AuthCallback() {
   }, [intent, router]);
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-slate-50">
+    <main className="min-h-[calc(100dvh-var(--altura-navbar))] w-full flex items-center justify-center bg-slate-50">
       <p className="text-sm font-semibold text-slate-500">Entrando...</p>
     </main>
   );

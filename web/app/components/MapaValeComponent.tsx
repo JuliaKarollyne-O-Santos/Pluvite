@@ -146,12 +146,10 @@ export default function MapaValeComponent({
   }
 
   return (
-    <div className="h-full w-full fixed">
+    // Ocupa a área da página do Mapa (que já começa abaixo da navbar), então o zoom do Leaflet fica
+    // na posição padrão, sem o deslocamento de 85px que compensava a navbar por cima do mapa
+    <div className="absolute inset-0">
       <style jsx global>{`
-        .leaflet-top {
-          top: 85px !important;
-          left: 10px !important;
-        }
         .custom-svg-marker {
           background: none !important;
           border: none !important;

@@ -37,7 +37,12 @@ def normalizar_numero(numero: str) -> str | None:
 
 def montar_texto(payload: dict[str, Any]) -> str:
     """Mesma estrutura do pop-up, formatada com o negrito do WhatsApp."""
-    return (
+    aviso_simulacao = (
+        "🧪 *SIMULAÇÃO — dados de teste*\n\n"
+        if payload.get("origem") == "openweather_mock"
+        else ""
+    )
+    return aviso_simulacao + (
         f"{payload['icone']} *PLUVITE — {payload['rotulo_severidade']}*\n\n"
         f"*{payload['tipo'].upper()}*\n"
         f"📍 Localização: {payload['municipio']}\n"
@@ -135,7 +140,10 @@ def _configurado() -> tuple[bool, str]:
 
 
 async def enviar_alerta_whatsapp(
-    payload: dict[str, Any], numeros: list[str]
+    payload: dict[str, Any],
+    numeros: list[str],
+    *,
+    somente_numeros_teste: bool = False,
 ) -> dict[str, Any]:
     ok, motivo = _configurado()
     if not ok:
@@ -146,16 +154,17 @@ async def enviar_alerta_whatsapp(
         destinos: list[str] = []
         if config.WHATSAPP_PROVEDOR == "qr":
             # Modo QR: so quem pediu os alertas ao chatbot (telefones do banco ignorados)
-            try:
-                destinos = await _inscritos_chatbot(cliente, payload["municipio"])
-            except (httpx.HTTPError, ValueError) as erro:
-                log.error("Nao foi possivel ler os inscritos do chatbot: %s", erro)
-                return {
-                    "canal": "whatsapp",
-                    "ok": False,
-                    "motivo": f"chatbot QR indisponivel: {erro}",
-                    "enviados": 0,
-                }
+            if not somente_numeros_teste:
+                try:
+                    destinos = await _inscritos_chatbot(cliente, payload["municipio"])
+                except (httpx.HTTPError, ValueError) as erro:
+                    log.error("Nao foi possivel ler os inscritos do chatbot: %s", erro)
+                    return {
+                        "canal": "whatsapp",
+                        "ok": False,
+                        "motivo": f"chatbot QR indisponivel: {erro}",
+                        "enviados": 0,
+                    }
             base: list[str] = []
         else:
             base = [] if config.WHATSAPP_SOMENTE_TESTE else list(numeros)
@@ -227,5 +236,7 @@ if __name__ == "__main__":
         "statusatual": "Teste",
         "descricao": "Se você recebeu esta mensagem, o canal WhatsApp do Pluvite está funcionando.",
     }
-    resultado = asyncio.run(enviar_alerta_whatsapp(exemplo, []))
+    resultado = asyncio.run(
+        enviar_alerta_whatsapp(exemplo, [], somente_numeros_teste=True)
+    )
     print(json.dumps(resultado, ensure_ascii=False, indent=2))

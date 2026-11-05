@@ -12,7 +12,9 @@ import { resolverPonto } from './roteamento.js';
  *
  * Localização da ocorrência, em ordem de preferência:
  * 1. 'exata' — latitude/longitude gravadas pelo Feed: vias a até `raio` m do ponto;
- * 2. 'rua'   — sem coordenada (publicações antigas): a rua do grafo citada no `endereco`, inteira;
+ * 2. 'rua'   — sem coordenada (publicações antigas): a rua do grafo citada no `endereco`, inteira,
+ *              sempre como RESTRIÇÃO (ver FATOR_RUA_SEM_PONTO) — sem o ponto não há como saber
+ *              qual trecho bloquear;
  * 3. null    — nada identificado: a ocorrência não afeta a rota.
  */
 
@@ -38,7 +40,13 @@ export const EFEITO_OCORRENCIA = {
 // Custo extra na busca por aresta bloqueada: 1 h (critério "mais rápida") ou 50 km ("mais curta").
 // Maior que qualquer desvio dentro de um município, mas finito: se a origem ou o destino estiverem
 // na área afetada a rota ainda existe, e a ocorrência volta em `naRota` para o front avisar.
-const PENALIDADE_BLOQUEIO = { tempo: 3600, distancia: 50000 };
+// Também usado nas vias fechadas do trânsito ao vivo (transito.js).
+export const PENALIDADE_BLOQUEIO = { tempo: 3600, distancia: 50000 };
+
+// Ocorrência de bloqueio localizada só pelo nome da rua (sem o ponto exato): a rua inteira — que
+// pode ter quilômetros — vira restrição com este fator, evitada quando há desvio razoável, em vez
+// de bloqueada. Bloquear tudo fecharia trechos livres por causa de um ponto desconhecido. Estimativa.
+const FATOR_RUA_SEM_PONTO = 4;
 
 // Status que tiram a ocorrência do roteamento (canônico + legados, já sem acento — pluvite-domain)
 const STATUS_ENCERRADOS = ['concluido', 'resolvido'];
@@ -50,6 +58,10 @@ const DISTANCIA_RUA_DO_ENDERECO = 150;
 const VALIDADE_MAXIMA_HORAS = Math.max(...Object.values(EFEITO_OCORRENCIA).map((r) => r.validadeHoras));
 
 export const regraDoTipo = (tipo) => EFEITO_OCORRENCIA[tipo] ?? EFEITO_OCORRENCIA.Outros;
+
+// Efeito aplicado na rota (e mostrado no mapa): bloqueio só quando se sabe o ponto da ocorrência
+const efeitoNaRota = (regra, localizacao) =>
+  regra.efeito === 'bloqueio' && localizacao === 'rua' ? 'restricao' : regra.efeito;
 
 // ───── IDENTIFICAÇÃO DA RUA PELO ENDEREÇO DIGITADO ─────
 
@@ -252,7 +264,7 @@ export const mapearOcorrencia = (grafo, linha) => {
     bairro: linha.bairro ?? '',
     status: linha.status,
     criadoEm: linha.criado_em,
-    efeito: regra.efeito,
+    efeito: efeitoNaRota(regra, localizacao),
     localizacao,
     rua,
     posicao,
@@ -310,13 +322,15 @@ export const montarPenalidades = (ocorrencias) => {
   const penalidades = new Map();
   for (const ocorrencia of ocorrencias) {
     const regra = regraDoTipo(ocorrencia.tipo);
+    // Restrição vinda de um tipo de bloqueio = localizada só pela rua (efeitoNaRota)
+    const fator = regra.efeito === 'bloqueio' ? FATOR_RUA_SEM_PONTO : regra.fator;
     for (const id of ocorrencia.arestas) {
       const atual = penalidades.get(id) ?? { fator: 1, tempo: 0, distancia: 0 };
-      if (regra.efeito === 'bloqueio') {
+      if (ocorrencia.efeito === 'bloqueio') {
         atual.tempo = PENALIDADE_BLOQUEIO.tempo;
         atual.distancia = PENALIDADE_BLOQUEIO.distancia;
       } else {
-        atual.fator = Math.max(atual.fator, regra.fator);
+        atual.fator = Math.max(atual.fator, fator);
       }
       penalidades.set(id, atual);
     }
@@ -330,6 +344,19 @@ export const ocorrenciasNoCaminho = (ocorrencias, caminho) => {
   return ocorrencias.filter((ocorrencia) => ocorrencia.arestas.some((id) => noCaminho.has(id)));
 };
 
-export const resumirOcorrencia = ({ id, tipo, endereco, rua, efeito, localizacao }) => ({
-  id, tipo, endereco, rua, efeito, localizacao,
+// `status` e `criadoEm` deixam o front distinguir relato de cidadão (Aguardando) de ocorrência já
+// vista pela prefeitura e mostrar há quanto tempo foi publicada
+export const resumirOcorrencia = ({ id, tipo, endereco, rua, efeito, localizacao, status, criadoEm }) => ({
+  id, tipo, endereco, rua, efeito, localizacao, status, criadoEm,
 });
+
+/**
+ * Ocorrências de um caminho para a resposta: `naRota` (o caminho passa por elas) e `evitadas` (estavam
+ * no caminho que seria escolhido sem as ocorrências e este caminho não passa por elas).
+ */
+export const ocorrenciasDaRota = (ocorrencias, caminho, caminhoSemOcorrencias) => {
+  const naRota = ocorrenciasNoCaminho(ocorrencias, caminho);
+  const idsNaRota = new Set(naRota.map((o) => o.id));
+  const evitadas = ocorrenciasNoCaminho(ocorrencias, caminhoSemOcorrencias).filter((o) => !idsNaRota.has(o.id));
+  return { evitadas: evitadas.map(resumirOcorrencia), naRota: naRota.map(resumirOcorrencia) };
+};

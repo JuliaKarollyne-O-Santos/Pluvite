@@ -105,6 +105,21 @@ export const TIPOS_OCORRENCIA = [
 
 export type TipoOcorrencia = (typeof TIPOS_OCORRENCIA)[number];
 
+export const TIPOS_ALERTA_MANUAL = [
+  "Acidente",
+  "Alagamento",
+  "Árvore caída",
+  "Buraco na via",
+  "Chuva forte",
+  "Chuva torrencial",
+  "Deslizamento de terra",
+  "Enchente",
+  "Tempestade",
+  "Vendaval",
+  "Via interditada",
+  "Outros",
+] as const;
+
 // Remove acentos e maiúsculas pra a busca achar "Tremembe" digitando "tremembé" e vice-versa
 export const normalizar = (texto: string) =>
   texto

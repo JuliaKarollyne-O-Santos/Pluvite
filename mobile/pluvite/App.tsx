@@ -1,4 +1,4 @@
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from "react-native";
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,10 +19,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <SafeAreaProvider>
-      {/* Alertas de emergencia: push (FCM/APNs) + WebSocket + consulta ao abrir */}
+      {/* Alertas: FCM, WebSocket e consulta ao reabrir o app */}
       <AlertaProvider>
       <NavigationContainer>
-        <StatusBar style="auto" />
+        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <Stack.Navigator
           initialRouteName="Login"
           screenOptions={{

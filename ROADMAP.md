@@ -52,7 +52,8 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Proteger rotas (`/Servidor`, `/perfil`, publicação no Feed) — proxy/middleware do Next 16
 - [ ] Painel do servidor filtrado automaticamente pelo município da prefeitura logada
 - [ ] Rotas de escrita do backend exigindo token Supabase + papel de servidor
-- [ ] Sessão persistente e auto-login no mobile (AsyncStorage)
+  - [x] Disparo de alertas (backend Python): só servidor (próprio município) ou admin, conferido pelo token do Supabase; `/Servidor` exige login
+- [x] Sessão persistente e auto-login no mobile (AsyncStorage)
 - [ ] 🟢 Aprovação/convite de contas de servidor por um administrador
 
 ## Fase 2 — Ocorrências (cidadão ↔ prefeitura) 🔴
@@ -64,7 +65,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] **Aplicar `supabase/migrations/20260923120000_ocorrencias_localizacao.sql` no Supabase** (colunas + Realtime)
 - [x] Tipo de ocorrência "Acidente"
 - [ ] Feed mobile conectado ao Supabase (hoje é mock) com FlatList
-- [ ] Publicação pelo mobile com câmera (`expo-image-picker`) e localização atual (`expo-location`)
+- [ ] Publicação pelo mobile com câmera (`react-native-image-picker`) e localização atual
 - [ ] Feed em tempo real (Supabase Realtime) em vez de recarregar
 - [ ] Reverter curtida otimista quando o Supabase retornar erro
 - [ ] Persistir o histórico de ações do servidor no banco (hoje fica na memória do Node)
@@ -74,11 +75,12 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 
 ## Fase 3 — Alertas e notificações 🔴
 
-- [ ] Servidor cria e dispara alertas por município com nível de prioridade (Zona Segura → Alerta Máximo)
+- [x] Servidor cria e dispara alertas por município com nível de prioridade (Zona Segura → Alerta Máximo)
 - [ ] Corrigir o listener de alertas do Mapa (usa cidadão fixo `id = 1`); filtrar pelo usuário/município logado
 - [ ] Componente React de pop-up de alerta (portar `python/teste chat/alerta_desastre.js`)
 - [x] Alerta automático por limiar de chuva (job agendado no backend, monitorando os 39 municípios)
-- [ ] Push notifications no mobile (`expo-notifications`) respeitando `notif_*` do perfil
+- [x] Push nativo Android no mobile via Firebase Cloud Messaging
+- [ ] Push no mobile respeitando `notif_*` do perfil
 - [ ] Envio de SMS pelo backend via Twilio (portar `python/Sms/app.py`)
 - [x] Protótipo de envio do último alerta por WhatsApp via Twilio (`python/WhatsApp/app.py`)
 - [ ] Integrar o chatbot WhatsApp via QR ao disparo de alertas, respeitando a autorização dos cidadãos
@@ -104,7 +106,8 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [x] Grafos regerados com tags extras do OSM e elevação (`Rotas/gerar_grafos.py`)
 - [x] Preferências de rota na API (mais rápida/mais curta, evitar terra, rodovias, pedágio, ladeiras)
 - [ ] Controles de preferência de rota na interface da página `/Rotas`
-- [ ] Calibrar os parâmetros marcados como "estimativa" com medições reais (cronometragem em campo ou Waze for Cities / TomTom)
+- [x] Calibrar o tempo de viagem com medições reais: TomTom, 111 trajetos em 6 cidades (razão mediana 1,00; 75% dentro de ±20%); multiplicadores de pico recalibrados (`web/app/backend/scripts/calibrar-tempos.js`)
+- [ ] Refinar a calibração com os registros do teste em campo (`--registros`)
 - [ ] Mapear lombadas e placas de PARE no OpenStreetMap (dados ainda escassos na região)
 - [x] Evitar vias com ocorrências ativas (alagamento, via interditada, deslizamento) no cálculo da rota
 - [x] Navegação em tempo real na web: GPS, trajeto percorrido/restante, câmera seguindo, recálculo ao sair da rota, chegada
@@ -112,11 +115,21 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [x] Card de seleção de cidade mais largo e baixo (desktop e celular)
 - [x] Manter cidade, origem e destino ao sair da página `/Rotas` e voltar (`lib/rotas/sessao.ts`, sessionStorage)
 - [x] Interditar só o trecho da via dentro do raio da ocorrência, não a aresta inteira do grafo (até 5,6 km em Taubaté)
+- [x] Rotas alternativas reais (método da penalidade) com tempo e distância comparados e escolha na lista ou no mapa
+- [x] Rota mesmo com origem/destino em via de mão única sem saída (reencaixe no componente principal da malha) e aviso quando o ponto marcado fica longe da via
+- [x] Ocorrência sem ponto exato (só a rua no endereço) vira restrição na rua inteira, não bloqueio
+- [x] Mostrar se a ocorrência é relato de cidadão ou já vista pela prefeitura, e há quanto tempo foi publicada
+- [x] Alternativas sem zigue-zague em volta de quarteirão (teste de otimalidade local, Abraham et al. 2013)
+- [x] Trânsito ao vivo opcional (TomTom Traffic Incidents): lentidão medida entra no tempo, vias fechadas são evitadas, camada no mapa (`rotas/transito.js`)
+- [x] Conta TomTom criada e `TOMTOM_API_KEY` configurada localmente (`web/app/backend/.env`)
+- [ ] Configurar `TOMTOM_API_KEY` no Render (produção) — pode ser a mesma chave do `.env` local
+- [x] Modo teste em campo: `/Rotas?registrar` grava o trajeto e `npm run dev:celular` abre o site no celular por HTTPS (`GUIA-TESTE-CAMPO-ROTAS.md`)
+- [ ] Gerar o grafo de Cunha (único município sem `Rotas/cunha_graph.json`; a página mostra "Em breve")
 - [ ] Calibrar raio/validade de cada tipo de ocorrência (`EFEITO_OCORRENCIA`, hoje estimativa)
-- [ ] Testar a navegação em campo no celular (exige HTTPS; em sala use `/Rotas?simular`)
+- [ ] Testar a navegação em campo no celular (exige HTTPS; em sala use `/Rotas?simular`) — roteiro e ferramentas prontos em `GUIA-TESTE-CAMPO-ROTAS.md`
 - [ ] 🟢 Avisar "rota mais rápida disponível" quando uma ocorrência evitada for concluída
 - [ ] 🟢 Instruções de voz na navegação (`speechSynthesis`)
-- [ ] Decidir onde hospedar os grafos em produção (a pasta `Rotas/` tem ~110 MB e ainda não está no git)
+- [x] Grafos em produção: cópias comprimidas versionadas em `web/app/backend/grafos/*.json.gz` (~14 MB, dentro do rootDir do Render)
 - [ ] Tela de Rotas no mobile (citada no README, ainda não existe)
 - [ ] 🟡 Pontos de abrigo e rotas de evacuação cadastrados pela prefeitura
 - [ ] 🟢 Rota até o abrigo mais próximo com um toque
@@ -142,8 +155,9 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 ## Fase 8 — Entrega do TCC 🔴
 
 - [ ] Deploy da web (Vercel) e do backend (Render/Railway) com variáveis de ambiente
-- [ ] Build do app (EAS) para demonstração em Android
+- [ ] Validar build e demonstração do app Android nativo no Android Studio
 - [ ] Popular banco com dados de demonstração realistas
+  - [x] Ocorrências de demonstração com ponto exato em Taubaté e São José dos Campos (`web/app/backend/scripts/ocorrencias-demonstracao.js criar|remover`)
 - [ ] Atualizar README (funcionalidades reais, variáveis de ambiente, arquitetura)
 - [ ] Diagrama de arquitetura e modelo de dados para a monografia
 - [ ] `Resultado.md` das Sprints 3 e 4 com link do vídeo

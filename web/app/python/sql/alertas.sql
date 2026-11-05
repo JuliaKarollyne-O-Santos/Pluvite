@@ -13,16 +13,20 @@ create table if not exists public.alertas_tempo_real (
   municipio    text,
   endereco     text,
   descricao    text,
+  origem       text,
   statusatual  text        not null default 'Ativo',
   criado_em    timestamptz not null default now()
 );
 
 alter table public.alertas_tempo_real add column if not exists endereco    text;
+alter table public.alertas_tempo_real add column if not exists origem      text;
 alter table public.alertas_tempo_real add column if not exists statusatual text default 'Ativo';
 alter table public.alertas_tempo_real add column if not exists criado_em   timestamptz default now();
 
 create index if not exists idx_alertas_criado_em
   on public.alertas_tempo_real (criado_em desc);
+create index if not exists idx_alertas_origem_criado_em
+  on public.alertas_tempo_real (origem, criado_em desc);
 
 
 -- 2. Dispositivos mobile registrados para push notification.

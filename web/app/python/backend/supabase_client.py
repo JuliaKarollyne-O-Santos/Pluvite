@@ -11,7 +11,10 @@ import logging
 import unicodedata
 from typing import Any
 
-from supabase import Client, create_client
+import httpx
+from postgrest.exceptions import APIError
+from supabase import Client, SupabaseException, create_client
+from supabase.lib.client_options import SyncClientOptions
 
 from . import config
 
@@ -36,6 +39,28 @@ def _filtrar_por_municipio(
         for linha in linhas
         if _normalizar_municipio(linha.get(campo)) == alvo
     ]
+
+
+def _historico_alertas_sync(municipio: str, limite: int) -> list[dict[str, Any]]:
+    sb = cliente()
+    if sb is None:
+        raise RuntimeError("Supabase nao configurado para consultar o historico.")
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select(
+            "id,tipo,prioridade,municipio,endereco,descricao,statusatual,origem,criado_em"
+        )
+        .eq("municipio", municipio)
+        .order("criado_em", desc=True)
+        .limit(limite)
+        .execute()
+    )
+    return resposta.data or []
+
+
+async def historico_alertas(municipio: str, limite: int = 30) -> list[dict[str, Any]]:
+    """Historico recente de alertas restrito ao municipio do servidor."""
+    return await asyncio.to_thread(_historico_alertas_sync, municipio, limite)
 
 
 def cliente() -> Client | None:
@@ -68,13 +93,39 @@ async def salvar_alerta(registro: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
 
-def _ultimo_alerta_sync() -> dict[str, Any] | None:
+def _ultimo_alerta_sync(municipio: str | None = None) -> dict[str, Any] | None:
+    sb = cliente()
+    if sb is None:
+        return None
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select(
+            "id,tipo,prioridade,municipio,endereco,descricao,statusatual,origem,criado_em"
+        )
+    )
+    if municipio:
+        resposta = resposta.eq("municipio", municipio)
+    resposta = resposta.order("criado_em", desc=True).limit(1).execute()
+    return resposta.data[0] if resposta.data else None
+
+
+async def ultimo_alerta(municipio: str | None = None) -> dict[str, Any] | None:
+    """Alerta mais recente, opcionalmente restrito ao município selecionado."""
+    try:
+        return await asyncio.to_thread(_ultimo_alerta_sync, municipio)
+    except Exception as erro:
+        log.error("Falha ao buscar ultimo alerta: %s", erro)
+        return None
+
+
+def _ultimo_alerta_openweather_sync() -> dict[str, Any] | None:
     sb = cliente()
     if sb is None:
         return None
     resposta = (
         sb.table("alertas_tempo_real")
         .select("*")
+        .eq("origem", "openweather")
         .order("criado_em", desc=True)
         .limit(1)
         .execute()
@@ -82,13 +133,9 @@ def _ultimo_alerta_sync() -> dict[str, Any] | None:
     return resposta.data[0] if resposta.data else None
 
 
-async def ultimo_alerta() -> dict[str, Any] | None:
-    """Alerta mais recente — mesma consulta que o `popups.py` original fazia."""
-    try:
-        return await asyncio.to_thread(_ultimo_alerta_sync)
-    except Exception as erro:
-        log.error("Falha ao buscar ultimo alerta: %s", erro)
-        return None
+async def ultimo_alerta_openweather() -> dict[str, Any] | None:
+    """Busca o alerta mais recente emitido pelo monitoramento real."""
+    return await asyncio.to_thread(_ultimo_alerta_openweather_sync)
 
 
 # ── Destinatarios ───────────────────────────────────────────────────────────
@@ -161,3 +208,63 @@ async def registrar_dispositivo(dados: dict[str, Any]) -> dict[str, Any] | None:
     except Exception as erro:
         log.error("Falha ao registrar dispositivo: %s", erro)
         return None
+
+
+# ── Contas que podem disparar alertas ───────────────────────────────────────
+
+def _usuario_do_token_sync(token: str) -> dict[str, Any] | None:
+    sb = cliente()
+    if sb is None:
+        return None
+    try:
+        resposta = sb.auth.get_user(token)
+    except Exception as erro:  # token invalido ou expirado: o SDK lanca AuthApiError
+        log.info("Sessao recusada pelo Supabase (%s)", type(erro).__name__)
+        return None
+    usuario = getattr(resposta, "user", None)
+    return {"id": usuario.id} if usuario else None
+
+
+async def usuario_do_token(token: str) -> dict[str, Any] | None:
+    """Usuario dono do token de sessao enviado pelo site, ou None se invalido/expirado."""
+    return await asyncio.to_thread(_usuario_do_token_sync, token)
+
+
+def _papel_da_conta_sync(auth_id: str, token: str) -> dict[str, Any] | None:
+    if not config.SUPABASE_URL or not config.SUPABASE_KEY:
+        raise RuntimeError("Supabase nao configurado para validar a conta.")
+
+    sb = create_client(
+        config.SUPABASE_URL,
+        config.SUPABASE_KEY,
+        SyncClientOptions(auto_refresh_token=False, persist_session=False),
+    )
+    sb.postgrest.auth(token)
+    try:
+        admin = sb.table("admin").select("id").eq("auth_id", auth_id).limit(1).execute()
+        if admin.data:
+            return {"papel": "admin", "municipio": None}
+        servidor = (
+            sb.table("servidor")
+            .select("municipio")
+            .eq("auth_id", auth_id)
+            .limit(1)
+            .execute()
+        )
+        if servidor.data:
+            return {"papel": "servidor", "municipio": servidor.data[0].get("municipio")}
+        return None
+    finally:
+        sb.postgrest.aclose()
+
+
+async def papel_da_conta(auth_id: str, token: str) -> dict[str, Any] | None:
+    """'admin' (equipe Pluvite) ou 'servidor' (prefeitura, com o municipio), ou None.
+
+    Usa o token da sessao na consulta para que o RLS permita ler o proprio perfil.
+    """
+    try:
+        return await asyncio.to_thread(_papel_da_conta_sync, auth_id, token)
+    except (APIError, httpx.HTTPError, RuntimeError, SupabaseException) as erro:
+        log.error("Falha ao consultar o papel da conta: %s", erro)
+        raise RuntimeError("Nao foi possivel validar o perfil da conta.") from erro

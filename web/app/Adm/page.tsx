@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import {
+  BellRing,
   Building2,
   Loader2,
   Rss,
@@ -70,7 +72,7 @@ export default function AdminPage() {
 
   if (estadoAcesso === "verificando") {
     return (
-      <main className="min-h-screen w-full flex items-center justify-center bg-[#f4f5f7] p-4">
+      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#f4f5f7] p-4">
         <Loader2 size={24} className="animate-spin text-[#091f75]" />
       </main>
     );
@@ -78,7 +80,7 @@ export default function AdminPage() {
 
   if (estadoAcesso === "negado") {
     return (
-      <main className="min-h-screen w-full flex items-center justify-center bg-[#f4f5f7] p-4">
+      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#f4f5f7] p-4">
         <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5 text-center">
           <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
             <ShieldAlert size={22} />
@@ -99,15 +101,27 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen -mt-15 w-full font-sans text-slate-800 bg-[#f4f5f7]">
+    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-[#f4f5f7]">
       <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
 
+      {/* No celular a sidebar vira a barra superior fixa (64px, TOPBAR_MOBILE_ALTURA): sem recuo
+          lateral e com espaço no topo para as abas não ficarem escondidas atrás dela */}
       <div
-        className={`pt-8 pr-6 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
-          sidebarExpandida ? "pl-64" : "pl-[84px]"
+        className={`pt-24 md:pt-8 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
+          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
         }`}
       >
         <div className="max-w-4xl mx-auto px-6 md:px-4 space-y-6">
+          <div className="flex justify-end">
+            <Link
+              href="/Servidor/Emitir"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#0d163b]"
+            >
+              <BellRing size={18} />
+              Emitir alerta
+            </Link>
+          </div>
+
           {/* Abas do painel admin */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit overflow-x-auto max-w-full">
             {ABAS.map(({ id, label, icon: Icon }) => (

@@ -25,6 +25,8 @@ export default function PainelPrefeituras() {
   const [salvando, setSalvando] = useState(false);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
   const [erro, setErro] = useState("");
+  // Falha ao listar: sem isso a tela dizia "Nenhuma conta cadastrada" quando a consulta falhava
+  const [erroLista, setErroLista] = useState("");
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -49,9 +51,16 @@ export default function PainelPrefeituras() {
       });
       if (resposta.ok) {
         setServidores(await resposta.json());
+        setErroLista("");
+      } else {
+        const resultado = await resposta.json().catch(() => null);
+        setErroLista(
+          resultado?.error || "Não foi possível carregar as contas de servidor.",
+        );
       }
     } catch (e) {
       console.error("Erro ao carregar servidores:", e);
+      setErroLista("Erro inesperado ao carregar as contas de servidor.");
     } finally {
       setCarregando(false);
     }
@@ -248,6 +257,8 @@ export default function PainelPrefeituras() {
 
         {carregando ? (
           <p className="text-xs text-slate-400 font-medium">Carregando...</p>
+        ) : erroLista ? (
+          <p className="text-xs font-semibold text-red-600">{erroLista}</p>
         ) : servidores.length === 0 ? (
           <p className="text-xs text-slate-400 font-medium">
             Nenhuma conta de servidor cadastrada ainda.

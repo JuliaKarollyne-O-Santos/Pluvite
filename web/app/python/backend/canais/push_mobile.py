@@ -1,61 +1,88 @@
-"""Canal 3 — push notification no app mobile.
-
-O app e Expo (SDK 54), entao o envio passa pelo Expo Push Service, que por
-baixo entrega via **FCM** no Android e **APNs** no iOS — o aparelho toca e
-acende a tela normalmente, como notificacao nativa.
-
-Prioridade "max" + canal Android dedicado (`alertas-emergencia`) garantem o
-comportamento de alerta critico.
-"""
+"""Canal de notificacoes push nativas para Android via Firebase Cloud Messaging."""
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
-import httpx
+import firebase_admin
+from firebase_admin import credentials, messaging
 
 from .. import config
 from ..alerta import resumo_curto
 
 log = logging.getLogger("pluvite.push")
 
-# O Expo aceita no maximo 100 mensagens por requisicao
-TAMANHO_LOTE = 100
+TAMANHO_LOTE = 500
+CANAL_ALERTAS = "alertas-emergencia"
 
 
-def montar_mensagens(payload: dict[str, Any], tokens: list[str]) -> list[dict[str, Any]]:
+def _aplicativo_firebase() -> firebase_admin.App:
+    try:
+        return firebase_admin.get_app()
+    except ValueError:
+        arquivo = config.FCM_SERVICE_ACCOUNT_FILE
+        if not arquivo:
+            raise RuntimeError("FCM_SERVICE_ACCOUNT_FILE nao configurado no .env")
+        caminho = Path(arquivo)
+        if not caminho.is_absolute():
+            caminho = config.RAIZ_PYTHON / caminho
+        if not caminho.is_file():
+            raise FileNotFoundError(f"Credencial Firebase nao encontrada: {caminho}")
+        return firebase_admin.initialize_app(credentials.Certificate(str(caminho)))
+
+
+def _enviar_lote(
+    payload: dict[str, Any], tokens: list[str]
+) -> messaging.BatchResponse:
     titulo = f"{payload['icone']} {payload['tipo'].upper()} — {payload['municipio']}"
+    mensagem = messaging.MulticastMessage(
+        tokens=tokens,
+        notification=messaging.Notification(
+            title=titulo,
+            body=resumo_curto(payload),
+        ),
+        data={
+            "tipo_evento": "alerta_emergencia",
+            "alerta": json.dumps(payload, ensure_ascii=False),
+        },
+        android=messaging.AndroidConfig(
+            priority="high",
+            ttl=timedelta(hours=1),
+            notification=messaging.AndroidNotification(
+                channel_id=CANAL_ALERTAS,
+                color="#B91C1C",
+            ),
+        ),
+    )
+    return messaging.send_each_for_multicast(
+        mensagem,
+        app=_aplicativo_firebase(),
+    )
+
+
+def _lotes(tokens: list[str]) -> list[list[str]]:
     return [
-        {
-            "to": token,
-            "title": titulo,
-            "body": resumo_curto(payload),
-            "sound": "default",
-            "priority": "high",
-            "channelId": config.PUSH_CANAL_ANDROID,
-            "interruptionLevel": "critical" if payload["prioridade"] == "CRITICA" else "active",
-            "ttl": 3600,
-            # O app usa `data` para abrir o modal da tela inicial com o alerta completo
-            "data": {"tipo_evento": "alerta_emergencia", "alerta": payload},
-        }
-        for token in tokens
+        tokens[indice : indice + TAMANHO_LOTE]
+        for indice in range(0, len(tokens), TAMANHO_LOTE)
     ]
 
 
-def _lotes(itens: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    return [itens[i : i + TAMANHO_LOTE] for i in range(0, len(itens), TAMANHO_LOTE)]
-
-
-async def enviar_alerta_push(payload: dict[str, Any], tokens: list[str]) -> dict[str, Any]:
+async def enviar_alerta_push(
+    payload: dict[str, Any], tokens: list[str]
+) -> dict[str, Any]:
     if not config.PUSH_ATIVO:
         return {"canal": "push", "ok": False, "motivo": "canal desativado", "enviados": 0}
 
-    destinos: list[str] = []
-    for token in list(tokens) + config.PUSH_TOKENS_TESTE:
-        if token and token not in destinos:
-            destinos.append(token)
-
+    destinos = list(
+        dict.fromkeys(
+            token for token in [*tokens, *config.PUSH_TOKENS_TESTE] if token
+        )
+    )
     if not destinos:
         return {
             "canal": "push",
@@ -64,36 +91,34 @@ async def enviar_alerta_push(payload: dict[str, Any], tokens: list[str]) -> dict
             "enviados": 0,
         }
 
-    cabecalhos = {"Content-Type": "application/json", "Accept": "application/json"}
-    if config.EXPO_ACCESS_TOKEN:
-        cabecalhos["Authorization"] = f"Bearer {config.EXPO_ACCESS_TOKEN}"
-
     aceitos = 0
-    recusados: list[Any] = []
-
-    async with httpx.AsyncClient(timeout=config.TIMEOUT_HTTP) as cliente:
-        for lote in _lotes(montar_mensagens(payload, destinos)):
-            try:
-                resposta = await cliente.post(
-                    config.EXPO_PUSH_URL, headers=cabecalhos, json=lote
-                )
-                corpo = resposta.json()
-            except Exception as erro:
-                log.error("Erro ao falar com o Expo Push: %s", erro)
-                recusados.append(str(erro))
-                continue
-
-            for item in corpo.get("data", []) or []:
-                if item.get("status") == "ok":
+    recusados: list[str] = []
+    try:
+        for lote in _lotes(destinos):
+            resposta = await asyncio.to_thread(_enviar_lote, payload, lote)
+            for resultado in resposta.responses:
+                if resultado.success:
                     aceitos += 1
                 else:
-                    log.warning("Push recusado pelo Expo: %s", item)
-                    recusados.append(item)
+                    erro = str(resultado.exception or "erro desconhecido do FCM")
+                    log.warning("FCM recusou notificacao: %s", erro)
+                    recusados.append(erro)
+    except Exception as erro:
+        log.exception("Falha ao enviar notificacoes pelo Firebase Cloud Messaging.")
+        return {
+            "canal": "push",
+            "ok": False,
+            "motivo": str(erro),
+            "enviados": aceitos,
+            "total": len(destinos),
+            "recusados": recusados,
+        }
 
-    log.info("Push: %d/%d notificacoes aceitas", aceitos, len(destinos))
+    log.info("FCM: %d/%d notificacoes aceitas", aceitos, len(destinos))
     return {
         "canal": "push",
         "ok": aceitos > 0,
+        "provedor": "fcm",
         "enviados": aceitos,
         "total": len(destinos),
         "recusados": recusados,

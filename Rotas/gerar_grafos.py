@@ -30,6 +30,8 @@ import osmnx as ox
 
 PASTA_ROTAS = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(PASTA_ROTAS)
+# Cópias comprimidas versionadas no Git para o deploy do backend (o Render só enxerga web/app/backend)
+PASTA_GRAFOS_DEPLOY = os.path.join(RAIZ, "web", "app", "backend", "grafos")
 PASTA_SRTM = os.path.join(RAIZ, "cache", "srtm")
 URL_SRTM = "https://s3.amazonaws.com/elevation-tiles-prod/skadi/{pasta}/{nome}.hgt.gz"
 
@@ -176,6 +178,14 @@ def gerar(nome, srtm):
         json.dump(nx.node_link_data(G, edges="edges"), f, ensure_ascii=False,
                   separators=(",", ":"), default=str)
     os.replace(temporario, arquivo)
+
+    # Cópia comprimida para o deploy (mtime=0: o mesmo grafo gera sempre o mesmo .gz)
+    os.makedirs(PASTA_GRAFOS_DEPLOY, exist_ok=True)
+    with open(arquivo, "rb") as origem:
+        dados_json = origem.read()
+    with open(os.path.join(PASTA_GRAFOS_DEPLOY, os.path.basename(arquivo) + ".gz"), "wb") as destino:
+        with gzip.GzipFile(fileobj=destino, mode="wb", compresslevel=9, mtime=0) as gz:
+            gz.write(dados_json)
 
     # Remove versões antigas com acento no nome (ex.: igaratá_graph.json) para não duplicar a cidade
     for existente in os.listdir(PASTA_ROTAS):

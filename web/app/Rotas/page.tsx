@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import {
   AlertTriangle,
@@ -10,7 +10,9 @@ import {
   Clock,
   CornerUpLeft,
   CornerUpRight,
+  Download,
   Flag,
+  Info,
   Loader2,
   LocateFixed,
   MapPin,
@@ -18,6 +20,7 @@ import {
   RotateCcw,
   Route,
   Search,
+  TrafficCone,
   X,
 } from "lucide-react";
 import { MUNICIPIOS, normalizar, type Municipio } from "@/app/lib/constantes";
@@ -32,8 +35,12 @@ import {
   type Ponto,
   type ResultadoRota,
   type TipoManobra,
+  type TransitoRota,
 } from "@/app/lib/rotas/api";
 import {
+  descreverAtualizacaoTransito,
+  descreverConfirmacao,
+  descreverIncidente,
   descreverOcorrencia,
   dividirTracado,
   type ProgressoNavegacao,
@@ -115,6 +122,21 @@ const horaDeChegada = (segundos: number) =>
 const coordenadaDoPonto = (ponto: Ponto | null): Coordenada | null =>
   ponto && "lat" in ponto ? [ponto.lat, ponto.lng] : null;
 
+// Via que distingue uma opção de rota das demais: a de maior extensão que nenhuma outra opção usa
+const viaQueDiferencia = (opcao: RotaNavegacao, outras: RotaNavegacao[]) => {
+  const ruasDasOutras = new Set(outras.flatMap((outra) => outra.instrucoes.map((passo) => passo.rua)));
+  const extensao = new Map<string, number>();
+  for (const passo of opcao.instrucoes) {
+    if (passo.tipo === "chegada" || passo.rua === "via sem nome" || ruasDasOutras.has(passo.rua)) continue;
+    extensao.set(passo.rua, (extensao.get(passo.rua) ?? 0) + passo.distancia);
+  }
+  let maisExtensa: string | null = null;
+  for (const [rua, metros] of extensao) {
+    if (!maisExtensa || metros > (extensao.get(maisExtensa) ?? 0)) maisExtensa = rua;
+  }
+  return maisExtensa;
+};
+
 const semAssinatura = () => () => {};
 
 const lerCidadeSalva = (): Municipio | null => {
@@ -133,6 +155,23 @@ const lerVelocidadeSimulacao = (): number | null => {
   const velocidade = Number(valor);
   return Number.isFinite(velocidade) && velocidade > 0 ? velocidade : VELOCIDADE_SIMULACAO_PADRAO;
 };
+
+// ?registrar grava cada navegação para o teste em campo (GUIA-TESTE-CAMPO-ROTAS.md)
+const lerModoRegistro = () => new URLSearchParams(window.location.search).has("registrar");
+
+// Botão de baixar o registro do teste em campo (JSON lido por backend/scripts/calibrar-tempos.js)
+function BotaoBaixarRegistro({ onBaixar }: { onBaixar: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onBaixar}
+      className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-[#0f35a0] bg-[#0f35a0]/10 hover:bg-[#0f35a0]/15 px-3 py-2 rounded-xl transition cursor-pointer"
+    >
+      <Download size={14} />
+      Baixar registro do trajeto (teste em campo)
+    </button>
+  );
+}
 
 function CarregandoMapa({ texto }: { texto: string }) {
   return (
@@ -164,6 +203,7 @@ function CampoRua({
 }) {
   const [focado, setFocado] = useState(false);
   const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const campoRef = useRef<HTMLInputElement>(null);
 
   const sugestoes = useMemo(() => {
     const termo = normalizar(valor.texto);
@@ -185,6 +225,8 @@ function CampoRua({
   const selecionar = (rua: string) => {
     onChange({ texto: rua, ponto: { rua } });
     setFocado(false);
+    // No celular fecha o teclado: a gaveta volta ao tamanho normal e o mapa reaparece
+    if (window.matchMedia("(pointer: coarse)").matches) campoRef.current?.blur();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -210,6 +252,7 @@ function CampoRua({
         style={{ backgroundColor: corMarcador }}
       />
       <input
+        ref={campoRef}
         id={id}
         type="text"
         autoComplete="off"
@@ -312,7 +355,7 @@ function ModalCidade({
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-modal-cidade"
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88dvh] flex flex-col overflow-hidden"
       >
         {/* CABEÇALHO: título e busca na mesma faixa (empilham no celular) */}
         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
@@ -426,7 +469,7 @@ function AvisoRecalculo({
     complemento = calculando
       ? " Recalculando a rota..."
       : semAlternativa
-        ? " Não há caminho alternativo: a rota ainda passa pela área."
+        ? " Sem desvio melhor: a rota ainda passa pela área."
         : " Rota recalculada para desviar.";
   }
 
@@ -481,7 +524,10 @@ function ResumoOcorrencias({ ocorrencias }: { ocorrencias: ResultadoRota["ocorre
           </p>
           <ul className="mt-1 space-y-0.5 pl-5 list-disc">
             {ocorrencias.evitadas.map((o) => (
-              <li key={o.id}>{descreverOcorrencia(o)}</li>
+              <li key={o.id}>
+                {descreverOcorrencia(o)}
+                <span className="block text-[10px] opacity-80">{descreverConfirmacao(o)}</span>
+              </li>
             ))}
           </ul>
         </div>
@@ -490,15 +536,137 @@ function ResumoOcorrencias({ ocorrencias }: { ocorrencias: ResultadoRota["ocorre
         <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-xs text-red-700">
           <p className="font-bold flex items-center gap-1.5">
             <AlertTriangle size={14} className="shrink-0" />
-            Sem caminho alternativo: a rota passa por
+            A rota ainda passa por
           </p>
           <ul className="mt-1 space-y-0.5 pl-5 list-disc">
             {ocorrencias.naRota.map((o) => (
-              <li key={o.id}>{descreverOcorrencia(o)}</li>
+              <li key={o.id}>
+                {descreverOcorrencia(o)}
+                {o.efeito === "bloqueio" ? " — sem desvio possível" : " — desviar seria mais demorado"}
+                <span className="block text-[10px] opacity-80">{descreverConfirmacao(o)}</span>
+              </li>
             ))}
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// Trânsito ao vivo da rota (TomTom): a lentidão medida já está no tempo; vias fechadas são evitadas.
+// Sem chave da TomTom no backend (`transito` null) não mostra nada.
+function ResumoTransito({ transito }: { transito: TransitoRota | null | undefined }) {
+  if (!transito) return null;
+  if (!transito.disponivel) {
+    return (
+      <p className="px-4 pt-3 text-[11px] text-slate-500">
+        Trânsito ao vivo indisponível agora: o tempo considera o modelo de tempo e o horário de pico.
+      </p>
+    );
+  }
+  const { naRota, evitados, atrasoSegundos } = transito;
+
+  return (
+    <div className="px-4 pt-3 space-y-2">
+      {naRota.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-xs text-red-700">
+          <p className="font-bold flex items-center gap-1.5">
+            <TrafficCone size={14} className="shrink-0" />
+            Trânsito no trajeto
+            {atrasoSegundos >= 60 && ` · +${formatarDuracao(atrasoSegundos)} já incluídos no tempo`}
+          </p>
+          <ul className="mt-1 space-y-0.5 pl-5 list-disc">
+            {naRota.map((incidente) => (
+              <li key={incidente.id}>
+                {descreverIncidente(incidente)}
+                {incidente.efeito === "bloqueio" && " — sem desvio possível"}
+                {incidente.efeito === "restricao" && " — desviar seria mais demorado"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {evitados.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800">
+          <p className="font-bold flex items-center gap-1.5">
+            <TrafficCone size={14} className="shrink-0" />
+            Rota desviada de{" "}
+            {evitados.length === 1 ? "1 ponto de trânsito" : `${evitados.length} pontos de trânsito`}
+          </p>
+          <ul className="mt-1 space-y-0.5 pl-5 list-disc">
+            {evitados.map((incidente) => (
+              <li key={incidente.id}>{descreverIncidente(incidente)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-[10px] text-slate-400">
+        {descreverAtualizacaoTransito(transito.atualizadoEm)}
+        {naRota.length === 0 && evitados.length === 0 && " · sem lentidão no trajeto"}
+      </p>
+    </div>
+  );
+}
+
+// Opções de rota calculadas pelo backend (a principal e as alternativas reais, se houver), com o
+// tempo do modelo realista e a via que diferencia cada uma
+function OpcoesDeRota({
+  opcoes,
+  selecionada,
+  desabilitado,
+  onSelecionar,
+}: {
+  opcoes: RotaNavegacao[];
+  selecionada: RotaNavegacao;
+  desabilitado: boolean;
+  onSelecionar: (indice: number) => void;
+}) {
+  const menorDuracao = Math.min(...opcoes.map((opcao) => opcao.duracaoSegundos));
+
+  return (
+    <div className="px-4 pt-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+        {opcoes.length} rotas encontradas
+      </p>
+      <div className="space-y-1.5">
+        {opcoes.map((opcao, i) => {
+          const ativa = opcao === selecionada;
+          const diferenca = opcao.duracaoSegundos - menorDuracao;
+          const via = viaQueDiferencia(opcao, opcoes.filter((outra) => outra !== opcao));
+          return (
+            <button
+              key={i}
+              type="button"
+              aria-pressed={ativa}
+              disabled={desabilitado}
+              onClick={() => onSelecionar(i)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border text-left transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+                ativa ? "border-[#0f35a0] bg-[#0f35a0]/[0.06]" : "border-slate-200 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800">
+                  {formatarDuracao(opcao.duracaoSegundos)}
+                  <span className="text-xs font-semibold text-slate-500">
+                    {" "}
+                    · {formatarDistancia(opcao.distanciaMetros)}
+                  </span>
+                </p>
+                {via && <p className="text-[11px] text-slate-500 truncate">via {via}</p>}
+              </div>
+              <span
+                className={`shrink-0 text-[11px] font-bold ${diferenca === 0 ? "text-[#0a9667]" : "text-slate-500"}`}
+              >
+                {diferenca === 0
+                  ? "Mais rápida"
+                  : diferenca < 60
+                    ? "Tempo similar"
+                    : `+${formatarDuracao(diferenca)}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -509,12 +677,14 @@ function PainelManobra({
   progresso,
   estadoLocalizacao,
   simulando,
+  gravando,
   children,
 }: {
   rota: RotaNavegacao;
   progresso: ProgressoNavegacao | null;
   estadoLocalizacao: EstadoLocalizacao;
   simulando: boolean;
+  gravando: boolean;
   children: React.ReactNode;
 }) {
   // Antes da primeira leitura do GPS mostra a primeira instrução da rota
@@ -536,10 +706,19 @@ function PainelManobra({
           <p className="text-sm text-white/75 mt-1.5 leading-snug">{manobra.texto}</p>
           <p className="text-base font-bold truncate">{manobra.rua}</p>
         </div>
-        {simulando && (
-          <span className="self-start text-[10px] font-bold uppercase tracking-wider bg-white/15 px-2 py-1 rounded-lg">
-            Simulação
-          </span>
+        {(simulando || gravando) && (
+          <div className="self-start flex flex-col items-end gap-1">
+            {simulando && (
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-white/15 px-2 py-1 rounded-lg">
+                Simulação
+              </span>
+            )}
+            {gravando && (
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-red-500/80 px-2 py-1 rounded-lg">
+                Gravando
+              </span>
+            )}
+          </div>
         )}
       </div>
       {children}
@@ -559,29 +738,34 @@ function ResumoNavegacao({
   progresso,
   etapa,
   onEncerrar,
+  onBaixarRegistro,
 }: {
   rota: RotaNavegacao;
   progresso: ProgressoNavegacao | null;
   etapa: EtapaNavegacao;
   onEncerrar: () => void;
+  onBaixarRegistro: (() => void) | null;
 }) {
   if (etapa === "chegada") {
     return (
-      <div className={`${PAINEL_NAVEGACAO} bottom-3 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 flex items-center gap-3`}>
-        <div className="w-11 h-11 rounded-xl bg-[#0a9667]/10 text-[#0a9667] flex items-center justify-center shrink-0">
-          <Flag size={20} />
+      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-[#0a9667]/10 text-[#0a9667] flex items-center justify-center shrink-0">
+            <Flag size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-slate-900 text-lg leading-tight">Você chegou ao destino</p>
+            <p className="text-xs text-slate-500 truncate">{rota.destinoTexto}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onEncerrar}
+            className="shrink-0 bg-[#0d1b54] hover:bg-[#0d163b] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
+          >
+            Concluir
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-slate-900 text-lg leading-tight">Você chegou ao destino</p>
-          <p className="text-xs text-slate-500 truncate">{rota.destinoTexto}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onEncerrar}
-          className="shrink-0 bg-[#0d1b54] hover:bg-[#0d163b] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md cursor-pointer"
-        >
-          Concluir
-        </button>
+        {onBaixarRegistro && <BotaoBaixarRegistro onBaixar={onBaixarRegistro} />}
       </div>
     );
   }
@@ -589,7 +773,7 @@ function ResumoNavegacao({
   const tempo = progresso?.tempoRestante ?? rota.duracaoSegundos;
   const distancia = progresso?.restante ?? rota.distanciaMetros;
   return (
-    <div className={`${PAINEL_NAVEGACAO} bottom-3 bg-white rounded-2xl border border-slate-200 shadow-xl p-4`}>
+    <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-xl p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-2xl font-black text-slate-900 leading-none">{formatarDuracao(tempo)}</p>
@@ -608,7 +792,7 @@ function ResumoNavegacao({
       {rota.ocorrencias.naRota.length > 0 && (
         <p className="mt-2.5 text-[11px] font-semibold text-red-600 flex items-center gap-1.5">
           <AlertTriangle size={13} className="shrink-0" />
-          Trecho com ocorrência sem desvio possível:{" "}
+          Ocorrência no trajeto (sem desvio melhor):{" "}
           {rota.ocorrencias.naRota.map(descreverOcorrencia).join("; ")}
         </p>
       )}
@@ -642,8 +826,9 @@ export default function RotasPage() {
   const [seguirUsuario, setSeguirUsuario] = useState(true);
 
   const velocidadeSimulacao = useSyncExternalStore(semAssinatura, lerVelocidadeSimulacao, () => null);
-  const navegacao = useNavegacao(cidade, velocidadeSimulacao);
-  const { rota, etapa, progresso, calculando, aviso } = navegacao;
+  const modoRegistro = useSyncExternalStore(semAssinatura, lerModoRegistro, () => false);
+  const navegacao = useNavegacao(cidade, velocidadeSimulacao, modoRegistro);
+  const { rota, opcoes, etapa, progresso, calculando, aviso } = navegacao;
   const erro = erroPagina ?? navegacao.erro;
   const navegando = etapa !== "planejamento";
 
@@ -762,6 +947,15 @@ export default function RotasPage() {
     : coordenadaDoPonto(destino.ponto);
   // Na navegação o traçado se divide em percorrido (cinza) e restante (azul)
   const tracado = rota && progresso && navegando ? dividirTracado(rota, progresso) : null;
+  // No planejamento as opções não escolhidas ficam em cinza no mapa (clicar escolhe a opção)
+  const alternativasNoMapa =
+    navegando || !rota
+      ? []
+      : opcoes.flatMap((opcao, indice) =>
+          opcao === rota ? [] : [{ indice, coordenadas: opcao.coordenadas }],
+        );
+  const rotaMaisRapida = !rota || opcoes.every((opcao) => rota.duracaoSegundos <= opcao.duracaoSegundos);
+  const transitoNoMapa = rota?.transito ? [...rota.transito.naRota, ...rota.transito.evitados] : [];
 
   const avisoRecalculo = aviso && (
     <AvisoRecalculo
@@ -774,16 +968,20 @@ export default function RotasPage() {
 
   return (
     <>
-      <div className="fixed inset-x-0 bottom-0 top-[68px] bg-slate-100">
+      {/* TELA CHEIA abaixo da navbar (tela-cheia no globals.css), sem rolar a página */}
+      <div className="tela-cheia overflow-hidden bg-slate-100">
         {/* MAPA */}
         {dadosCidade ? (
           <MapaRotasSemSSR
             limites={dadosCidade.limites}
             rota={tracado ? tracado.restante : (rota?.coordenadas ?? null)}
             percorrido={tracado?.percorrido ?? null}
+            alternativas={alternativasNoMapa}
+            onSelecionarAlternativa={calculando ? null : navegacao.selecionarRota}
             origem={marcadorOrigem}
             destino={marcadorDestino}
             ocorrencias={navegacao.ocorrencias}
+            transito={transitoNoMapa}
             usuario={navegacao.posicao}
             navegando={navegando}
             seguirUsuario={seguirUsuario}
@@ -800,9 +998,15 @@ export default function RotasPage() {
           />
         )}
 
-        {/* PAINEL DE ROTA (estilo GPS) */}
+        {/* PAINEL DE ROTA (estilo GPS): gaveta embaixo no celular, que cresce para a tela toda
+            enquanto se digita (a lista de ruas cabe acima do teclado), e painel à esquerda no computador */}
         {cidade && !modalAberto && !navegando && (
-          <div className="absolute top-3 left-3 right-3 md:right-auto md:w-[380px] max-h-[calc(100%-1.5rem)] overflow-y-auto z-[1000] bg-white rounded-2xl border border-slate-200 shadow-xl">
+          <div className="absolute z-[1000] inset-x-0 bottom-0 max-h-[60%] max-md:has-[input:focus]:h-full max-md:has-[input:focus]:max-h-full overflow-y-auto bg-white rounded-t-3xl border-t border-slate-200 shadow-[0_-8px_30px_rgba(15,23,42,0.18)] pb-[env(safe-area-inset-bottom)] md:inset-x-auto md:bottom-auto md:top-3 md:left-3 md:w-[380px] md:max-h-[calc(100%-1.5rem)] md:rounded-2xl md:border md:shadow-xl md:pb-0">
+            {/* ALÇA DA GAVETA (só no celular) */}
+            <div className="md:hidden flex justify-center pt-2.5" aria-hidden="true">
+              <span className="w-10 h-1.5 rounded-full bg-slate-300" />
+            </div>
+
             {/* CABEÇALHO */}
             <div className="p-4 pb-3 flex items-center justify-between gap-2 border-b border-slate-100">
               <div className="min-w-0">
@@ -901,7 +1105,9 @@ export default function RotasPage() {
                       {formatarDuracao(rota.duracaoSegundos)}
                     </p>
                     <p className="text-xs text-white/70 mt-1.5">
-                      {formatarDistancia(rota.distanciaMetros)} · rota mais rápida
+                      {formatarDistancia(rota.distanciaMetros)} ·{" "}
+                      {rotaMaisRapida ? "rota mais rápida" : "rota alternativa"}
+                      {rota.transito?.disponivel && " · com trânsito ao vivo"}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-semibold bg-white/15 px-3 py-1.5 rounded-xl">
@@ -910,7 +1116,28 @@ export default function RotasPage() {
                   </div>
                 </div>
 
+                {opcoes.length > 1 && (
+                  <OpcoesDeRota
+                    opcoes={opcoes}
+                    selecionada={rota}
+                    desabilitado={calculando}
+                    onSelecionar={navegacao.selecionarRota}
+                  />
+                )}
+
+                {rota.avisos && rota.avisos.length > 0 && (
+                  <div className="px-4 pt-3 space-y-1">
+                    {rota.avisos.map((texto) => (
+                      <p key={texto} className="flex items-start gap-1.5 text-[11px] text-slate-600 leading-snug">
+                        <Info size={13} className="shrink-0 mt-px text-[#0f35a0]" />
+                        {texto}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 <ResumoOcorrencias ocorrencias={rota.ocorrencias} />
+                <ResumoTransito transito={rota.transito} />
 
                 <div className="px-4 pt-3">
                   <button
@@ -922,6 +1149,11 @@ export default function RotasPage() {
                     <Navigation size={16} />
                     Iniciar navegação
                   </button>
+                  {navegacao.baixarRegistro && (
+                    <div className="mt-2">
+                      <BotaoBaixarRegistro onBaixar={navegacao.baixarRegistro} />
+                    </div>
+                  )}
                 </div>
 
                 <ol className="p-2">
@@ -964,28 +1196,36 @@ export default function RotasPage() {
                 progresso={progresso}
                 estadoLocalizacao={navegacao.estadoLocalizacao}
                 simulando={velocidadeSimulacao !== null}
+                gravando={modoRegistro}
               >
                 {avisoRecalculo}
               </PainelManobra>
             )}
 
-            {etapa === "navegacao" && !seguirUsuario && (
-              <button
-                type="button"
-                onClick={() => setSeguirUsuario(true)}
-                className="absolute right-3 bottom-32 z-[1000] flex items-center gap-1.5 bg-white border border-slate-200 shadow-lg text-[#0f35a0] text-xs font-bold px-3.5 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer"
-              >
-                <LocateFixed size={15} />
-                Recentralizar
-              </button>
-            )}
+            {/* RODAPÉ: o botão de recentralizar fica logo acima do resumo (nunca por cima dele) e
+                tudo fica acima da barra de gestos do iPhone */}
+            <div
+              className={`${PAINEL_NAVEGACAO} bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col items-end gap-2`}
+            >
+              {etapa === "navegacao" && !seguirUsuario && (
+                <button
+                  type="button"
+                  onClick={() => setSeguirUsuario(true)}
+                  className="flex items-center gap-1.5 bg-white border border-slate-200 shadow-lg text-[#0f35a0] text-xs font-bold px-3.5 py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer"
+                >
+                  <LocateFixed size={15} />
+                  Recentralizar
+                </button>
+              )}
 
-            <ResumoNavegacao
-              rota={rota}
-              progresso={progresso}
-              etapa={etapa}
-              onEncerrar={navegacao.encerrarNavegacao}
-            />
+              <ResumoNavegacao
+                rota={rota}
+                progresso={progresso}
+                etapa={etapa}
+                onEncerrar={navegacao.encerrarNavegacao}
+                onBaixarRegistro={navegacao.baixarRegistro}
+              />
+            </div>
           </>
         )}
       </div>

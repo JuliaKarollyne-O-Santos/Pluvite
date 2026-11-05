@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Pluvite</string>
+    <string name="alertas_canal_id">alertas-emergencia</string>
+    <string name="alertas_canal_nome">Alertas de emergência</string>
+    <string name="alertas_canal_descricao">Avisos de risco climático da Defesa Civil</string>
+</resources>

@@ -110,7 +110,11 @@ export default function AlertaEmergenciaModal({ alerta, aoFechar }: Props) {
           {/* Rodape */}
           <View style={styles.rodape}>
             <Text style={styles.rodapeOrigem}>
-              {alerta.origem === "openweather" ? "Detecção automática" : "Prefeitura"}
+              {alerta.origem === "openweather"
+                ? "Detecção automática"
+                : alerta.origem === "openweather_mock"
+                  ? "Simulação de teste"
+                  : "Prefeitura"}
               {" · "}
               {formatarData(alerta.criado_em)}
             </Text>

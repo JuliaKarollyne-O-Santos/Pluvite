@@ -38,10 +38,11 @@ export default function navbar() {
 
   return (
     <nav
-      className="fixed top-0 right-0 left-0 z-[10000] shadow-[0_2px_10px_rgba(0,0,0,0.15)] w-full"
+      className="fixed top-0 right-0 left-0 z-[10000] shadow-[0_2px_10px_rgba(0,0,0,0.15)] w-full pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       style={{ backgroundColor: "#091c4b" }}
     >
-      <div className="pt-3 pb-3 flex items-center justify-between">
+      {/* A altura da barra vem do globals.css (--altura-barra-navbar), a mesma usada abaixo dela */}
+      <div className="h-[var(--altura-barra-navbar)] flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 ml-4 sm:ml-10 group">
           <img
             src="/PluviteIcon.jpg"
@@ -86,8 +87,9 @@ export default function navbar() {
         {/* Botão hamburguer (mobile/tablet) */}
         <button
           onClick={() => setMenuAberto((v) => !v)}
-          className="lg:hidden flex items-center justify-center w-10 h-10 mr-4 sm:mr-10 rounded-lg text-white hover:bg-white/10 transition-colors cursor-pointer"
+          className="lg:hidden flex items-center justify-center w-11 h-11 mr-3 sm:mr-10 rounded-lg text-white hover:bg-white/10 transition-colors cursor-pointer"
           aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={menuAberto}
         >
           {menuAberto ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -96,7 +98,7 @@ export default function navbar() {
       {/* Painel mobile */}
       <div
         className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out
-          ${menuAberto ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}
+          ${menuAberto ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 invisible"}`}
       >
         <div className="flex flex-col gap-1 px-4 pb-4">
           {navItems.map(({ anchor, label }) => {

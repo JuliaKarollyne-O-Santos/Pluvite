@@ -23,7 +23,7 @@ const MapaSemSSR: ComponentType<any> =
     {
       ssr: false,
       loading: () => (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center text-white">
+        <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white">
           <p className="animate-pulse tracking-wide text-sm font-medium">
             A carregar mapa interativo do Vale...
           </p>
@@ -148,7 +148,6 @@ const plural = (n: number, singular: string, pluralTxt: string) =>
 export default function PluviteVale() {
   const [localAberto, setLocalAberto] = useState<string | null>(null);
   const [dadosBairros, setDadosBairros] = useState<any>(null);
-  const [exibirAlerta, setExibirAlerta] = useState(false);
   const [buscaCidade, setBuscaCidade] = useState("");
   const [cidadeSelecionada, setCidadeSelecionada] = useState("");
   const [painelAberto, setPainelAberto] = useState(false);
@@ -174,13 +173,6 @@ export default function PluviteVale() {
     [key: string]: { dados: any; ts: number };
   }>({});
   const [erroClima, setErroClima] = useState(false);
-
-  const [dadosAlerta, setDadosAlerta] = useState<{
-    cidade: string;
-    condicao: string;
-    temperatura: string;
-    nome: string;
-  } | null>(null);
 
   // CARREGAMENTO DOS DADOS GEOGRÁFICOS DO MAPA
   useEffect(() => {
@@ -271,36 +263,6 @@ export default function PluviteVale() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localAberto]);
-
-  // CONFIGURAÇÃO DO CANAL DE REALTIME DO SUPABASE
-  useEffect(() => {
-    const idCidadaoLogado = 1;
-    const nomeCidadaoLogado = "Quezia";
-
-    const canalRealtimes = supabase
-      .channel("canal-pluvite")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "alertas_tempo_real" },
-        (payload) => {
-          const novoAlerta = payload.new;
-          if (novoAlerta.id_cidadao === idCidadaoLogado) {
-            setDadosAlerta({
-              cidade: novoAlerta.cidade_alerta,
-              condicao: novoAlerta.condicao,
-              temperatura: novoAlerta.temperatura,
-              nome: nomeCidadaoLogado,
-            });
-            setExibirAlerta(true);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canalRealtimes);
-    };
-  }, []);
 
   // TRATAMENTO E EXTRAÇÃO DOS DADOS DE CLIMA DA CIDADE SELECIONADA
   const climaCidadeAberta = localAberto ? climaWeather[localAberto]?.dados : null;
@@ -435,7 +397,9 @@ export default function PluviteVale() {
   const valorContador = (n: number) => (carregandoOcorrencias ? "–" : n);
 
   return (
-    <main className="h-screen w-full relative  mt-10">
+    // TELA CHEIA abaixo da navbar (tela-cheia no globals.css): a página não rola e nenhuma caixa
+    // passa da largura do celular (antes a coluna da esquerda ia até 428px e alargava a página)
+    <main className="tela-cheia overflow-hidden bg-slate-900">
       {/* RENDERIZAÇÃO DO COMPONENTE DE MAPA */}
       {dadosBairros ? (
         <MapaSemSSR
@@ -446,17 +410,21 @@ export default function PluviteVale() {
           setClimaPorCidade={setClimaPorCidade}
         />
       ) : (
-        <div className="h-screen w-full bg-slate-900 flex items-center justify-center text-white">
+        <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white">
           <p className="animate-pulse tracking-wide text-sm font-medium">
             A ler dados geográficos...
           </p>
         </div>
       )}
 
-      {/* COLUNA ESQUERDA: LEGENDA DE GRAVIDADE + SELEÇÃO E BUSCA DE MUNICÍPIOS */}
-      <div className="absolute top-10 left-35 z-[9999] w-72 flex flex-col gap-2">
+      {/* COLUNA ESQUERDA: LEGENDA DE GRAVIDADE + SELEÇÃO E BUSCA DE MUNICÍPIOS
+          Gaveta embaixo no celular (some enquanto o card de uma cidade está aberto, para as duas
+          não se empilharem) e coluna à esquerda, ao lado do zoom, no computador */}
+      <div
+        className={`absolute z-[9999] inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-h-[calc(100%-1.5rem)] flex flex-col gap-2 md:inset-x-auto md:bottom-auto md:top-2.5 md:left-14 md:w-72 md:max-h-[calc(100%-1.25rem)] ${localAberto ? "max-md:hidden" : ""}`}
+      >
         {/* BLOCO DE LEGENDA DOS NÍVEIS DE GRAVIDADE */}
-        <div className="bg-white/95 p-3 rounded-xl shadow-xl border border-slate-200 w-full">
+        <div className="bg-white/95 p-3 rounded-xl shadow-xl border border-slate-200 w-full shrink-0">
           <h4 className="text-xs font-bold text-slate-800 mb-2">
             Nível de gravidade dos alertas de chuva:
           </h4>
@@ -516,7 +484,8 @@ export default function PluviteVale() {
           <>
             <button
               onClick={() => setPainelAberto(!painelAberto)}
-              className="w-full rounded-xl bg-white p-4 shadow-xl text-left border border-slate-200"
+              aria-expanded={painelAberto}
+              className="w-full shrink-0 rounded-xl bg-white p-4 shadow-xl text-left border border-slate-200 cursor-pointer"
             >
               <h2 className="font-bold text-slate-800">Municípios Monitorados</h2>
               <p className="text-xs text-slate-500 mt-1 cursor-pointer">
@@ -526,7 +495,7 @@ export default function PluviteVale() {
             </button>
 
             {painelAberto && (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+              <div className="min-h-0 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                 <div className="p-3">
                   <input
                     type="text"
@@ -556,7 +525,8 @@ export default function PluviteVale() {
                   </div>
                 )}
 
-                <div className="max-h-[350px] overflow-y-auto">
+                {/* No celular a lista é mais baixa para o mapa continuar aparecendo acima da gaveta */}
+                <div className="min-h-0 flex-1 max-h-[350px] max-md:max-h-[35dvh] overflow-y-auto">
                   {dadosBairros.features
                     ?.filter((feature: any) => {
                       const nome =
@@ -609,13 +579,13 @@ export default function PluviteVale() {
         )}
       </div>
 
-      {/* CONTAINER LATERAL DIREITO FIXO: só o card da cidade selecionada */}
-      <div className="absolute top-12 right-4 z-[9999] flex flex-col gap-3 w-[360px]">
+      {/* CARD DA CIDADE SELECIONADA: gaveta embaixo no celular, à direita no computador */}
+      <div className="absolute z-[9999] inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-h-[calc(100%-1.5rem)] flex flex-col md:inset-x-auto md:bottom-auto md:top-4 md:right-4 md:w-[360px] md:max-h-[calc(100%-2rem)]">
         {/* BLOCO DE CARD INFORMATIVO DE DETALHES DA CIDADE SELECIONADA
             Compacto pra caber na tela sem barra de rolagem. Em telas baixas, a faixa de horas
             e a lista de ocorrências somem sozinhas (o resto continua igual). */}
         {localAberto && (
-          <div className="relative bg-white w-full max-h-[calc(100vh-9rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-2xl p-4 shadow-2xl border border-slate-100 flex flex-col gap-3">
+          <div className="relative bg-white w-full min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-2xl p-4 shadow-2xl border border-slate-100 flex flex-col gap-3">
             <button
               onClick={() => setLocalAberto(null)}
               className="absolute top-3 right-3.5 text-zinc-400 hover:text-zinc-800 cursor-pointer text-sm"

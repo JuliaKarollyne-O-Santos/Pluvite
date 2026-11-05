@@ -1363,7 +1363,7 @@ export default function PerfilCidadao() {
   const nivelSenha = NIVEIS_SENHA[forcaDaSenha(senha.nova)];
 
   return (
-    <main className="w-full mt-15 bg-[#f4f6fb] font-sans antialiased min-h-full px-3 sm:px-4 lg:px-5 py-5">
+    <main className="w-full bg-[#f4f6fb] font-sans antialiased min-h-full px-3 sm:px-4 lg:px-5 py-5">
       <div className="w-full space-y-5">
         {/* ═══════════════ CAPA + IDENTIDADE ═══════════════ */}
         <section className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -2603,11 +2603,11 @@ export default function PerfilCidadao() {
               </button>
 
               <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row"
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* IMAGEM GRANDE */}
-                <div className="w-full md:w-3/5 bg-black flex items-center justify-center max-h-[40vh] md:max-h-[90vh] shrink-0">
+                <div className="w-full md:w-3/5 bg-black flex items-center justify-center max-h-[40dvh] md:max-h-[90dvh] shrink-0">
                   {pub.imagemUrl ? (
                     <img src={pub.imagemUrl} alt="Publicação" className="w-full h-full object-contain" />
                   ) : (

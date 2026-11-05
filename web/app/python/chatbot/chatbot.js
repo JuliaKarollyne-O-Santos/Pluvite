@@ -13,8 +13,7 @@ if (existsSync(arquivoEnv)) process.loadEnvFile(arquivoEnv);
 
 // =====================================
 // CANAL DESLIGADO OU DEPENDÊNCIAS AUSENTES
-// No `npm run dev` o chatbot sobe junto com o site: aqui ele só avisa e sai
-// com código 0, para não derrubar o Next, o Express e o Uvicorn.
+// O chatbot roda em um terminal separado; com o canal desligado, não inicializa.
 // =====================================
 const provedor = (process.env.WHATSAPP_PROVEDOR || "off").trim().toLowerCase();
 if (provedor !== "qr") {
@@ -22,9 +21,9 @@ if (provedor !== "qr") {
   process.exit(0);
 }
 
-let qrcode;
 let Client;
 let LocalAuth;
+let qrcode;
 try {
   qrcode = require("qrcode-terminal");
   ({ Client, LocalAuth } = require("whatsapp-web.js"));
@@ -255,7 +254,7 @@ inicializar().catch(async (error) => {
   } catch (erroAoFechar) {
     console.error("❌ Erro ao fechar o navegador após a falha:", erroAoFechar);
   }
-  // Sai com código 0: no `npm run dev` uma falha do WhatsApp não derruba o site
+  // Fecha os recursos do processo se a inicialização do WhatsApp falhar.
   terminal.close();
   servidorApi.close();
 });
@@ -265,10 +264,58 @@ inicializar().catch(async (error) => {
 // =====================================
 const PORTA_API = Number(process.env.CHATBOT_PORTA || 3010);
 const TOKEN_API = process.env.CHATBOT_TOKEN || "";
+const URL_API_ALERTAS = `http://127.0.0.1:${process.env.API_PORT || 8000}`;
 
 function responder(res, status, corpo) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
   res.end(JSON.stringify(corpo));
+}
+
+function formatarDataAlerta(data) {
+  const instante = new Date(data);
+  if (Number.isNaN(instante.getTime())) return "data não informada";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(instante);
+}
+
+async function responderUltimoAlertaOpenWeather(destino) {
+  try {
+    const resposta = await fetch(`${URL_API_ALERTAS}/api/alertas/ultimo-openweather`);
+    const corpo = await resposta.json();
+    if (!resposta.ok) {
+      throw new Error(corpo.detail || `API de alertas respondeu ${resposta.status}`);
+    }
+
+    const alerta = corpo.alerta;
+    if (!alerta) {
+      await client.sendMessage(
+        destino,
+        "Ainda não há um alerta real do OpenWeather registrado. Alertas de teste e disparos manuais não entram nessa consulta."
+      );
+      return;
+    }
+
+    await client.sendMessage(
+      destino,
+      "📡 *Último alerta real do monitoramento OpenWeather* (sem simulação):\n\n" +
+        `🚨 *${alerta.tipo} — ${alerta.municipio}*\n` +
+        `Prioridade: ${alerta.prioridade}\n` +
+        `Registrado pelo Pluvite: ${formatarDataAlerta(alerta.criado_em)}\n\n` +
+        alerta.descricao
+    );
+  } catch (error) {
+    console.error("❌ Não foi possível consultar o último alerta OpenWeather:", error);
+    await client.sendMessage(
+      destino,
+      "Não consegui consultar o último alerta real do OpenWeather agora. Verifique se o backend de alertas está ativo e tente novamente."
+    );
+  }
 }
 
 function lerCorpo(req) {
@@ -295,7 +342,11 @@ const servidorApi = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && req.url === "/status") {
-    return responder(res, 200, { ok: true, conectado, inscritos: inscritos.size });
+    return responder(res, 200, {
+      ok: true,
+      conectado,
+      inscritos: inscritos.size,
+    });
   }
 
   const url = new URL(req.url, "http://127.0.0.1");
@@ -361,6 +412,15 @@ async function tratarMensagem(msg) {
     if (!msg.from || msg.fromMe || msg.from.endsWith("@g.us")) return;
 
     const texto = (msg.body || "").trim().toLocaleLowerCase("pt-BR");
+    const textoNormalizado = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if (
+      /\b(ultimo|mais recente)\b/.test(textoNormalizado) &&
+      /\b(alerta|aviso)\b/.test(textoNormalizado)
+    ) {
+      await responderUltimoAlertaOpenWeather(msg.from);
+      return;
+    }
 
     // =====================================
     // MENSAGEM INICIAL

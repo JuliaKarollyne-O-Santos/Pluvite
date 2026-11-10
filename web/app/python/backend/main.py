@@ -23,6 +23,7 @@ import logging
 import secrets
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -42,6 +43,8 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger("pluvite.api")
+_chatbot_ultimo_contato: datetime | None = None
+_chatbot_conectado = False
 
 
 @asynccontextmanager
@@ -206,13 +209,25 @@ class RegistroDispositivo(BaseModel):
 
 @app.get("/api/status")
 async def status() -> dict[str, Any]:
-    whatsapp = (
-        await status_chatbot() if config.WHATSAPP_PROVEDOR == "qr" else None
-    )
     if config.WHATSAPP_PROVEDOR == "qr":
+        whatsapp = await status_chatbot()
         whatsapp_configurado = bool(whatsapp and whatsapp.get("online") and whatsapp.get("conectado"))
         whatsapp_motivo = None if whatsapp_configurado else "Chatbot offline ou WhatsApp desconectado."
+    elif config.WHATSAPP_PROVEDOR == "qr-poll":
+        status_atual = (
+            _chatbot_ultimo_contato is not None
+            and datetime.now(timezone.utc) - _chatbot_ultimo_contato
+            <= timedelta(seconds=max(30, config.CHATBOT_INTERVALO_SEGUNDOS * 3))
+        )
+        whatsapp = {
+            "online": status_atual,
+            "conectado": status_atual and _chatbot_conectado,
+            "modo": "poll",
+        }
+        whatsapp_configurado = bool(whatsapp["conectado"])
+        whatsapp_motivo = None if whatsapp_configurado else "Inicie o chatbot QR no computador da apresentação."
     elif config.WHATSAPP_PROVEDOR == "evolution":
+        whatsapp = None
         whatsapp_configurado = bool(
             config.EVOLUTION_URL and config.EVOLUTION_INSTANCIA and config.EVOLUTION_APIKEY
         )
@@ -222,6 +237,7 @@ async def status() -> dict[str, Any]:
             else "Evolution API sem configuração completa."
         )
     else:
+        whatsapp = None
         whatsapp_configurado = False
         whatsapp_motivo = "Canal WhatsApp desativado."
 
@@ -246,6 +262,46 @@ async def status() -> dict[str, Any]:
         ),
         "ultimo_alerta": ultimo_payload(),
     }
+
+
+@app.get("/api/alertas/novos")
+async def alertas_novos_para_chatbot(
+    desde_id: int | None = Query(default=None, ge=0),
+    chatbot_conectado: bool = Query(default=False, alias="conectado"),
+    x_pluvite_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Entrega ao chatbot local os alertas persistidos após o cursor recebido."""
+    global _chatbot_ultimo_contato, _chatbot_conectado
+
+    if not config.CHATBOT_TOKEN:
+        raise HTTPException(status_code=503, detail="CHATBOT_TOKEN não configurado.")
+    if not x_pluvite_token or not secrets.compare_digest(
+        x_pluvite_token, config.CHATBOT_TOKEN
+    ):
+        raise HTTPException(status_code=401, detail="Token do chatbot inválido.")
+
+    _chatbot_ultimo_contato = datetime.now(timezone.utc)
+    _chatbot_conectado = chatbot_conectado
+
+    try:
+        if desde_id is None:
+            cursor = await supabase_client.ultimo_id_alerta()
+            return {"alertas": [], "cursor": cursor, "inicializado": True}
+
+        registros = await supabase_client.alertas_depois_id(desde_id)
+    except Exception as erro:
+        log.exception("Falha ao consultar alertas para o chatbot local.")
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível consultar os alertas persistidos.",
+        ) from erro
+
+    alertas = [
+        montar_payload(registro, origem=registro.get("origem") or "banco")
+        for registro in registros
+    ]
+    cursor = int(registros[-1]["id"]) if registros else desde_id
+    return {"alertas": alertas, "cursor": cursor, "inicializado": False}
 
 
 @app.websocket("/ws/alertas")

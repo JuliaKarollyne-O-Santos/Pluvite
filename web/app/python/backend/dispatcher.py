@@ -92,7 +92,7 @@ async def disparar_alerta(
     # 3. Os 3 canais, simultaneamente
     resultados = await asyncio.gather(
         enviar_alerta_web(payload),
-        enviar_alerta_whatsapp(payload, telefones),
+        enviar_alerta_whatsapp(payload, telefones, persistido=registro is not None),
         enviar_alerta_push(payload, tokens),
         return_exceptions=True,
     )

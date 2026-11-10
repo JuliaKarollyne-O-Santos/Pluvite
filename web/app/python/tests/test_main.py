@@ -7,11 +7,61 @@ from backend.dispatcher import disparar_alerta
 from backend.main import (
     AlertaManual,
     Responsavel,
+    alertas_novos_para_chatbot,
     disparar_manual,
     simular_alerta_manual,
     ultimo_alerta,
     ultimo_alerta_openweather,
 )
+
+
+class AlertasNovosChatbotTests(unittest.IsolatedAsyncioTestCase):
+    async def test_exige_token_do_chatbot(self):
+        with (
+            patch("backend.main.config.CHATBOT_TOKEN", "token-secreto"),
+            self.assertRaises(HTTPException) as contexto,
+        ):
+            await alertas_novos_para_chatbot(None, True, None)
+
+        self.assertEqual(contexto.exception.status_code, 401)
+
+    async def test_inicializa_cursor_sem_reenviar_historico(self):
+        with (
+            patch("backend.main.config.CHATBOT_TOKEN", "token-secreto"),
+            patch(
+                "backend.main.supabase_client.ultimo_id_alerta",
+                new=AsyncMock(return_value=42),
+            ),
+        ):
+            resultado = await alertas_novos_para_chatbot(
+                None, True, "token-secreto"
+            )
+
+        self.assertEqual(resultado, {"alertas": [], "cursor": 42, "inicializado": True})
+
+    async def test_entrega_alertas_posteriores_ao_cursor(self):
+        registro = {
+            "id": 43,
+            "tipo": "Alagamento",
+            "prioridade": "Alerta Máximo",
+            "municipio": "Taubaté",
+            "origem": "manual",
+        }
+        with (
+            patch("backend.main.config.CHATBOT_TOKEN", "token-secreto"),
+            patch(
+                "backend.main.supabase_client.alertas_depois_id",
+                new=AsyncMock(return_value=[registro]),
+            ) as buscar,
+        ):
+            resultado = await alertas_novos_para_chatbot(
+                42, True, "token-secreto"
+            )
+
+        buscar.assert_awaited_once_with(42)
+        self.assertEqual(resultado["cursor"], 43)
+        self.assertEqual(resultado["alertas"][0]["id"], "43")
+        self.assertEqual(resultado["alertas"][0]["municipio"], "Taubaté")
 
 
 class UltimoAlertaOpenWeatherTests(unittest.IsolatedAsyncioTestCase):

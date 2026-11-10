@@ -39,14 +39,25 @@ export interface EventoAlerta {
   dados: Alerta | { mensagem: string } | null;
 }
 
-/** http://localhost:8000 por padrao — troque via .env.local do Next */
-export const API_ALERTAS =
-  process.env.NEXT_PUBLIC_API_ALERTAS ?? "http://localhost:8000";
+const apiAlertasConfigurada = process.env.NEXT_PUBLIC_API_ALERTAS?.trim().replace(/\/+$/, "");
 
-/** ws://localhost:8000/ws/alertas derivado da URL da API */
+/** URL do FastAPI; localhost só é usado em desenvolvimento local. */
+export const API_ALERTAS =
+  apiAlertasConfigurada || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
+
+/** WebSocket derivado da URL do FastAPI, salvo quando configurado explicitamente. */
 export const WS_ALERTAS =
-  process.env.NEXT_PUBLIC_WS_ALERTAS ??
-  `${API_ALERTAS.replace(/^http/, "ws")}/ws/alertas`;
+  process.env.NEXT_PUBLIC_WS_ALERTAS?.trim().replace(/\/+$/, "") ||
+  (API_ALERTAS ? `${API_ALERTAS.replace(/^http/, "ws")}/ws/alertas` : "");
+
+function obterUrlApiAlertas(): string {
+  if (!API_ALERTAS) {
+    throw new Error(
+      "API de alertas não configurada. Defina NEXT_PUBLIC_API_ALERTAS na Vercel e publique novamente."
+    );
+  }
+  return API_ALERTAS;
+}
 
 export interface EntradaAlertaManual {
   tipo: string;
@@ -63,7 +74,13 @@ export interface RelatorioDisparo {
   alerta: Alerta;
   canais: {
     web: { ok: boolean; entregues?: number; conectados?: number };
-    whatsapp: { ok: boolean; enviados?: number; total?: number; motivo?: string };
+    whatsapp: {
+      ok: boolean;
+      enviados?: number;
+      total?: number;
+      enfileirado?: boolean;
+      motivo?: string;
+    };
     push: { ok: boolean; enviados?: number; total?: number; motivo?: string };
   };
 }
@@ -114,8 +131,9 @@ async function cabecalhosAutenticados(): Promise<Record<string, string>> {
 export async function dispararAlertaManual(
   entrada: EntradaAlertaManual,
 ): Promise<RelatorioDisparo> {
+  const urlApi = obterUrlApiAlertas();
   const headers = await cabecalhosAutenticados();
-  const resposta = await fetch(`${API_ALERTAS}/api/alertas/disparar`, {
+  const resposta = await fetch(`${urlApi}/api/alertas/disparar`, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -138,7 +156,7 @@ export async function dispararAlertaManual(
 export async function simularAlertaManual(
   entrada: EntradaAlertaManual,
 ): Promise<RelatorioDisparo> {
-  const resposta = await fetch(`${API_ALERTAS}/api/alertas/simular`, {
+  const resposta = await fetch(`${obterUrlApiAlertas()}/api/alertas/simular`, {
     method: "POST",
     headers: await cabecalhosAutenticados(),
     body: JSON.stringify({
@@ -161,7 +179,7 @@ export async function buscarHistoricoAlertas(
 ): Promise<RegistroHistoricoAlerta[]> {
   const parametros = new URLSearchParams({ limite: "100" });
   if (municipio) parametros.set("municipio", municipio);
-  const resposta = await fetch(`${API_ALERTAS}/api/alertas/historico?${parametros}`, {
+  const resposta = await fetch(`${obterUrlApiAlertas()}/api/alertas/historico?${parametros}`, {
     headers: await cabecalhosAutenticados(),
     cache: "no-store",
   });
@@ -174,7 +192,7 @@ export async function buscarHistoricoAlertas(
 }
 
 export async function buscarStatusCanais(): Promise<StatusCanaisAlerta> {
-  const resposta = await fetch(`${API_ALERTAS}/api/status`, { cache: "no-store" });
+  const resposta = await fetch(`${obterUrlApiAlertas()}/api/status`, { cache: "no-store" });
   if (!resposta.ok) {
     throw new Error(`Não foi possível consultar os canais (${resposta.status}).`);
   }
@@ -186,7 +204,7 @@ export async function buscarUltimoAlerta(
   municipio: string,
 ): Promise<Alerta | null> {
   const parametros = new URLSearchParams({ municipio });
-  const resposta = await fetch(`${API_ALERTAS}/api/alertas/ultimo?${parametros}`, {
+  const resposta = await fetch(`${obterUrlApiAlertas()}/api/alertas/ultimo?${parametros}`, {
     cache: "no-store",
   });
   if (!resposta.ok) {

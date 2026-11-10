@@ -158,6 +158,12 @@ export default function AlertaPopup() {
   /* Conexão WebSocket restrita ao município, com reconexão automática. */
   useEffect(() => {
     if (!municipioAlertas) return;
+    if (!WS_ALERTAS) {
+      console.error(
+        "WebSocket de alertas não configurado. Defina NEXT_PUBLIC_API_ALERTAS na Vercel."
+      );
+      return;
+    }
     let desmontado = false;
     let reconexao: ReturnType<typeof setTimeout> | null = null;
     let ping: ReturnType<typeof setInterval> | null = null;

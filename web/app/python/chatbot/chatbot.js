@@ -1,7 +1,7 @@
 // =====================================
 // IMPORTAÇÕES
 // =====================================
-const { existsSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const readline = require("node:readline");
@@ -16,8 +16,8 @@ if (existsSync(arquivoEnv)) process.loadEnvFile(arquivoEnv);
 // O chatbot roda em um terminal separado; com o canal desligado, não inicializa.
 // =====================================
 const provedor = (process.env.WHATSAPP_PROVEDOR || "off").trim().toLowerCase();
-if (provedor !== "qr") {
-  console.log(`WhatsApp por QR desligado (WHATSAPP_PROVEDOR=${provedor}). Use "qr" no .env para ativar.`);
+if (provedor !== "qr" && provedor !== "qr-poll") {
+  console.log(`WhatsApp por QR desligado (WHATSAPP_PROVEDOR=${provedor}). Use "qr" ou "qr-poll" no .env para ativar.`);
   process.exit(0);
 }
 
@@ -48,6 +48,27 @@ const caminhosNavegador = [
     path.join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
 ].filter(Boolean);
 const executavelNavegador = caminhosNavegador.find((caminho) => existsSync(caminho));
+const DIRETORIO_DADOS = path.resolve(process.env.PLUVITE_CHATBOT_DATA_PATH || __dirname);
+mkdirSync(DIRETORIO_DADOS, { recursive: true });
+const ARQUIVO_CURSOR_ALERTAS = path.join(DIRETORIO_DADOS, "cursor-alertas.json");
+
+function carregarCursorAlertas() {
+  try {
+    if (!existsSync(ARQUIVO_CURSOR_ALERTAS)) return null;
+    const dados = JSON.parse(readFileSync(ARQUIVO_CURSOR_ALERTAS, "utf-8"));
+    return /^\d+$/.test(String(dados.cursor)) ? String(dados.cursor) : null;
+  } catch (error) {
+    console.error("❌ Não foi possível ler cursor-alertas.json:", error);
+    return null;
+  }
+}
+
+function salvarCursorAlertas(cursor) {
+  writeFileSync(ARQUIVO_CURSOR_ALERTAS, JSON.stringify({ cursor }), "utf-8");
+}
+
+let cursorAlertas = carregarCursorAlertas();
+let consultandoAlertas = false;
 
 let encerrando = false;
 let conectado = false;
@@ -58,7 +79,7 @@ let trocandoSessao = false;
 // Quem manda "pluvite" no privado passa a receber os alertas.
 // A lista sobrevive a reinícios (Ctrl+C) e é apagada no logout.
 // =====================================
-const ARQUIVO_INSCRITOS = path.join(__dirname, "inscritos.json");
+const ARQUIVO_INSCRITOS = path.join(DIRETORIO_DADOS, "inscritos.json");
 
 function carregarInscritos() {
   try {
@@ -114,7 +135,8 @@ function criarCliente() {
     authStrategy: new LocalAuth({
       dataPath: process.env.PLUVITE_WWEBJS_AUTH_PATH
         ? path.resolve(process.env.PLUVITE_WWEBJS_AUTH_PATH)
-        : path.join(__dirname, ".wwebjs_auth"),
+        : path.join(DIRETORIO_DADOS, ".wwebjs_auth"),
+      rmMaxRetries: 20,
     }),
     webVersionCache: {
       type: "local",
@@ -145,6 +167,7 @@ function criarCliente() {
     console.log(`📋 Inscritos nos alertas: ${inscritos.size}`);
     console.log("Digite \"logout\" para desvincular e apagar a sessão local e os inscritos.");
     void avisarInscritosSemMunicipio();
+    if (provedor === "qr-poll") void consultarAlertasNovos();
   });
 
   // DESCONEXÃO
@@ -192,11 +215,35 @@ async function desvincular() {
 
   trocandoSessao = true;
   conectado = false;
+  let logoutRemotoConfirmado = true;
   try {
-    await client.logout();
-    await client.destroy();
+    try {
+      await client.logout();
+    } catch (error) {
+      const mensagemErro = error instanceof Error ? error.message : String(error);
+      const paginaIndisponivel =
+        /detached Frame|Execution context was destroyed|Target closed|Session closed/i.test(
+          mensagemErro
+        );
+      if (!paginaIndisponivel) throw error;
+
+      console.warn(
+        "⚠️ A página do WhatsApp já foi encerrada. Fechando o navegador e limpando a sessão local..."
+      );
+      logoutRemotoConfirmado = false;
+      await client.destroy();
+      await client.authStrategy.logout();
+    }
+
     limparInscritos();
-    console.log("✅ WhatsApp desvinculado e sessão local removida.");
+    if (logoutRemotoConfirmado) {
+      console.log("✅ WhatsApp desvinculado e sessão local removida.");
+    } else {
+      console.warn(
+        "⚠️ Sessão local removida, mas o logout remoto não foi confirmado. " +
+          "Se o aparelho continuar conectado, desconecte-o pelo WhatsApp do celular."
+      );
+    }
 
     // Continua rodando e já mostra um QR novo para a próxima conexão
     client = criarCliente();
@@ -227,18 +274,23 @@ process.once("SIGTERM", () => void encerrar("SIGTERM"));
 // INICIALIZA
 // =====================================
 async function inicializar() {
-  for (let tentativa = 1; tentativa <= 2; tentativa += 1) {
+  const maxTentativas = 4;
+  for (let tentativa = 1; tentativa <= maxTentativas; tentativa += 1) {
     try {
       await client.initialize();
       return;
     } catch (error) {
       const mensagemErro = error instanceof Error ? error.message : String(error);
       const contextoDestruido = mensagemErro.includes("Execution context was destroyed");
-      if (!contextoDestruido || tentativa === 2) throw error;
+      if (!contextoDestruido || tentativa === maxTentativas) throw error;
 
-      console.warn("⚠️ O WhatsApp recarregou durante a inicialização. Tentando novamente...");
+      console.warn(
+        `⚠️ O WhatsApp recarregou durante a inicialização (tentativa ${tentativa}/${maxTentativas}). ` +
+          "Recriando o navegador e tentando novamente..."
+      );
       await client.destroy();
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500 * tentativa));
+      client = criarCliente();
     }
   }
 }
@@ -263,8 +315,76 @@ inicializar().catch(async (error) => {
 // API LOCAL DE ALERTAS (usada pelo backend Python)
 // =====================================
 const PORTA_API = Number(process.env.CHATBOT_PORTA || 3010);
+const HOST_API = process.env.CHATBOT_HOST || "127.0.0.1";
 const TOKEN_API = process.env.CHATBOT_TOKEN || "";
-const URL_API_ALERTAS = `http://127.0.0.1:${process.env.API_PORT || 8000}`;
+const URL_API_ALERTAS = (
+  process.env.PLUVITE_API_ALERTAS_URL || `http://127.0.0.1:${process.env.API_PORT || 8000}`
+).replace(/\/+$/, "");
+if ((["0.0.0.0", "::"].includes(HOST_API) || provedor === "qr-poll") && !TOKEN_API) {
+  throw new Error("CHATBOT_TOKEN é obrigatório quando a API do chatbot aceita conexões de rede.");
+}
+const INTERVALO_CONSULTA_MS = Math.max(
+  2000,
+  Number(process.env.CHATBOT_INTERVALO_SEGUNDOS || 5) * 1000,
+);
+
+function normalizarMunicipio(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+async function consultarAlertasNovos() {
+  if (provedor !== "qr-poll" || !conectado || consultandoAlertas) return;
+  consultandoAlertas = true;
+
+  try {
+    const parametros = new URLSearchParams({ conectado: "true" });
+    if (cursorAlertas !== null) parametros.set("desde_id", cursorAlertas);
+    const resposta = await fetch(
+      `${URL_API_ALERTAS}/api/alertas/novos?${parametros}`,
+      { headers: { "X-Pluvite-Token": TOKEN_API }, signal: AbortSignal.timeout(15000) },
+    );
+    const corpo = await resposta.json();
+    if (!resposta.ok) {
+      throw new Error(corpo.detail || `API respondeu ${resposta.status}`);
+    }
+
+    if (cursorAlertas === null) {
+      cursorAlertas = String(corpo.cursor ?? "0");
+      salvarCursorAlertas(cursorAlertas);
+      console.log(`📡 Chatbot conectado à API; cursor inicial ${cursorAlertas}.`);
+      return;
+    }
+
+    for (const alerta of corpo.alertas || []) {
+      const municipioAlerta = normalizarMunicipio(alerta.municipio);
+      const destinos = [...inscritos]
+        .filter(([, municipio]) => normalizarMunicipio(municipio) === municipioAlerta)
+        .map(([destino]) => destino);
+
+      for (const destino of destinos) {
+        await client.sendMessage(
+          destino,
+          `${alerta.icone} *PLUVITE — ${alerta.rotulo_severidade}*\n\n${alerta.mensagem}`,
+        );
+        console.log(`📤 Alerta ${alerta.id} enviado para ${destino}`);
+      }
+
+      if (destinos.length === 0) {
+        console.log(`ℹ️ Alerta ${alerta.id} sem inscritos para ${alerta.municipio}.`);
+      }
+      cursorAlertas = String(alerta.id);
+      salvarCursorAlertas(cursorAlertas);
+    }
+  } catch (error) {
+    console.error("❌ Não foi possível consultar os alertas para WhatsApp:", error);
+  } finally {
+    consultandoAlertas = false;
+  }
+}
 
 function responder(res, status, corpo) {
   res.writeHead(status, {
@@ -352,10 +472,8 @@ const servidorApi = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
   if (req.method === "GET" && url.pathname === "/inscritos") {
     const municipio = url.searchParams.get("municipio");
-    const normalizar = (texto) =>
-      texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const destinatarios = [...inscritos]
-      .filter(([, cidade]) => !municipio || normalizar(cidade || "") === normalizar(municipio))
+      .filter(([, cidade]) => !municipio || normalizarMunicipio(cidade) === normalizarMunicipio(municipio))
       .map(([destino]) => destino);
     return responder(res, 200, { ok: true, inscritos: destinatarios });
   }
@@ -387,7 +505,7 @@ const servidorApi = http.createServer(async (req, res) => {
 
     const mensagem = await client.sendMessage(chatId, String(texto));
     console.log(`📤 Alerta enviado para ${chatId}`);
-    return responder(res, 200, { ok: true, destino: chatId, id: mensagem.id?._serialized });
+    return responder(res, 200, { ok: true, destino: chatId, id: mensagem?.id?._serialized });
   } catch (error) {
     console.error("❌ Erro ao enviar alerta pelo WhatsApp:", error);
     return responder(res, 500, { ok: false, erro: error instanceof Error ? error.message : String(error) });
@@ -398,10 +516,13 @@ servidorApi.on("error", (error) => {
   console.error(`❌ API de alertas não subiu na porta ${PORTA_API}:`, error.message);
 });
 
-// Só escuta na própria máquina: o backend Python roda junto do chatbot
-servidorApi.listen(PORTA_API, "127.0.0.1", () => {
-  console.log(`📡 API de alertas em http://127.0.0.1:${PORTA_API} (POST /enviar, GET /inscritos)`);
+servidorApi.listen(PORTA_API, HOST_API, () => {
+  console.log(`📡 API do chatbot em http://${HOST_API}:${PORTA_API} (POST /enviar, GET /inscritos)`);
 });
+
+if (provedor === "qr-poll") {
+  setInterval(() => void consultarAlertasNovos(), INTERVALO_CONSULTA_MS);
+}
 
 // =====================================
 // FUNIL DE MENSAGENS (SOMENTE PRIVADO)

@@ -136,6 +136,8 @@ def _configurado() -> tuple[bool, str]:
         return True, ""
     if config.WHATSAPP_PROVEDOR == "qr":
         return True, ""
+    if config.WHATSAPP_PROVEDOR == "qr-poll":
+        return True, ""
     return False, f"provedor desconhecido: {config.WHATSAPP_PROVEDOR}"
 
 
@@ -144,11 +146,29 @@ async def enviar_alerta_whatsapp(
     numeros: list[str],
     *,
     somente_numeros_teste: bool = False,
+    persistido: bool = True,
 ) -> dict[str, Any]:
     ok, motivo = _configurado()
     if not ok:
         log.warning("WhatsApp nao enviado: %s", motivo)
         return {"canal": "whatsapp", "ok": False, "motivo": motivo, "enviados": 0}
+
+    if config.WHATSAPP_PROVEDOR == "qr-poll":
+        if not persistido:
+            return {
+                "canal": "whatsapp",
+                "ok": False,
+                "motivo": "O alerta não foi salvo; o chatbot local não poderá buscá-lo.",
+                "enviados": 0,
+            }
+        return {
+            "canal": "whatsapp",
+            "ok": True,
+            "provedor": "qr-poll",
+            "enviados": 0,
+            "enfileirado": True,
+            "motivo": "O chatbot local buscará o alerta na próxima consulta.",
+        }
 
     async with httpx.AsyncClient(timeout=config.TIMEOUT_HTTP) as cliente:
         destinos: list[str] = []

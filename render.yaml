@@ -1,5 +1,33 @@
 services:
   - type: web
+    name: pluvite-alertas-api
+    runtime: python
+    plan: free
+    rootDir: web/app/python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: SUPABASE_URL
+        value: https://qhughmeaxbyupuglpvud.supabase.co
+      - key: SUPABASE_KEY
+        sync: false
+      - key: CORS_ORIGENS
+        value: https://pluvite.vercel.app
+      - key: MONITOR_ATIVO
+        value: "false"
+      - key: OPENWEATHER_KEY
+        sync: false
+      - key: WHATSAPP_PROVEDOR
+        value: "qr-poll"
+      - key: CHATBOT_TOKEN
+        sync: false
+      - key: CHATBOT_INTERVALO_SEGUNDOS
+        value: "5"
+
+  - type: web
     name: pluvite-backend
     runtime: node
     plan: free

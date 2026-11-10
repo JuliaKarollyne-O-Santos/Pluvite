@@ -118,6 +118,47 @@ async def ultimo_alerta(municipio: str | None = None) -> dict[str, Any] | None:
         return None
 
 
+def _ultimo_id_alerta_sync() -> int:
+    sb = cliente()
+    if sb is None:
+        raise RuntimeError("Supabase nao configurado para consultar alertas.")
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select("id")
+        .order("id", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return int(resposta.data[0]["id"]) if resposta.data else 0
+
+
+async def ultimo_id_alerta() -> int:
+    """Maior ID atual; usado para iniciar o consumidor sem reenviar o historico."""
+    return await asyncio.to_thread(_ultimo_id_alerta_sync)
+
+
+def _alertas_depois_id_sync(desde_id: int, limite: int) -> list[dict[str, Any]]:
+    sb = cliente()
+    if sb is None:
+        raise RuntimeError("Supabase nao configurado para consultar alertas.")
+    resposta = (
+        sb.table("alertas_tempo_real")
+        .select(
+            "id,tipo,prioridade,municipio,endereco,descricao,statusatual,origem,criado_em"
+        )
+        .gt("id", desde_id)
+        .order("id")
+        .limit(limite)
+        .execute()
+    )
+    return resposta.data or []
+
+
+async def alertas_depois_id(desde_id: int, limite: int = 100) -> list[dict[str, Any]]:
+    """Busca alertas persistidos posteriores ao cursor do chatbot local."""
+    return await asyncio.to_thread(_alertas_depois_id_sync, desde_id, limite)
+
+
 def _ultimo_alerta_openweather_sync() -> dict[str, Any] | None:
     sb = cliente()
     if sb is None:

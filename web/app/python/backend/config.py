@@ -61,8 +61,8 @@ MOCK_OPENWEATHER_ARQUIVO = os.getenv(
 )
 
 # ── WhatsApp ────────────────────────────────────────────────────────────────
-# "qr" = chatbot/chatbot.js (sessao por QR); "evolution" = Evolution API;
-# "off" = canal desativado
+# "qr" = chatbot local acessivel pela API; "qr-poll" = chatbot local consulta a API;
+# "evolution" = Evolution API; "off" = canal desativado
 WHATSAPP_PROVEDOR = os.getenv("WHATSAPP_PROVEDOR", "off").strip().lower()
 CHATBOT_URL = os.getenv("CHATBOT_URL", "http://127.0.0.1:3010")
 CHATBOT_TOKEN = os.getenv("CHATBOT_TOKEN", "")

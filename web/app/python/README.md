@@ -8,7 +8,7 @@ desativado por padrão:
 | Canal | Tecnologia | Arquivo |
 |---|---|---|
 | 🖥️ Pop-up no site | WebSocket | `backend/canais/websocket_hub.py` |
-| 💬 WhatsApp | Chatbot QR em `chatbot/` (`WHATSAPP_PROVEDOR=qr`) ou Evolution API | `backend/canais/whatsapp.py` |
+| 💬 WhatsApp | Chatbot QR em `chatbot/` (`qr` local ou `qr-poll` remoto) ou Evolution API | `backend/canais/whatsapp.py` |
 | 📱 App mobile | Firebase Cloud Messaging (FCM) | `backend/canais/push_mobile.py` |
 
 ## Estrutura
@@ -92,6 +92,67 @@ uvicorn backend.main:app --reload --port 8000
 
 Antes do primeiro uso, rode `sql/alertas.sql` no SQL Editor do Supabase.
 
+### Publicar com Vercel e Render
+
+O site da Vercel não executa esta API FastAPI nem processos persistentes. O
+`render.yaml` configura a API separada (`pluvite-alertas-api`) no Render. Crie/
+sincronize o Blueprint e preencha `SUPABASE_URL` e `SUPABASE_KEY` como variáveis
+secretas do serviço; sem elas, alertas não serão persistidos e o histórico não
+funcionará. O monitor OpenWeather fica desligado por padrão; para ativá-lo,
+configure `OPENWEATHER_KEY` e `MONITOR_ATIVO=true`.
+
+Depois que a API estiver no ar, configure na Vercel `NEXT_PUBLIC_API_ALERTAS`
+com a URL pública do Render, em Production (e Preview, se necessário), e faça
+um novo deploy. Configure `CORS_ORIGENS` no Render com a origem exata do site
+(por exemplo, `https://pluvite.vercel.app`). O popup deriva dessa URL o
+endereço `wss://` do WebSocket; não é necessário definir
+`NEXT_PUBLIC_WS_ALERTAS`. O domínio deve usar HTTPS para que o navegador aceite
+o WebSocket seguro.
+
+#### Apresentação sem contratar hospedagem
+
+O `render.yaml` mantém a API no plano Free e configura `WHATSAPP_PROVEDOR=qr-poll`.
+O site Vercel usa o WebSocket da API para o popup. O chatbot QR roda no
+computador da apresentação: ele consulta periodicamente a API pública do Render
+e envia os alertas aos inscritos. Assim, a API não precisa abrir conexão de
+entrada para o computador e não é necessário contratar serviço privado nem
+disco. O computador precisa ficar ligado, conectado à internet e com o chatbot
+aberto durante a demonstração. O Render Free pode suspender a API quando não
+estiver sendo usada; iniciar o chatbot antes da apresentação mantém a API sendo
+consultada, mas pode haver atraso ao acordá-la.
+
+1. Sincronize o Blueprint `render.yaml` no Render e configure `SUPABASE_URL`,
+   `SUPABASE_KEY` e `CHATBOT_TOKEN` como variáveis do serviço. Gere um token
+   aleatório e guarde-o; não o coloque no código nem na Vercel. `CHATBOT_TOKEN`
+   deve ser o mesmo no Render e no computador da apresentação.
+2. Na Vercel, configure `NEXT_PUBLIC_API_ALERTAS` com a URL pública da API e
+   faça um novo deploy. Confira que `CORS_ORIGENS` no Render inclui o domínio
+   exato do site, por exemplo `https://pluvite.vercel.app`.
+3. No computador da apresentação, instale Node.js, clone o projeto e instale
+   as dependências do chatbot (`npm --prefix web/app/python/chatbot install`).
+   Crie `web/app/python/.env` (não versionado) com:
+
+   ```dotenv
+   WHATSAPP_PROVEDOR=qr-poll
+   PLUVITE_API_ALERTAS_URL=https://<url-publica-da-api-render>
+   CHATBOT_TOKEN=<mesmo-segredo-do-render>
+   PLUVITE_CHATBOT_DATA_PATH=<pasta-local-gravavel>
+   ```
+
+4. Inicie o chatbot (`npm --prefix web/app/python/chatbot start`), escaneie o QR
+   no terminal e confira `GET /api/status`: `whatsapp_chatbot.conectado` deve
+   aparecer como `true`. Envie `pluvite` pelo celular que receberá a mensagem e
+   escolha o município da demonstração.
+5. Com o popup aberto no site e um usuário de servidor autenticado, dispare um
+   alerta controlado. O popup chega pelo WebSocket; o chatbot consulta o alerta
+   salvo no Supabase e envia a mensagem aos inscritos daquele município.
+
+O cursor de entrega e a sessão QR ficam na pasta local definida por
+`PLUVITE_CHATBOT_DATA_PATH`, evitando reenviar o histórico após reiniciar o
+chatbot. O modo `qr-poll` requer `CHATBOT_TOKEN` e Supabase configurados; sem
+persistência no banco, o chatbot não consegue buscar os alertas. Nunca coloque
+`CHATBOT_TOKEN` ou `SUPABASE_KEY` na Vercel como variáveis `NEXT_PUBLIC_*`.
+
 O painel exige uma sessão Supabase válida de uma conta cadastrada como
 `servidor` ou `admin`. O backend valida o perfil: servidores só podem emitir
 alertas para o próprio município, enquanto admins podem selecionar qualquer
@@ -124,6 +185,7 @@ para scripts sem sessão Supabase.
 | `GET` | `/api/alertas/historico` | Histórico recente do município do servidor autenticado |
 | `GET` | `/api/alertas/ultimo?municipio=Taubaté` | Último alerta do município (site/app que abrem depois) |
 | `GET` | `/api/alertas/ultimo-openweather` | Último alerta real do monitor (exclui mocks e disparos manuais) |
+| `GET` | `/api/alertas/novos?desde_id=...` | Busca autenticada de alertas pelo chatbot local (`X-Pluvite-Token`) |
 | `POST` | `/api/monitor/verificar-agora?forcar=true` | Força um ciclo do monitor |
 | `POST` | `/api/dispositivos` | App mobile registra o token de push |
 
@@ -138,7 +200,7 @@ Painel web (POST manual)     ─┘         │
                                         ├─ grava em alertas_tempo_real
                                         └─ asyncio.gather:
                                              ├─ WebSocket  -> pop-up no site
-                                             ├─ WhatsApp   -> chatbot QR ou Evolution API (desligado por padrão)
+                                             ├─ WhatsApp   -> chatbot QR (polling local no modo gratuito)
                                              └─ FCM Push    -> app mobile
 ```
 

@@ -540,7 +540,9 @@ export default function PainelServidor({
                 </li>
                 <li>
                   WhatsApp: {relatorio.canais.whatsapp.ok
-                    ? `${relatorio.canais.whatsapp.enviados ?? 0}/${relatorio.canais.whatsapp.total ?? 0} enviados`
+                    ? relatorio.canais.whatsapp.enfileirado
+                      ? "alerta salvo; aguardando envio pelo chatbot local"
+                      : `${relatorio.canais.whatsapp.enviados ?? 0}/${relatorio.canais.whatsapp.total ?? 0} enviados`
                     : relatorio.canais.whatsapp.motivo ?? "não enviado"}
                 </li>
                 <li>

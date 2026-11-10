@@ -180,7 +180,7 @@ Relatos de:
 ### Hospedagem
 
 * **Vercel:** hospedagem do site
-* **Render:** hospedagem do banco de dados
+* **Render:** hospedagem dos backends web e de alertas
 
 ### APIs
 

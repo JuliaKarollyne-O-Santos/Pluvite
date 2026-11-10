@@ -55,6 +55,10 @@ desconectar o aparelho pelo celular).
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
    `python -m backend.canais.whatsapp`
 
+Os modos `qr` e `qr-poll` usam o mesmo formato do alerta no WhatsApp: título
+com prioridade, tipo, município, endereço/região, prioridade, status,
+descrição e orientação de segurança.
+
 Esse comando isolado envia somente aos números configurados em
 `WHATSAPP_NUMEROS_TESTE`; não envia aos inscritos do chatbot. Sem números de
 teste, nenhum destinatário recebe a mensagem.

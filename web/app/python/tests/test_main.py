@@ -62,6 +62,13 @@ class AlertasNovosChatbotTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resultado["cursor"], 43)
         self.assertEqual(resultado["alertas"][0]["id"], "43")
         self.assertEqual(resultado["alertas"][0]["municipio"], "Taubaté")
+        texto_whatsapp = resultado["alertas"][0]["texto_whatsapp"]
+        self.assertIn("🚨 *PLUVITE — ALERTA MÁXIMO*", texto_whatsapp)
+        self.assertIn("*ALAGAMENTO*", texto_whatsapp)
+        self.assertIn("📍 Localização: Taubaté", texto_whatsapp)
+        self.assertIn("📌 Endereço/Região: Endereço não informado", texto_whatsapp)
+        self.assertIn("🚨 Nível de Prioridade: Alerta Máximo", texto_whatsapp)
+        self.assertIn("ℹ️ *Descrição do Ocorrido:*", texto_whatsapp)
 
 
 class UltimoAlertaOpenWeatherTests(unittest.IsolatedAsyncioTestCase):

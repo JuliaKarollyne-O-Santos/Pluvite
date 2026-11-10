@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 from . import config, openweather, supabase_client
 from .alerta import montar_payload
 from .canais.websocket_hub import hub
-from .canais.whatsapp import status_chatbot
+from .canais.whatsapp import montar_texto, status_chatbot
 from .dispatcher import disparar_alerta, ultimo_payload, ultimo_payload_openweather
 
 logging.basicConfig(
@@ -296,10 +296,11 @@ async def alertas_novos_para_chatbot(
             detail="Não foi possível consultar os alertas persistidos.",
         ) from erro
 
-    alertas = [
-        montar_payload(registro, origem=registro.get("origem") or "banco")
-        for registro in registros
-    ]
+    alertas = []
+    for registro in registros:
+        payload = montar_payload(registro, origem=registro.get("origem") or "banco")
+        payload["texto_whatsapp"] = montar_texto(payload)
+        alertas.append(payload)
     cursor = int(registros[-1]["id"]) if registros else desde_id
     return {"alertas": alertas, "cursor": cursor, "inicializado": False}
 

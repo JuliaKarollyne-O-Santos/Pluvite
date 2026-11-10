@@ -366,10 +366,10 @@ async function consultarAlertasNovos() {
         .map(([destino]) => destino);
 
       for (const destino of destinos) {
-        await client.sendMessage(
-          destino,
-          `${alerta.icone} *PLUVITE — ${alerta.rotulo_severidade}*\n\n${alerta.mensagem}`,
-        );
+        if (typeof alerta.texto_whatsapp !== "string") {
+          throw new Error(`O alerta ${alerta.id} não contém o texto formatado para WhatsApp.`);
+        }
+        await client.sendMessage(destino, alerta.texto_whatsapp);
         console.log(`📤 Alerta ${alerta.id} enviado para ${destino}`);
       }
 

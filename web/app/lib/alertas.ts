@@ -39,7 +39,10 @@ export interface EventoAlerta {
   dados: Alerta | { mensagem: string } | null;
 }
 
-const apiAlertasConfigurada = process.env.NEXT_PUBLIC_API_ALERTAS?.trim().replace(/\/+$/, "");
+/** Evento de window disparado pelo AlertaPopup a cada alerta recebido pelo WebSocket */
+export const EVENTO_ALERTA_RECEBIDO = "pluvite:alerta-recebido";
+
+const apiAlertasConfigurada =process.env.NEXT_PUBLIC_API_ALERTAS?.trim().replace(/\/+$/, "");
 
 /** URL do FastAPI; localhost só é usado em desenvolvimento local. */
 export const API_ALERTAS =

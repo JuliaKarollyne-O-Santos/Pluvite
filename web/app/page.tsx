@@ -19,6 +19,7 @@ import {
   Navigation,
   ArrowRight,
 } from "lucide-react";
+import BotaoAjudaWhatsApp from "@/app/components/BotaoAjudaWhatsApp";
 
 // ─── Scroll util ──────────────────────────────────────────────────────────────
 const scrollTo = (id: string) => {
@@ -46,9 +47,16 @@ export default function Home() {
             Monitoramento do Vale do Paraíba e Litoral Norte
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-950 leading-[1.1] max-w-3xl -mt-3">
+          <h1 className="relative text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-950 leading-[1.1] max-w-3xl -mt-3">
             Sistema de Monitoramento{" "}
             <span className="text-[#0d43af]">de Riscos do Vale do Paraíba</span>
+            {/* BOTÃO DE AJUDA DO WHATSAPP — absoluto, não desloca o texto.
+                Telas largas: à direita, no centro do título; telas menores: fixo no canto. */}
+            <BotaoAjudaWhatsApp
+              variante="destaque"
+              className="fixed bottom-[calc(5.5rem_+_env(safe-area-inset-bottom))] right-6 z-50
+                xl:absolute xl:bottom-auto xl:right-auto xl:left-full xl:top-1/2 xl:-translate-y-1/2 xl:ml-20 xl:z-auto"
+            />
           </h1>
 
           <p className="text-lg text-slate-800 font-medium max-w-4xl leading-relaxed -mt-4">

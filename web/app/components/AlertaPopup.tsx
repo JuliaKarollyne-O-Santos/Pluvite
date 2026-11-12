@@ -18,6 +18,7 @@ import { supabase } from "@/app/lib/banco";
 import { MUNICIPIOS, normalizar } from "@/app/lib/constantes";
 import {
   buscarUltimoAlerta,
+  EVENTO_ALERTA_RECEBIDO,
   WS_ALERTAS,
   type Alerta,
   type EventoAlerta,
@@ -192,6 +193,10 @@ export default function AlertaPopup() {
             const mensagem: EventoAlerta = JSON.parse(evento.data);
             if (mensagem.evento === "alerta_emergencia" && mensagem.dados) {
               exibir(mensagem.dados as Alerta);
+              // Avisa o botão do WhatsApp para ficar vermelho na hora
+              window.dispatchEvent(
+                new CustomEvent(EVENTO_ALERTA_RECEBIDO, { detail: mensagem.dados }),
+              );
             }
           } catch {
             /* mensagem fora do formato esperado */

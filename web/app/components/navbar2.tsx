@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/lib/banco";
+import BotaoAjudaWhatsApp from "./BotaoAjudaWhatsApp";
 import { UserRound, Map, CloudSun, Route, MessageSquare, Globe, Menu, X } from "lucide-react";
 
 export default function Navbar2() {
@@ -129,6 +130,10 @@ export default function Navbar2() {
 
           <div className="w-[1px] h-6 bg-white/25 mx-3" />
 
+          <div className="mr-2">
+            <BotaoAjudaWhatsApp variante="navbar" />
+          </div>
+
           <Link
             href="/perfil"
             className="flex items-center gap-2 text-white hover:bg-white/25 transition-all duration-150 px-5 py-2 rounded-xl font-semibold tracking-wide active:scale-95"
@@ -140,6 +145,7 @@ export default function Navbar2() {
 
         {/* Avatar + hamburguer — mobile/tablet (área de toque de 44px) */}
         <div className="flex md:hidden items-center gap-1 mr-3 sm:mr-10">
+          <BotaoAjudaWhatsApp variante="navbar" />
           <Link
             href="/perfil"
             onClick={() => setMenuAberto(false)}

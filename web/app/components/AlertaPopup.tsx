@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, MapPin, Navigation, Activity, X } from "lucide-react";
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
 import { supabase } from "@/app/lib/banco";
 import { MUNICIPIOS, normalizar } from "@/app/lib/constantes";
 import {
@@ -86,7 +87,8 @@ export default function AlertaPopup() {
       let id = authId;
       if (id === undefined) {
         const { data, error } = await supabase.auth.getUser();
-        if (error) {
+        // Sem sessão = visitante deslogado (ex.: tela inicial); não é erro
+        if (error && !isAuthSessionMissingError(error)) {
           console.error("Erro ao identificar cidadão para alertas:", error);
           if (ativo) {
             municipioAtualRef.current = null;

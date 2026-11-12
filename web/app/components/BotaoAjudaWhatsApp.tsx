@@ -5,8 +5,8 @@
  *
  * Ao clicar, mostra como se inscrever nos alertas pelo chatbot
  * (web/app/python/chatbot/chatbot.js) e abre a conversa com o número que
- * envia os alertas, já com "pluvite" escrito. É sempre vermelho (tom de alerta);
- * na tela inicial pisca com anéis. Se o município do cidadão logado estiver em
+ * envia os alertas, já com "pluvite" escrito. Na tela inicial é verde, pisca com
+ * anéis e tem um balão "Em uma emergência, toque aqui!"; na navbar2 é vermelho. Se o município do cidadão logado estiver em
  * alerta, as instruções mostram um aviso.
  *
  * O número vem de NEXT_PUBLIC_WHATSAPP_ALERTAS (só dígitos, com DDI: 5512999999999).
@@ -148,41 +148,71 @@ export default function BotaoAjudaWhatsApp({
 
   const destaque = variante === "destaque";
   // Anéis vazados (só a borda)
-  const corAnel = "border-2 border-red-500/60";
+  const corAnel = "border-2 border-[#25D366]/60";
   const rotulo = emAlerta
     ? `${municipio} está em alerta — receba os avisos pelo WhatsApp`
     : "Ajuda: receber alertas pelo WhatsApp";
 
+  const botao = (
+    <button
+      type="button"
+      onClick={() => setAberto(true)}
+      aria-label={rotulo}
+      title={rotulo}
+      className={`relative flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-200 active:scale-95 cursor-pointer
+        ${destaque
+          ? "w-20 h-20 shrink-0 bg-[#25D366] hover:bg-[#0fa84a]"
+          : "w-10 h-10 ring-2 ring-white/30 bg-red-600 hover:bg-red-700"}`}
+    >
+      {/* ANÉIS PISCANDO (só na tela inicial) */}
+      {destaque && (
+        <>
+          <span className={`anel-whatsapp pointer-events-none absolute inset-0 rounded-full ${corAnel}`} />
+          <span
+            className={`anel-whatsapp pointer-events-none absolute inset-0 rounded-full ${corAnel}`}
+            style={{ animationDelay: ATRASO_SEGUNDO_ANEL }}
+          />
+        </>
+      )}
+      <span
+        className={`relative ${destaque ? "animate-pulse" : ""}`}
+        style={destaque ? { animationDuration: DURACAO_PISCAR } : undefined}
+      >
+        {/* Ícone com ~55% do diâmetro do círculo */}
+        <IconeWhatsApp size={destaque ? 44 : 20} />
+      </span>
+    </button>
+  );
+
   return (
     <>
-      {/* BOTÃO */}
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        aria-label={rotulo}
-        title={rotulo}
-        className={`flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-200 active:scale-95 cursor-pointer
-          ${destaque ? ["w-20 h-20 shrink-0", className || "relative"].join(" ") : "relative w-10 h-10 ring-2 ring-white/30"}
-          bg-red-600 hover:bg-red-700`}
-      >
-        {/* ANÉIS PISCANDO (só na tela inicial) */}
-        {destaque && (
-          <>
-            <span className={`anel-whatsapp pointer-events-none absolute inset-0 rounded-full ${corAnel}`} />
+      {destaque ? (
+        // O posicionamento (className) fica no contêiner, para o balão acompanhar o botão
+        <div className={className || "relative"}>
+          {botao}
+
+          {/* BALÃO DE FALA — à esquerda do botão no celular, acima dele em telas largas */}
+          <button
+            type="button"
+            onClick={() => setAberto(true)}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="absolute right-full top-1/2 mr-4 -translate-y-1/2 w-max max-w-[11rem]
+              xl:right-auto xl:top-auto xl:mr-0 xl:translate-y-0 xl:bottom-full xl:left-1/2 xl:-translate-x-1/2 xl:mb-6
+              rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-left text-sm font-semibold leading-snug
+              tracking-normal text-slate-800 shadow-lg cursor-pointer"
+          >
+            Em uma emergência, <span className="text-[#0fa84a]">toque aqui!</span>
+            {/* Ponta do balão: lado direito no celular, embaixo em telas largas */}
             <span
-              className={`anel-whatsapp pointer-events-none absolute inset-0 rounded-full ${corAnel}`}
-              style={{ animationDelay: ATRASO_SEGUNDO_ANEL }}
+              className="absolute top-1/2 -right-1.5 h-3 w-3 -translate-y-1/2 rotate-45 border-r border-t border-slate-200 bg-white
+                xl:top-auto xl:right-auto xl:-bottom-1.5 xl:left-1/2 xl:-translate-x-1/2 xl:translate-y-0 xl:border-t-0 xl:border-b"
             />
-          </>
-        )}
-        <span
-          className={`relative ${destaque ? "animate-pulse" : ""}`}
-          style={destaque ? { animationDuration: DURACAO_PISCAR } : undefined}
-        >
-          {/* Ícone com ~55% do diâmetro do círculo */}
-          <IconeWhatsApp size={destaque ? 44 : 20} />
-        </span>
-      </button>
+          </button>
+        </div>
+      ) : (
+        botao
+      )}
 
       {/* INSTRUÇÕES */}
       {aberto &&

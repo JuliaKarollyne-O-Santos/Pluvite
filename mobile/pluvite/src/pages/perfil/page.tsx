@@ -13,10 +13,8 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import Cabecalho from "../../components/Cabecalho";
 import { supabase } from "../lib/supabase";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../App";
 import { launchImageLibrary } from "react-native-image-picker";
 import { decode } from "base64-arraybuffer";
 import {
@@ -37,14 +35,12 @@ import {
 import { MUNICIPIOS, normalizar } from "../../lib/constantes";
 import { useAlerta } from "../../context/AlertaContext";
 
-type Props = NativeStackScreenProps<RootStackParamList, any>;
-
 type Secao = "dados" | "emergencia" | "notificacoes" | "seguranca" | "acessibilidade";
 type Bloco = "pessoais" | "endereco" | "medico" | "contatoEmergencia" | "alertas" | null;
 
 const TIPOS_SANGUINEOS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-export default function Perfil({ navigation }: Props) {
+export default function Perfil() {
   const { atualizarMunicipioAlertas } = useAlerta();
   const [carregando, setCarregando] = useState(false);
   const [saindo, setSaindo] = useState(false);
@@ -277,11 +273,9 @@ export default function Perfil({ navigation }: Props) {
   const handleLogout = async () => {
     setSaindo(true);
     try {
-      await supabase.auth.signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Login" }],
-      });
+      // O App.tsx volta para o Login no evento SIGNED_OUT
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error: any) {
       Alert.alert("Erro", "Erro ao sair da conta: " + error.message);
     } finally {
@@ -290,11 +284,11 @@ export default function Perfil({ navigation }: Props) {
   };
 
   const itensSecao: { id: Secao; label: string; icon: React.ReactNode }[] = [
-    { id: "dados", label: "Meus Dados", icon: <User size={16} color={secaoAtiva === "dados" ? "#1447c4" : "#94a3b8"} /> },
-    { id: "emergencia", label: "Emergência", icon: <HeartPulse size={16} color={secaoAtiva === "emergencia" ? "#1447c4" : "#94a3b8"} /> },
-    { id: "notificacoes", label: "Notificações", icon: <Bell size={16} color={secaoAtiva === "notificacoes" ? "#1447c4" : "#94a3b8"} /> },
-    { id: "seguranca", label: "Segurança", icon: <Shield size={16} color={secaoAtiva === "seguranca" ? "#1447c4" : "#94a3b8"} /> },
-    { id: "acessibilidade", label: "Acessibilidade", icon: <Accessibility size={16} color={secaoAtiva === "acessibilidade" ? "#1447c4" : "#94a3b8"} /> },
+    { id: "dados", label: "Meus Dados", icon: <User size={16} color={secaoAtiva === "dados" ? "#0f35a0" : "#94a3b8"} /> },
+    { id: "emergencia", label: "Emergência", icon: <HeartPulse size={16} color={secaoAtiva === "emergencia" ? "#0f35a0" : "#94a3b8"} /> },
+    { id: "notificacoes", label: "Notificações", icon: <Bell size={16} color={secaoAtiva === "notificacoes" ? "#0f35a0" : "#94a3b8"} /> },
+    { id: "seguranca", label: "Segurança", icon: <Shield size={16} color={secaoAtiva === "seguranca" ? "#0f35a0" : "#94a3b8"} /> },
+    { id: "acessibilidade", label: "Acessibilidade", icon: <Accessibility size={16} color={secaoAtiva === "acessibilidade" ? "#0f35a0" : "#94a3b8"} /> },
   ];
 
   // CABEÇALHO REUTILIZÁVEL DE CADA CARD (título + editar/salvar/cancelar)
@@ -368,7 +362,8 @@ export default function Perfil({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container}>
+      <Cabecalho />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
 
@@ -386,9 +381,9 @@ export default function Perfil({ navigation }: Props) {
             </View>
             <TouchableOpacity style={styles.editAvatarButton} onPress={handleTrocarFoto} disabled={enviandoFoto}>
               {enviandoFoto ? (
-                <ActivityIndicator size="small" color="#1447c4" />
+                <ActivityIndicator size="small" color="#0f35a0" />
               ) : (
-                <Pencil size={12} color="#1447c4" />
+                <Pencil size={12} color="#0f35a0" />
               )}
             </TouchableOpacity>
           </View>
@@ -436,7 +431,7 @@ export default function Perfil({ navigation }: Props) {
         {secaoAtiva === "dados" && (
           <>
             <View style={styles.card}>
-              <CardHeader icon={<User size={14} color="#1447c4" />} title="Informações Pessoais" bloco="pessoais" />
+              <CardHeader icon={<User size={14} color="#0f35a0" />} title="Informações Pessoais" bloco="pessoais" />
               <Campo label="Nome Completo" name="nome_completo" value={perfil.nome_completo} editando={editandoBloco === "pessoais"} />
               <Campo
                 label="Telefone / Celular"
@@ -460,7 +455,7 @@ export default function Perfil({ navigation }: Props) {
             </View>
 
             <View style={styles.card}>
-              <CardHeader icon={<MapPin size={14} color="#1447c4" />} title="Endereço" bloco="endereco" />
+              <CardHeader icon={<MapPin size={14} color="#0f35a0" />} title="Endereço" bloco="endereco" />
               <Campo label="Cidade" name="cidade" value={perfil.cidade} editando={editandoBloco === "endereco"} />
               <Campo label="Bairro" name="bairro" value={perfil.bairro} editando={editandoBloco === "endereco"} />
               <Campo label="CEP" name="cep" value={perfil.cep} editando={editandoBloco === "endereco"} keyboardType="phone-pad" />
@@ -479,7 +474,7 @@ export default function Perfil({ navigation }: Props) {
             </View>
 
             <View style={styles.card}>
-              <CardHeader icon={<HeartPulse size={14} color="#1447c4" />} title="Informações Médicas" bloco="medico" />
+              <CardHeader icon={<HeartPulse size={14} color="#0f35a0" />} title="Informações Médicas" bloco="medico" />
 
               <View style={styles.campoBox}>
                 <Text style={styles.campoLabel}>Tipo Sanguíneo</Text>
@@ -534,7 +529,7 @@ export default function Perfil({ navigation }: Props) {
             </View>
 
             <View style={styles.card}>
-              <CardHeader icon={<Phone size={14} color="#1447c4" />} title="Contato de Emergência" bloco="contatoEmergencia" />
+              <CardHeader icon={<Phone size={14} color="#0f35a0" />} title="Contato de Emergência" bloco="contatoEmergencia" />
               <Campo
                 label="Nome"
                 name="contato_emergencia_nome"
@@ -567,7 +562,7 @@ export default function Perfil({ navigation }: Props) {
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={styles.iconBadge}>
-                    <Bell size={14} color="#1447c4" />
+                    <Bell size={14} color="#0f35a0" />
                   </View>
                   <Text style={styles.cardTitle}>Preferências de Notificações</Text>
                 </View>
@@ -641,7 +636,7 @@ export default function Perfil({ navigation }: Props) {
             <View style={styles.cardHeaderRow}>
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.iconBadge}>
-                  <Shield size={14} color="#1447c4" />
+                  <Shield size={14} color="#0f35a0" />
                 </View>
                 <Text style={styles.cardTitle}>Segurança da Conta</Text>
               </View>
@@ -671,7 +666,7 @@ export default function Perfil({ navigation }: Props) {
             <View style={styles.cardHeaderRow}>
               <View style={styles.cardHeaderLeft}>
                 <View style={styles.iconBadge}>
-                  <Accessibility size={14} color="#1447c4" />
+                  <Accessibility size={14} color="#0f35a0" />
                 </View>
                 <Text style={styles.cardTitle}>Acessibilidade</Text>
               </View>
@@ -705,7 +700,7 @@ export default function Perfil({ navigation }: Props) {
             </View>
 
             <TouchableOpacity style={styles.salvarLink} onPress={() => salvarDados("endereco")} disabled={carregando}>
-              {carregando ? <ActivityIndicator size="small" color="#1447c4" /> : <Save size={14} color="#1447c4" />}
+              {carregando ? <ActivityIndicator size="small" color="#0f35a0" /> : <Save size={14} color="#0f35a0" />}
               <Text style={styles.linkAzul}>Salvar</Text>
             </TouchableOpacity>
           </View>
@@ -743,7 +738,7 @@ export default function Perfil({ navigation }: Props) {
                   }}
                 >
                   <Text style={styles.opcaoMunicipioTexto}>{item}</Text>
-                  {perfil.municipio_alertas === item && <Check size={18} color="#1447c4" />}
+                  {perfil.municipio_alertas === item && <Check size={18} color="#0f35a0" />}
                 </TouchableOpacity>
               )}
             />
@@ -759,12 +754,12 @@ export default function Perfil({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f1f5f9" },
+  container: { flex: 1, backgroundColor: "#f4f5f7" },
   scrollContent: { padding: 16, paddingBottom: 40 },
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#1e293b", marginBottom: 16 },
 
@@ -790,7 +785,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   avatarImage: { width: "100%", height: "100%" },
-  avatarInicial: { fontSize: 34, fontWeight: "900", color: "#1447c4" },
+  avatarInicial: { fontSize: 34, fontWeight: "900", color: "#0f35a0" },
   editAvatarButton: {
     position: "absolute",
     bottom: 0,
@@ -812,7 +807,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 16,
   },
-  cidadeBadgeText: { fontSize: 11, fontWeight: "700", color: "#1447c4" },
+  cidadeBadgeText: { fontSize: 11, fontWeight: "700", color: "#0f35a0" },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -841,7 +836,7 @@ const styles = StyleSheet.create({
   },
   tabChipAtivo: { backgroundColor: "#eff6ff", borderColor: "#dbeafe" },
   tabChipText: { fontSize: 12, fontWeight: "700", color: "#94a3b8" },
-  tabChipTextAtivo: { color: "#1447c4" },
+  tabChipTextAtivo: { color: "#0f35a0" },
 
   card: {
     backgroundColor: "#ffffff",
@@ -904,7 +899,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#1447c4",
+    backgroundColor: "#0f35a0",
     borderRadius: 12,
     paddingVertical: 12,
     marginTop: 4,
@@ -986,7 +981,7 @@ const styles = StyleSheet.create({
   toggleLabel: { fontSize: 12.5, fontWeight: "600", color: "#334155", flex: 1, marginRight: 10 },
   notaTexto: { fontSize: 11, color: "#94a3b8", marginTop: 6, lineHeight: 16 },
 
-  linkAzul: { fontSize: 12.5, fontWeight: "700", color: "#1447c4" },
+  linkAzul: { fontSize: 12.5, fontWeight: "700", color: "#0f35a0" },
   checkboxRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   checkbox: { width: 18, height: 18, borderRadius: 5, borderWidth: 2, borderColor: "#cbd5e1" },
   checkboxAtivo: { backgroundColor: "#0d1b54", borderColor: "#0d1b54" },

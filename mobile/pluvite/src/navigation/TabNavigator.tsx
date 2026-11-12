@@ -1,15 +1,26 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { CloudSun, Newspaper, Phone, User } from "lucide-react-native";
+import { CloudSun, Globe, Phone, Route, User } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Clima from "../pages/clima/page";
+import Rotas from "../pages/rotas/page";
 import Feed from "../pages/feed/page";
 import Contatos from "../pages/contatos/page";
 import Perfil from "../pages/perfil/page";
+import { COR } from "../lib/tema";
 
-const Tab = createBottomTabNavigator();
+export type AbasParamList = {
+  Clima: undefined;
+  Rotas: undefined;
+  Feed: undefined;
+  Contatos: undefined;
+  Perfil: undefined;
+};
 
+const Tab = createBottomTabNavigator<AbasParamList>();
+
+// Mesma ordem e ícones da navbar2 do site (Clima, Rotas, Feed) + Contatos e Perfil
 export default function TabNavigator() {
   const insets = useSafeAreaInsets();
 
@@ -18,47 +29,44 @@ export default function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#ffffff",
-        tabBarInactiveTintColor: "#94a3b8",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.55)",
+        tabBarActiveBackgroundColor: "rgba(255,255,255,0.1)",
         tabBarStyle: {
-            backgroundColor: "#19316e",
-          height: 60 + insets.bottom,
+          backgroundColor: COR.marinho,
+          height: 62 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-          paddingTop: 8,
-          borderTopWidth: 1,
+          paddingTop: 6,
+          borderTopWidth: 0,
+          elevation: 12,
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
+        tabBarItemStyle: { borderRadius: 12, marginHorizontal: 3 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tab.Screen
         name="Clima"
         component={Clima}
-        options={{
-          tabBarIcon: ({ color, size }) => <CloudSun color={color} size={size} />,
-        }}
+        options={{ tabBarIcon: ({ color }) => <CloudSun color={color} size={20} /> }}
+      />
+      <Tab.Screen
+        name="Rotas"
+        component={Rotas}
+        options={{ tabBarIcon: ({ color }) => <Route color={color} size={20} /> }}
       />
       <Tab.Screen
         name="Feed"
         component={Feed}
-        options={{
-          tabBarIcon: ({ color, size }) => <Newspaper color={color} size={size} />,
-        }}
+        options={{ tabBarIcon: ({ color }) => <Globe color={color} size={20} /> }}
       />
       <Tab.Screen
         name="Contatos"
         component={Contatos}
-        options={{
-          tabBarIcon: ({ color, size }) => <Phone color={color} size={size} />,
-        }}
+        options={{ tabBarIcon: ({ color }) => <Phone color={color} size={20} /> }}
       />
       <Tab.Screen
         name="Perfil"
         component={Perfil}
-        options={{
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
-        }}
+        options={{ tabBarIcon: ({ color }) => <User color={color} size={20} /> }}
       />
     </Tab.Navigator>
   );

@@ -152,6 +152,10 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
 
         municipioRef.current = municipio;
         if (ativo) setMunicipioAlertas(municipio);
+        if (!municipio) {
+          setAlerta(null);
+          setUltimoAlerta(null);
+        }
 
         const token = await registrarParaPush({
           authId: user?.id,
@@ -177,7 +181,23 @@ export function AlertaProvider({ children }: { children: React.ReactNode }) {
     }
 
     void iniciarPush();
-    return escutarNotificacoes(receber);
+
+    // Login/logout depois de aberto: recarrega o município e reassocia o aparelho à conta
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === "SIGNED_IN" || evento === "SIGNED_OUT") {
+        // Fora do callback: chamadas ao Supabase dentro dele podem travar o cliente
+        setTimeout(() => void iniciarPush(), 0);
+      }
+    });
+
+    const pararNotificacoes = escutarNotificacoes(receber);
+    return () => {
+      ativo = false;
+      subscription.unsubscribe();
+      pararNotificacoes();
+    };
   }, [receber]);
 
   /* 2. WebSocket com reconexao automatica */

@@ -35,7 +35,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] Tirar o backend de dentro de `web/app/` (o `next build` trata `backend/node_modules/router/lib/route.js` como rota)
 - [ ] URL do backend via `NEXT_PUBLIC_API_URL` (remover `http://localhost:3001` fixo)
 - [ ] Criar `web/app/lib/constantes.ts` com municípios, tipos, status e prioridades (remover as 3 listas divergentes; tirar "Potunduva", incluir Canas, Lavrinhas e Queluz no painel)
-- [ ] Unificar o mapeamento de status (`aguardando/andamento/resolvido` do mobile → valores canônicos)
+- [x] Unificar o mapeamento de status (`aguardando/andamento/resolvido` do mobile → valores canônicos)
 - [ ] Corrigir links da sidebar (`/servidor/alertas`, `/feed`, `/perfil`) e dados fixos "Prefeitura de Taubaté"
 - [ ] Botão "Sair" funcional na sidebar e na navbar do cidadão
 - [ ] Remover dependências não usadas do `web/package.json` (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`)
@@ -64,8 +64,8 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [x] Salvar latitude/longitude na ocorrência (GPS ou ponto marcado no mapa do modal) e exibir no mapa de rotas
 - [ ] **Aplicar `supabase/migrations/20260923120000_ocorrencias_localizacao.sql` no Supabase** (colunas + Realtime)
 - [x] Tipo de ocorrência "Acidente"
-- [ ] Feed mobile conectado ao Supabase (hoje é mock) com FlatList
-- [ ] Publicação pelo mobile com câmera (`react-native-image-picker`) e localização atual
+- [x] Feed mobile conectado ao Supabase com FlatList, curtidas, comentários e Realtime
+- [x] Publicação pelo mobile com câmera (`react-native-image-picker`) e localização atual
 - [ ] Feed em tempo real (Supabase Realtime) em vez de recarregar
 - [ ] Reverter curtida otimista quando o Supabase retornar erro
 - [ ] Persistir o histórico de ações do servidor no banco (hoje fica na memória do Node)
@@ -130,7 +130,7 @@ Legenda de prioridade: 🔴 essencial para a banca · 🟡 importante · 🟢 de
 - [ ] 🟢 Avisar "rota mais rápida disponível" quando uma ocorrência evitada for concluída
 - [ ] 🟢 Instruções de voz na navegação (`speechSynthesis`)
 - [x] Grafos em produção: cópias comprimidas versionadas em `web/app/backend/grafos/*.json.gz` (~14 MB, dentro do rootDir do Render)
-- [ ] Tela de Rotas no mobile (citada no README, ainda não existe)
+- [x] Tela de Rotas no mobile (Leaflet em WebView, GPS, navegação com recálculo e ocorrências do Feed)
 - [ ] 🟡 Pontos de abrigo e rotas de evacuação cadastrados pela prefeitura
 - [ ] 🟢 Rota até o abrigo mais próximo com um toque
 

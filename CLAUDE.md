@@ -36,7 +36,7 @@ Pluvite/
 │   │   └── python/          Prototypes: SMS + WhatsApp (Twilio), desktop popup, rain test, SSE chat alert
 │   └── public/              Images, map.json / bairros.json (GeoJSON)
 ├── mobile/pluvite/          React Native 0.81 app with native Android Studio/Gradle project
-│   └── src/{pages,navigation,assets}
+│   └── src/{pages,components,context,lib,services,navigation,assets}  (tabs: Clima, Rotas, Feed, Contatos, Perfil)
 ├── Rotas/                   Road graphs per municipality (*.json, OSM + SRTM elevation) + gerar_grafos.py
 ├── supabase/migrations/     SQL migrations (apply in the Supabase SQL Editor; idempotent)
 ├── Sprints/                 Sprint review PDFs and results
@@ -81,7 +81,7 @@ routing change must re-run the reference scenarios in the skill and keep urban a
 | Web      | Next.js 16.2 (App Router, **webpack** build), React 19, TypeScript 5.9 (strict), Tailwind CSS 4 |
 | UI libs  | lucide-react (icons), react-leaflet 4 + Leaflet (maps), Recharts 3 (charts), framer-motion |
 | Backend  | Node + Express 5 (JavaScript ESM), `@supabase/supabase-js` |
-| Mobile   | React Native 0.81 without Expo, Android Studio/Gradle, React Navigation 7, Firebase Messaging |
+| Mobile   | React Native 0.81 without Expo, Android Studio/Gradle (JDK 17), React Navigation 7, Firebase Messaging, react-native-webview (Leaflet map), community geolocation |
 | Data     | Supabase: Postgres, Auth (email + Google/Facebook OAuth), Storage, Realtime |
 | Weather  | WeatherAPI (web Clima), OpenWeather (web Mapa), Open-Meteo (mobile) — see ROADMAP to unify |
 | Scripts  | Python 3 (osmnx, networkx, twilio, supabase-py, pyautogui) |
@@ -222,6 +222,9 @@ Read the matching skill **before** generating code:
 - Geocoding by free text can hit homonyms (e.g. "Cunha"); the generator validates the Vale bbox.
 - `reactStrictMode` is `false` in `next.config.ts` — effects run once in dev.
 - `web/package.json` contains unused deps (`expo`, `mysql2`, `bcrypt`, `@expo/vector-icons`); the mobile app itself no longer uses Expo.
+- Mobile backends are configured in `mobile/pluvite/src/lib/configuracao.ts` (`10.0.2.2` = host PC from the
+  emulator; use the LAN IP or Render URL on a phone). Mobile social login returns on `pluvite://auth`, which
+  must be listed in Supabase → Authentication → Redirect URLs.
 - `cache/` (root) holds the OSMnx HTTP cache and SRTM tiles (`cache/srtm/`) — never commit it.
 
 ## Working agreement

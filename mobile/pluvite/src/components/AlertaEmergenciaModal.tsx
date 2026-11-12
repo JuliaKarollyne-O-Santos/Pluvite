@@ -7,6 +7,7 @@
 
 import React from "react";
 import {
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,13 @@ import {
 import { AlertTriangle, Activity, MapPin, Navigation, X } from "lucide-react-native";
 
 import type { Alerta } from "../services/alertas";
+import { WHATSAPP_ALERTAS } from "../lib/configuracao";
+import { IconeWhatsApp } from "./BotaoAjudaWhatsApp";
+
+const NUMERO_WHATSAPP = WHATSAPP_ALERTAS.replace(/\D/g, "");
+const LINK_WHATSAPP = NUMERO_WHATSAPP
+  ? `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent("pluvite")}`
+  : "";
 
 interface Props {
   alerta: Alerta | null;
@@ -105,6 +113,21 @@ export default function AlertaEmergenciaModal({ alerta, aoFechar }: Props) {
             <Text style={styles.rodapeAviso}>
               Mantenha-se em segurança e siga as orientações da Defesa Civil (199).
             </Text>
+
+            {/* ATUALIZAÇÕES PELO WHATSAPP (mesmo chatbot do site) */}
+            {LINK_WHATSAPP !== "" && (
+              <TouchableOpacity
+                style={styles.botaoWhatsApp}
+                onPress={() =>
+                  Linking.openURL(LINK_WHATSAPP).catch((erro) =>
+                    console.error("Erro ao abrir o WhatsApp:", erro),
+                  )
+                }
+              >
+                <IconeWhatsApp tamanho={16} />
+                <Text style={styles.botaoWhatsAppTexto}>Receber atualizações pelo WhatsApp</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* Rodape */}
@@ -132,6 +155,17 @@ export default function AlertaEmergenciaModal({ alerta, aoFechar }: Props) {
 }
 
 const styles = StyleSheet.create({
+  botaoWhatsApp: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#0fa84a",
+  },
+  botaoWhatsAppTexto: { color: "#ffffff", fontSize: 13.5, fontWeight: "700" },
   fundo: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",

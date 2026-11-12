@@ -110,6 +110,43 @@ Também é possível abrir a pasta `mobile/android` no Android Studio e clicar e
 * Notificações para regiões monitoradas
 * Classificação de riscos
 
+### <img src="web/public/whatsapp-icone.svg" width="26" height="26" align="top"/> Alertas via WhatsApp
+
+Além do pop-up no site e do push no aplicativo, o Pluvite envia os alertas de risco pelo WhatsApp,
+sem que o cidadão precise instalar nada ou ter o telefone cadastrado.
+
+**Como o cidadão se inscreve**
+
+1. Clica no botão vermelho do WhatsApp, ao lado do título na tela inicial ou na barra de navegação
+   depois do login. Uma janela explica o passo a passo.
+2. Em **Abrir WhatsApp**, a conversa com o número do Pluvite abre com a palavra **pluvite** já escrita.
+   Basta enviar.
+3. O assistente responde e pede o município. A pessoa responde com o nome da cidade (um dos 39 do
+   Vale do Paraíba e Litoral Norte).
+4. A partir daí, recebe os alertas daquela cidade. Comandos na conversa:
+   * **CIDADE**: troca o município acompanhado
+   * **SAIR**: para de receber os alertas
+   * **"Qual foi o último alerta?"**: mostra o último alerta real do monitoramento climático
+
+**Como o alerta chega**
+
+* O alerta nasce de um servidor público, que dispara pelo painel `/Servidor`, ou do monitoramento
+  automático do OpenWeather, que consulta os 39 municípios periodicamente.
+* O backend de alertas (FastAPI, `web/app/python`) grava o alerta no Supabase e o distribui ao mesmo
+  tempo para o site, para o aplicativo e para o WhatsApp.
+* No WhatsApp, quem envia é um chatbot (`whatsapp-web.js`) conectado ao número do Pluvite por QR Code.
+  Ele manda o alerta só aos inscritos da cidade afetada, uma mensagem por vez, para reduzir o risco de
+  bloqueio do número.
+* A mensagem traz prioridade, tipo, município, endereço/região, status, descrição e orientações de
+  segurança.
+* Em produção, a API roda no Render e o chatbot no computador conectado ao WhatsApp. O chatbot consulta
+  a API de tempos em tempos e envia os alertas novos (modo `qr-poll`).
+* No site, o botão do WhatsApp mostra um aviso nas instruções quando a cidade do usuário está em
+  alerta.
+
+Configuração e testes: [web/app/python/README.md](web/app/python/README.md) e
+[GUIA-TESTES-ALERTAS.md](GUIA-TESTES-ALERTAS.md).
+
 ### Feed Comunitário e Participação (Web e Mobile)
 
 * Visualização de publicações de ocorrências feitas pela população.

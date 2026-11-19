@@ -33,14 +33,32 @@ export default function CadastroCidadao() {
     try {
       // Cria a conta de autenticação enviando o nome nos metadados.
       // O trigger handle_new_user() no banco já cria a linha em "cidadao" automaticamente.
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
         password: senha,
-        options: { data: { nome_completo: nome } },
+        options: { data: { nome_completo: nome.trim() } },
       });
 
       if (error) {
         alert("Erro ao criar conta: " + error.message);
+        return;
+      }
+
+      // E-mail já cadastrado (ex.: conta criada pelo Google): o Supabase não dá
+      // erro, devolve um usuário sem identidades e NÃO grava a senha nova.
+      if (data.user && data.user.identities?.length === 0) {
+        alert(
+          "Este e-mail já tem conta. Entre pela tela de login (ou com Google/Facebook, se foi assim que você se cadastrou). " +
+            "Se nunca criou senha, use \"Esqueci minha senha\".",
+        );
+        router.push("/login");
+        return;
+      }
+
+      // Confirmação de e-mail ligada no Supabase: ainda não há sessão.
+      if (!data.session) {
+        alert("Enviamos um link de confirmação para o seu e-mail. Confirme e depois entre com sua senha.");
+        router.push("/login");
         return;
       }
 

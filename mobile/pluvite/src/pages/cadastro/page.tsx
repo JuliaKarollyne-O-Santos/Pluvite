@@ -52,6 +52,16 @@ export default function Cadastro({ navigation }: Props) {
         return;
       }
 
+      // E-mail já cadastrado (ex.: pelo Google): o Supabase não dá erro e não grava a senha
+      if (data.user && data.user.identities?.length === 0) {
+        Alert.alert(
+          "Cadastro",
+          "Este e-mail já tem conta. Entre pelo login (ou com Google/Facebook). Se nunca criou senha, use \"Esqueci minha senha\".",
+          [{ text: "OK", onPress: () => navigation.navigate("Login") }],
+        );
+        return;
+      }
+
       // Garantia para bancos sem o trigger: só funciona com sessão ativa (RLS)
       if (data.session && data.user) {
         const { error: erroPerfil } = await supabase

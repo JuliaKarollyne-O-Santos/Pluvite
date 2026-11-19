@@ -56,9 +56,22 @@ export default function Login() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password: senha,
       });
+
+      // Conta existe e a senha está certa, mas o e-mail ainda não foi
+      // confirmado: antes isso caía no "Senha incorreta!" e confundia.
+      if (error?.code === "email_not_confirmed" || error?.message?.includes("Email not confirmed")) {
+        alert("Confirme seu e-mail pelo link que enviamos antes de entrar (veja também o spam).");
+        return;
+      }
+
+      if (error && error.code !== "invalid_credentials") {
+        console.error("Erro no login:", error);
+        alert(`Não foi possível entrar: ${error.message}`);
+        return;
+      }
 
       if (error || !data.user) {
         // O Supabase não diz se o erro foi "senha errada" ou "e-mail não
@@ -69,7 +82,7 @@ export default function Login() {
         // booleano: as tabelas em si estão fechadas por RLS.
         const { data: contaExiste, error: erroConsulta } = await supabase.rpc(
           "conta_existe",
-          { p_email: email },
+          { p_email: email.trim() },
         );
 
         // Na dúvida (função ainda não criada, rede fora) assume que a conta

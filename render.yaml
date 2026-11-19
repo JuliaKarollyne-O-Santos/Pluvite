@@ -11,7 +11,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.8
       - key: SUPABASE_URL
-        value: https://qhughmeaxbyupuglpvud.supabase.co
+        value: https://khjvlfzripxczosigtms.supabase.co
       - key: SUPABASE_KEY
         sync: false
       - key: CORS_ORIGENS

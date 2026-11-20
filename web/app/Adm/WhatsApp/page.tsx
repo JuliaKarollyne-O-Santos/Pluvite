@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Smartphone, Terminal } from "lucide-react";
-import Navbar3 from "@/app/components/sidebar";
 
 export default function WhatsAppAdminPage() {
-  const [sidebarExpandida, setSidebarExpandida] = useState(false);
 
   return (
-    <div className="min-h-screen -mt-15 w-full bg-[#f4f5f7] font-sans text-slate-800">
-      <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
+    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full bg-fundo font-sans text-slate-800">
       <main
-        className={`px-6 pt-24 pb-16 transition-all duration-300 md:pt-8 md:pr-10 ${
-          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
-        }`}
+        className="px-6 pt-24 pb-16 md:pt-8"
       >
         <div className="mx-auto max-w-3xl space-y-6">
           <header>

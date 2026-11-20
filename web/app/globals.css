@@ -2,6 +2,21 @@
 
 @import "tailwindcss" source("../");
 
+/* --- Cantos mais discretos no site inteiro ---
+   Os padrões do Tailwind (xl = 12px, 2xl = 16px, 3xl = 24px) deixavam cards, botões e campos com
+   cara de app infantil. Aqui cada tamanho fica bem mais reto, sem precisar mexer nas classes das
+   páginas. rounded-full continua redondo (fotos de perfil, bolinhas de status). */
+@theme {
+  /* Fundo das páginas: "branco escuro" neutro, sem o tom azulado do slate (use bg-fundo) */
+  --color-fundo: #fafaf9;
+
+  --radius-md: 0.25rem;  /* 4px  (padrão 6px)  */
+  --radius-lg: 0.375rem; /* 6px  (padrão 8px)  */
+  --radius-xl: 0.5rem;   /* 8px  (padrão 12px) */
+  --radius-2xl: 0.5rem;  /* 8px  (padrão 16px) */
+  --radius-3xl: 0.75rem; /* 12px (padrão 24px) */
+}
+
 /* --- Altura da navbar (navbar.tsx e navbar2.tsx) ---
    Uma medida só para a barra e para tudo que fica abaixo dela: o espaço reservado no layout.tsx,
    as telas cheias (Mapa, Rotas e a página inicial) e as partes do Feed que grudam no topo.
@@ -24,6 +39,25 @@ body {
    "clip" corta sem criar barra de rolagem, então o sticky do Feed continua funcionando. */
 body > main {
   overflow-x: clip;
+  padding-left: var(--recuo-sidebar, 0px);
+}
+
+/* --- Modo painel (contas de prefeitura e da equipe) ---
+   O NavbarWrapper põe a classe "modo-painel" no <html> quando uma dessas contas abre uma página
+   compartilhada (Mapa, Feed, Perfil...): no lugar da navbar aparece a sidebar. No celular ela vira
+   a barra superior de 64px; no computador fica à esquerda (84px, ou 256px expandida) e o conteúdo
+   recua para o lado dela. */
+html.modo-painel {
+  --altura-barra-navbar: 64px;
+}
+@media (min-width: 768px) {
+  html.modo-painel {
+    --altura-barra-navbar: 0px;
+    --recuo-sidebar: 84px;
+  }
+  html.modo-painel.sidebar-expandida {
+    --recuo-sidebar: 256px;
+  }
 }
 
 /* Campos de digitar com 16px no celular: com fonte menor o Safari do iPhone dá zoom sozinho ao tocar
@@ -43,7 +77,7 @@ body > main {
   position: fixed;
   top: var(--altura-navbar);
   bottom: 0;
-  left: env(safe-area-inset-left, 0px);
+  left: calc(env(safe-area-inset-left, 0px) + var(--recuo-sidebar, 0px));
   right: env(safe-area-inset-right, 0px);
 }
 

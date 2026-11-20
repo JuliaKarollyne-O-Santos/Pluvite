@@ -979,7 +979,7 @@ export default function RotasPage() {
   return (
     <>
       {/* TELA CHEIA abaixo da navbar (tela-cheia no globals.css), sem rolar a página */}
-      <div className="tela-cheia overflow-hidden bg-slate-100">
+      <div className="tela-cheia overflow-hidden bg-fundo">
         {/* MAPA */}
         {dadosCidade ? (
           <MapaRotasSemSSR

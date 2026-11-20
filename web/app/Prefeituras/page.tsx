@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useEffectEvent, useRef } from "react";
+import React, { useState, useMemo, useEffect, useEffectEvent, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import {
@@ -33,8 +33,9 @@ import {
   Loader2,
   X,
   Send,
+  User,
+  MapPin,
 } from "lucide-react";
-import Navbar3 from "../components/sidebar";
 import { CORES_PRIORIDADE, PRIORIDADE_POR_TIPO_PADRAO } from "@/app/lib/constantes";
 
 // Deriva uma "prioridade" visual a partir do tipo da ocorrência — a tabela
@@ -103,12 +104,12 @@ function AnelProgresso({
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg sm:text-xl font-black text-slate-900">
+          <span className="text-lg sm:text-xl font-semibold text-slate-900">
             {valor}%
           </span>
         </div>
       </div>
-      <p className="text-[11px] font-bold text-slate-600 text-center leading-tight">
+      <p className="text-[11px] font-semibold text-slate-600 text-center leading-tight">
         {label}
       </p>
     </div>
@@ -125,7 +126,6 @@ export default function PainelServidor() {
   const [chamados, setChamados] = useState<Chamado[]>([]);
   const [historicoLogs, setHistoricoLogs] = useState<any[]>([]);
 
-  const [sidebarExpandida, setSidebarExpandida] = useState(false);
 
   // ───── AUTENTICAÇÃO DO SERVIDOR (PREFEITURA) ─────
   // meuMunicipio vem da tabela "servidor" — é ele que filtra tudo (dados do
@@ -162,11 +162,25 @@ export default function PainelServidor() {
     carregarConfigPrioridades();
   }, []);
 
+  // Volta ao painel na mesma sessão: mostra na hora com os dados já conhecidos (sem a tela de
+  // carregamento piscando) e confirma o login em segundo plano logo abaixo.
+  useLayoutEffect(() => {
+    try {
+      const cache = JSON.parse(sessionStorage.getItem("pluvite-servidor") || "null");
+      if (cache?.municipio) {
+        setNomeServidor(cache.nome || "Servidor");
+        setMeuMunicipio(cache.municipio);
+        setVerificandoLogin(false);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     const verificarServidor = async () => {
       const { data } = await supabase.auth.getUser();
       const usuario = data.user;
       if (!usuario) {
+        sessionStorage.removeItem("pluvite-servidor");
         router.replace("/login");
         return;
       }
@@ -178,11 +192,16 @@ export default function PainelServidor() {
         .maybeSingle();
 
       if (error || !servidorRow) {
+        sessionStorage.removeItem("pluvite-servidor");
         await supabase.auth.signOut();
         router.replace("/login");
         return;
       }
 
+      sessionStorage.setItem(
+        "pluvite-servidor",
+        JSON.stringify({ nome: servidorRow.nome_completo, municipio: servidorRow.municipio }),
+      );
       setNomeServidor(servidorRow.nome_completo || "Servidor");
       setMeuMunicipio(servidorRow.municipio);
       setVerificandoLogin(false);
@@ -494,19 +513,18 @@ export default function PainelServidor() {
 
   if (verificandoLogin) {
     return (
-      <div className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#fbfcfe]">
+      <div className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-fundo">
         <Loader2 size={22} className="text-[#0d43af] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-[#fbfcfe]">
-      <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
+    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-fundo">
 
       {/* TOAST — notificação de nova ocorrência */}
       {toastAtual && (
-        <div className="fixed top-5 right-5 z-[10001] bg-[#091c4b] text-white rounded-2xl shadow-xl px-4 py-3.5 flex items-start gap-3 max-w-sm animate-[fadeIn_0.2s_ease]">
+        <div className="fixed top-5 right-5 z-[10001] bg-slate-900 text-white rounded-md shadow-xl px-4 py-3.5 flex items-start gap-3 max-w-sm animate-[fadeIn_0.2s_ease]">
           <Bell size={18} className="text-amber-300 shrink-0 mt-0.5" />
           <p className="text-xs font-semibold leading-snug flex-1">
             {toastAtual}
@@ -523,20 +541,18 @@ export default function PainelServidor() {
       {/* No celular a sidebar vira a barra superior fixa (64px, TOPBAR_MOBILE_ALTURA): sem recuo
           lateral e com espaço no topo para o cabeçalho não ficar escondido atrás dela */}
       <div
-        className={`pt-24 md:pt-8 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
-          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
-        }`}
+        className="pt-24 md:pt-8 md:px-6 pb-16"
       >
       <div className="max-w-7xl mx-auto px-6 md:px-4">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
-            <span className="text-xs font-bold text-[#2C4A6F] uppercase tracking-widest">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
               Painel da Prefeitura · {meuMunicipio}
             </span>
-            <h1 className="text-4xl font-extrabold text-slate-950 tracking-tight mt-1">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight mt-1">
               Olá, {nomeServidor}
             </h1>
-            <p className="text-slate-500 text-sm font-medium mt-1">
+            <p className="text-slate-600 text-sm mt-1">
               Acompanhe ocorrências, tendências e despache equipes em tempo real
             </p>
             <p className="text-slate-500 text-xs mt-2">
@@ -549,7 +565,7 @@ export default function PainelServidor() {
             <button
               type="button"
               onClick={() => router.push("/Servidor/Emitir")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#0d163b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2a8f] focus-visible:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-[#0b1f6e] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0f35a0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2a8f] focus-visible:ring-offset-2"
             >
               <Send size={16} />
               Emitir alerta manual
@@ -562,21 +578,21 @@ export default function PainelServidor() {
                   setNotifAberta((v) => !v);
                   if (!notifAberta) setNaoLidas(0);
                 }}
-                className="relative w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-[#0d43af] hover:border-[#0d43af]/30 transition cursor-pointer"
+                className="relative w-10 h-10 rounded-md bg-white border border-slate-300 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
                 title="Notificações"
               >
                 <Bell size={17} />
                 {naoLidas > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-semibold flex items-center justify-center">
                     {naoLidas > 9 ? "9+" : naoLidas}
                   </span>
                 )}
               </button>
 
               {notifAberta && (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-xl z-50">
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white rounded-md border border-slate-200 shadow-xl z-50">
                   <div className="p-3 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-800">
+                    <p className="text-xs font-semibold text-slate-800">
                       Notificações · {meuMunicipio}
                     </p>
                   </div>
@@ -606,15 +622,15 @@ export default function PainelServidor() {
             </div>
 
             {/* Menu de abas */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit">
+            <div className="flex items-center gap-0.5 bg-white border border-slate-300 rounded-md p-0.5 w-fit">
               {abas.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setAbaAtiva(id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded text-sm font-medium transition-colors cursor-pointer
                     ${abaAtiva === id
-                      ? "bg-[#0d43af] text-white shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
                   <Icon size={15} />
@@ -626,60 +642,30 @@ export default function PainelServidor() {
         </div>
 
         {/* Grid de Cards de Métricas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-blue-600 rounded-2xl p-6 text-white flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <Layers className="w-6 h-6 opacity-90" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">{metricas.ativos}</h2>
-              <p className="text-xs font-semibold opacity-90">Ativos</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          {[
+            { rotulo: "Ativos", valor: metricas.ativos, Icone: Layers, marca: "bg-blue-50 border-blue-200", corIcone: "text-blue-700" },
+            { rotulo: "Críticos", valor: metricas.criticos, Icone: AlertTriangle, marca: "bg-red-50 border-red-200", corIcone: "text-red-700" },
+            { rotulo: "Em andamento", valor: metricas.emAndamento, Icone: Wrench, marca: "bg-amber-50 border-amber-200", corIcone: "text-amber-700" },
+            { rotulo: "Concluídos", valor: metricas.concluidos, Icone: CheckCircle, marca: "bg-emerald-50 border-emerald-200", corIcone: "text-emerald-700" },
+            { rotulo: "Bairros afetados", valor: metricas.bairrosAfetados, Icone: MapPinned, marca: "bg-indigo-50 border-indigo-200", corIcone: "text-indigo-700" },
+            { rotulo: "Taxa de conclusão", valor: `${metricas.taxaConclusao}%`, Icone: Percent, marca: "bg-teal-50 border-teal-200", corIcone: "text-teal-700" },
+          ].map(({ rotulo, valor, Icone, marca, corIcone }) => (
+            <div key={rotulo} className={`rounded-lg border px-5 py-4 ${marca}`}>
+              <p className={`flex items-center gap-1.5 text-xs font-medium ${corIcone}`}>
+                <Icone size={14} className="shrink-0" />
+                {rotulo}
+              </p>
+              <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-1">{valor}</p>
             </div>
-          </div>
-          <div className="bg-red-600 rounded-2xl p-6 text-white flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <AlertTriangle className="w-6 h-6 opacity-90" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">{metricas.criticos}</h2>
-              <p className="text-xs font-semibold opacity-90">Críticos</p>
-            </div>
-          </div>
-          <div className="bg-amber-500 rounded-2xl p-6 text-white flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <Wrench className="w-6 h-6 opacity-90" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">{metricas.emAndamento}</h2>
-              <p className="text-xs font-semibold opacity-90">Em Andamento</p>
-            </div>
-          </div>
-          <div className="bg-emerald-700 rounded-2xl p-6 text-white flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <CheckCircle className="w-6 h-6 opacity-90" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">{metricas.concluidos}</h2>
-              <p className="text-xs font-semibold opacity-90">Concluídos</p>
-            </div>
-          </div>
-          <div className="bg-[#091c4b] rounded-2xl p-6 text-white flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <MapPinned className="w-6 h-6 opacity-90" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">
-                {metricas.bairrosAfetados}
-              </h2>
-              <p className="text-xs font-semibold opacity-90">Bairros Afetados</p>
-            </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-900 flex flex-col justify-between h-36 shadow-sm lg:col-span-1">
-            <Percent className="w-6 h-6 text-emerald-600" />
-            <div>
-              <h2 className="text-3xl font-black mb-1">
-                {metricas.taxaConclusao}%
-              </h2>
-              <p className="text-xs font-semibold text-slate-500">Taxa de Conclusão</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         {abaAtiva === "visao" && (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="font-bold text-slate-800 text-base mb-6">
+              <div className="bg-white p-6 rounded-lg border border-slate-200">
+                <h3 className="font-semibold text-slate-900 text-[15px] mb-6">
                   Ocorrências por Bairro
                 </h3>
                 <div className="h-64 w-full">
@@ -724,8 +710,8 @@ export default function PainelServidor() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-                <h3 className="font-bold text-slate-800 text-base mb-6">
+              <div className="bg-white p-6 rounded-lg border border-slate-200 flex flex-col">
+                <h3 className="font-semibold text-slate-900 text-[15px] mb-6">
                   Status dos Chamados (%)
                 </h3>
                 <div className="flex-1 grid grid-cols-2 gap-y-6 place-items-center">
@@ -742,10 +728,10 @@ export default function PainelServidor() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-6 rounded-lg border border-slate-200">
                 <div className="flex items-center gap-2 mb-6">
-                  <TrendingUp size={16} className="text-[#0d43af]" />
-                  <h3 className="font-bold text-slate-800 text-base">
+                  <TrendingUp size={16} className="text-[#0f35a0]" />
+                  <h3 className="font-semibold text-slate-900 text-[15px]">
                     Tendência de Ocorrências (7 dias)
                   </h3>
                 </div>
@@ -790,8 +776,8 @@ export default function PainelServidor() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 className="font-bold text-slate-800 text-base mb-6">
+              <div className="bg-white p-6 rounded-lg border border-slate-200">
+                <h3 className="font-semibold text-slate-900 text-[15px] mb-6">
                   Principais Tipos de Ocorrência
                 </h3>
                 <div className="h-56 w-full">
@@ -834,14 +820,14 @@ export default function PainelServidor() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+            <div className="bg-white p-6 rounded-lg border border-slate-200 mb-6">
               <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-                <History className="w-5 h-5 text-slate-500" />
-                <h3 className="font-bold text-slate-800 text-base">
+                <History className="w-4 h-4 text-[#0f35a0]" />
+                <h3 className="font-semibold text-slate-900 text-[15px]">
                   Histórico de Ações Operacionais
                 </h3>
               </div>
-              <div className="max-h-40 overflow-y-auto space-y-3 pr-2">
+              <div className="max-h-56 overflow-y-auto pr-2">
                 {historicoLogs.length === 0 ? (
                   <div className="text-xs text-slate-400 py-2">
                     Nenhuma ação operacional registrada ainda.
@@ -850,17 +836,13 @@ export default function PainelServidor() {
                   historicoLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="flex justify-between items-center text-xs bg-slate-50 p-3 rounded-xl border border-slate-100"
+                      className="flex justify-between items-center gap-3 text-[13px] py-2 border-b border-slate-100 last:border-0"
                     >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`font-black uppercase tracking-wider ${log.cor_acao || "text-blue-500"}`}
-                        >
-                          • REGISTRO
-                        </span>
-                        <p className="text-slate-600 font-semibold">{log.acao}</p>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 bg-current ${log.cor_acao || "text-blue-500"}`} />
+                        <p className="text-slate-700 truncate">{log.acao}</p>
                       </div>
-                      <div className="flex items-center gap-1 text-slate-400 font-bold shrink-0">
+                      <div className="flex items-center gap-1 text-slate-500 text-xs tabular-nums shrink-0">
                         <Clock size={12} />
                         <span>
                           {log.criado_at
@@ -886,7 +868,7 @@ export default function PainelServidor() {
                 <select
                   value={prioridadeFiltro}
                   onChange={(e) => setPrioridadeFiltro(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+                  className="w-full bg-white border border-slate-300 rounded-md pl-3 pr-10 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#0b1f6e] focus:ring-2 focus:ring-[#0b1f6e]/15 appearance-none cursor-pointer"
                 >
                   <option value="Todas as Prioridades">Todas as Prioridades</option>
                   <option value="Alerta Máximo">Alerta Máximo</option>
@@ -894,7 +876,7 @@ export default function PainelServidor() {
                   <option value="Atenção Crítica">Atenção Crítica</option>
                   <option value="Zona Segura">Zona Segura</option>
                 </select>
-                <span className="absolute right-4 top-3.5 text-[9px] text-slate-400 pointer-events-none">
+                <span className="absolute right-4 top-3.5 text-[11px] text-slate-400 pointer-events-none">
                   ▼
                 </span>
               </div>
@@ -902,49 +884,50 @@ export default function PainelServidor() {
 
             <div className="space-y-4">
               {chamadosFiltrados.length === 0 ? (
-                <div className="bg-white rounded-2xl p-10 border border-slate-200 text-center text-slate-400 text-xs font-semibold">
+                <div className="bg-white rounded-lg p-10 border border-slate-200 text-center text-slate-500 text-sm">
                   Nenhuma ocorrência encontrada para esta combinação de filtros.
                 </div>
               ) : (
                 chamadosFiltrados.map((chamado) => (
                   <div
                     key={chamado.id}
-                    className="flex flex-col md:flex-row bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm justify-between items-start md:items-center gap-6"
+                    className="relative flex flex-col md:flex-row bg-white rounded-lg p-5 md:pl-6 border border-slate-200 justify-between items-start md:items-center gap-6 overflow-hidden"
                   >
+                    <span
+                      className="absolute left-0 inset-y-0 w-1"
+                      style={{
+                        backgroundColor:
+                          CORES_PRIORIDADE[chamado.prioridade as keyof typeof CORES_PRIORIDADE]
+                      }}
+                    />
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div
-                          className="p-1.5 rounded-lg text-white shadow-sm"
-                          style={{
-                            backgroundColor:
-                              CORES_PRIORIDADE[chamado.prioridade as keyof typeof CORES_PRIORIDADE]
-                          }}
-                        >
-                          <AlertTriangle size={15} />
-                        </div>
-                        <h4 className="font-black text-slate-900 text-sm md:text-base">
+                        <h4 className="font-semibold text-slate-900 text-[15px]">
                           {chamado.tipo}
                         </h4>
                         <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-                          style={{
-                            backgroundColor:
-                              CORES_PRIORIDADE[chamado.prioridade as keyof typeof CORES_PRIORIDADE]
-                          }}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded border border-slate-200 text-slate-700"
                         >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{
+                              backgroundColor:
+                                CORES_PRIORIDADE[chamado.prioridade as keyof typeof CORES_PRIORIDADE]
+                            }}
+                          />
                           {chamado.prioridade}
                         </span>
-                        <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-slate-100 text-slate-700 text-[11px] font-medium px-2 py-0.5 rounded">
                           {chamado.bairro}
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-semibold items-center">
-                        <span>👤 {chamado.usuario}</span>
-                        <span>📍 {chamado.endereco}</span>
-                        <span>🕒 {chamado.tempo}</span>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 items-center">
+                        <span className="inline-flex items-center gap-1"><User size={12} /> {chamado.usuario}</span>
+                        <span className="inline-flex items-center gap-1"><MapPin size={12} /> {chamado.endereco}</span>
+                        <span className="inline-flex items-center gap-1"><Clock size={12} /> {chamado.tempo}</span>
                       </div>
-                      <p className="text-slate-600 text-xs md:text-sm font-medium pt-1">
+                      <p className="text-slate-700 text-sm pt-1">
                         {chamado.descricao}
                       </p>
                     </div>
@@ -954,13 +937,13 @@ export default function PainelServidor() {
                         <div className="flex flex-col gap-2 w-full">
                           <button
                             onClick={() => handleMarcarComoVisto(chamado.id)}
-                            className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm"
+                            className="w-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs px-4 py-2 rounded-md transition-colors"
                           >
                             Marcar como Visto
                           </button>
                           <button
                             onClick={() => handleDespacharEquipe(chamado.id)}
-                            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            className="w-full bg-[#0b1f6e] hover:bg-[#0f35a0] text-white font-medium text-xs px-4 py-2 rounded-md flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <Navigation size={12} className="fill-white" /> Despachar
                             Equipe
@@ -970,12 +953,12 @@ export default function PainelServidor() {
 
                       {chamado.statusAtual === "Visualizado" && (
                         <div className="flex flex-col gap-2 w-full">
-                          <span className="bg-blue-50 text-blue-600 border border-blue-100 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 justify-center">
+                          <span className="text-slate-600 text-xs font-medium px-3 py-1.5 flex items-center gap-1 justify-center">
                             <Eye size={12} /> Visualizado
                           </span>
                           <button
                             onClick={() => handleDespacharEquipe(chamado.id)}
-                            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            className="w-full bg-[#0b1f6e] hover:bg-[#0f35a0] text-white font-medium text-xs px-4 py-2 rounded-md flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <Navigation size={12} className="fill-white" /> Despachar
                             Equipe
@@ -985,12 +968,12 @@ export default function PainelServidor() {
 
                       {chamado.statusAtual === "Em Andamento" && (
                         <div className="flex flex-col gap-2 w-full">
-                          <span className="bg-amber-50 text-amber-600 border border-amber-100 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 justify-center">
+                          <span className="text-amber-700 text-xs font-medium px-3 py-1.5 flex items-center gap-1 justify-center">
                             <Wrench size={12} /> Em Andamento
                           </span>
                           <button
                             onClick={() => handleMarcarConcluido(chamado.id)}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs px-4 py-2 rounded-md flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <CheckCircle size={12} /> Marcar Concluído
                           </button>
@@ -998,8 +981,8 @@ export default function PainelServidor() {
                       )}
 
                       {chamado.statusAtual === "Concluído" && (
-                        <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-4 py-2 rounded-xl flex items-center justify-center gap-1 w-full text-center border border-emerald-200">
-                          ✓ Finalizado
+                        <span className="bg-emerald-50 text-emerald-700 text-xs font-medium px-4 py-2 rounded-md flex items-center justify-center gap-1 w-full text-center border border-emerald-200">
+                          <CheckCircle size={12} /> Finalizado
                         </span>
                       )}
                     </div>

@@ -126,7 +126,7 @@ export default function PainelModeracao() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
           Moderação do Feed
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -135,7 +135,7 @@ export default function PainelModeracao() {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search
             size={15}
@@ -170,11 +170,11 @@ export default function PainelModeracao() {
       )}
 
       {carregando ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex items-center justify-center">
+        <div className="bg-white rounded-lg border border-slate-200 p-10 flex items-center justify-center">
           <Loader2 size={20} className="animate-spin text-[#091f75]" />
         </div>
       ) : ocorrenciasFiltradas.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center text-xs font-semibold text-slate-400">
+        <div className="bg-white rounded-lg border border-slate-200 p-10 text-center text-xs font-semibold text-slate-400">
           Nenhuma ocorrência encontrada para esses filtros.
         </div>
       ) : (
@@ -189,7 +189,7 @@ export default function PainelModeracao() {
           {ocorrenciasFiltradas.map((o) => (
             <div
               key={o.id}
-              className="flex items-start gap-4 bg-white rounded-2xl border border-slate-200 shadow-sm p-4"
+              className="flex items-start gap-4 bg-white rounded-lg border border-slate-200 p-4"
             >
               {o.imagem_url ? (
                 <img
@@ -205,7 +205,7 @@ export default function PainelModeracao() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                  <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
                     {o.tipo}
                   </span>
                   <span className="text-[11px] font-semibold text-slate-400">

@@ -306,10 +306,10 @@ const NIVEIS_SENHA = [
 ];
 
 const CLASSE_INPUT =
-  "w-full bg-white text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 border border-slate-200 outline-none mt-1 focus:border-[#091f75] focus:ring-2 focus:ring-[#091f75]/10 transition";
+  "w-full bg-white text-sm text-slate-900 rounded-md px-3 py-2 border border-slate-300 outline-none mt-1 focus:border-[#0b1f6e] focus:ring-2 focus:ring-[#0b1f6e]/15 transition";
 
 const NAO_INFORMADO = (
-  <span className="text-slate-400 font-medium">Não informado</span>
+  <span className="text-slate-500 font-medium">Não informado</span>
 );
 
 export default function PerfilCidadao() {
@@ -570,10 +570,10 @@ export default function PerfilCidadao() {
     const comentarios = minhasPublicacoes.reduce((s, p) => s + p.comentarios.length, 0);
     const resolvidas = minhasPublicacoes.filter((p) => p.status === "Concluído").length;
     return [
-      { label: "Publicações", valor: minhasPublicacoes.length, icon: ImageIcon, cor: "bg-blue-100 text-blue-700" },
-      { label: "Curtidas recebidas", valor: curtidas, icon: ThumbsUp, cor: "bg-indigo-100 text-indigo-700" },
-      { label: "Comentários", valor: comentarios, icon: MessageSquare, cor: "bg-amber-100 text-amber-700" },
-      { label: "Ocorrências resolvidas", valor: resolvidas, icon: CheckCircle, cor: "bg-emerald-100 text-emerald-700" },
+      { label: "Publicações", valor: minhasPublicacoes.length, icon: ImageIcon, cor: "bg-white text-blue-700", fundo: "bg-blue-50 border-blue-200", texto: "text-blue-950" },
+      { label: "Curtidas recebidas", valor: curtidas, icon: ThumbsUp, cor: "bg-white text-indigo-700", fundo: "bg-indigo-50 border-indigo-200", texto: "text-indigo-950" },
+      { label: "Comentários", valor: comentarios, icon: MessageSquare, cor: "bg-white text-amber-700", fundo: "bg-amber-50 border-amber-200", texto: "text-amber-950" },
+      { label: "Ocorrências resolvidas", valor: resolvidas, icon: CheckCircle, cor: "bg-white text-emerald-700", fundo: "bg-emerald-50 border-emerald-200", texto: "text-emerald-950" },
     ];
   }, [minhasPublicacoes]);
 
@@ -1236,7 +1236,7 @@ export default function PerfilCidadao() {
 
   const renderAvatar = (classeTamanho: string, classeTexto: string) => (
     <div
-      className={`${classeTamanho} rounded-full bg-blue-50 overflow-hidden flex items-center justify-center text-[#091f75] font-black select-none shrink-0 ${classeTexto}`}
+      className={`${classeTamanho} rounded-full bg-blue-50 overflow-hidden flex items-center justify-center text-[#091f75] font-semibold select-none shrink-0 ${classeTexto}`}
     >
       {perfil.avatar_url && !contaRestrita ? (
         <img
@@ -1259,45 +1259,25 @@ export default function PerfilCidadao() {
   // linhas de rota e alfinetes de mapa bem discretos
   const renderCapaPadrao = () => (
     <>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0b1f6e] via-[#0d2580] to-[#12329a]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1a5c] to-[#14318f]" />
       <div
-        className="absolute inset-0 opacity-25"
+        className="absolute inset-0 opacity-10"
         style={{
           backgroundImage: "radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)",
           backgroundSize: "18px 18px",
         }}
       />
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 1200 220"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d="M-20 150 C 180 80, 320 210, 520 140 S 860 40, 1220 120" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        <path d="M-20 60 C 220 120, 420 20, 640 90 S 980 190, 1220 70" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        <path d="M760 240 C 800 160, 880 110, 940 -20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-        <path d="M-20 195 C 260 175, 520 205, 760 165 S 1100 155, 1220 180" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="3 7" vectorEffect="non-scaling-stroke" />
-      </svg>
-      {[
-        { left: "24%", top: "30%" },
-        { left: "47%", top: "58%" },
-        { left: "66%", top: "24%" },
-        { left: "84%", top: "52%" },
-      ].map((pos, i) => (
-        <MapPin key={i} size={16} className="absolute text-white/30" style={pos} />
-      ))}
+
     </>
   );
 
   const renderCardHeader = (icon: React.ReactNode, title: string, bloco: Bloco, subtitulo?: string) => (
-    <div className="flex justify-between items-start gap-3 mb-4">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 shrink-0">
-          {icon}
-        </span>
+    <div className="flex justify-between items-start gap-3 pb-4 mb-5 border-b border-slate-200">
+      <div className="flex items-start gap-2.5 min-w-0">
+        <span className="flex items-center justify-center w-8 h-8 rounded-md bg-[#0b1f6e]/[0.07] text-[#0b1f6e] shrink-0 -mt-1">{icon}</span>
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-slate-800 leading-tight">{title}</h3>
-          {subtitulo && <p className="text-[11px] text-slate-500 mt-0.5">{subtitulo}</p>}
+          <h3 className="text-[15px] font-semibold text-slate-900 leading-tight">{title}</h3>
+          {subtitulo && <p className="text-[13px] text-slate-500 mt-1">{subtitulo}</p>}
         </div>
       </div>
       <div className="flex gap-1.5 shrink-0">
@@ -1305,7 +1285,7 @@ export default function PerfilCidadao() {
           <>
             <button
               onClick={cancelarEdicao}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-md cursor-pointer transition-colors"
             >
               <X size={13} />
               <span className="hidden sm:inline">Cancelar</span>
@@ -1313,7 +1293,7 @@ export default function PerfilCidadao() {
             <button
               onClick={() => salvarDados(bloco)}
               disabled={salvandoBloco === bloco}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg cursor-pointer transition-all disabled:opacity-60"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0b1f6e] hover:bg-[#0f35a0] rounded-md cursor-pointer transition-colors disabled:opacity-60"
             >
               {salvandoBloco === bloco ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -1326,7 +1306,7 @@ export default function PerfilCidadao() {
         ) : (
           <button
             onClick={() => iniciarEdicao(bloco)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:text-[#091f75] rounded-lg hover:bg-blue-50 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-md transition-colors cursor-pointer"
           >
             <Pencil size={12} />
             Editar
@@ -1346,16 +1326,16 @@ export default function PerfilCidadao() {
   ) => (
     <div
       key={label}
-      className={`bg-slate-50 hover:bg-blue-50/40 p-3 rounded-xl border border-slate-100 hover:border-blue-100 transition ${classeExtra}`}
+      className={`min-w-0 ${classeExtra}`}
     >
-      <span className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wide mb-1">
+      <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1 [&_svg]:hidden">
         {icone}
         {label}
       </span>
       {editando ? (
         edicao
       ) : (
-        <span className="text-[13px] font-semibold text-slate-800 block break-words">{visualizacao}</span>
+        <span className="text-sm font-medium text-slate-900 block break-words">{visualizacao}</span>
       )}
     </div>
   );
@@ -1363,12 +1343,12 @@ export default function PerfilCidadao() {
   const nivelSenha = NIVEIS_SENHA[forcaDaSenha(senha.nova)];
 
   return (
-    <main className="w-full bg-[#f4f6fb] font-sans antialiased min-h-full px-3 sm:px-4 lg:px-5 py-5">
-      <div className="w-full space-y-5">
+    <main className="w-full bg-fundo font-sans antialiased min-h-full px-3 sm:px-5 lg:px-8 py-6">
+      <div className="w-full max-w-6xl mx-auto space-y-5">
         {/* ═══════════════ CAPA + IDENTIDADE ═══════════════ */}
-        <section className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           {/* CAPA — imagem enviada pelo usuário ou o padrão no estilo do Feed */}
-          <div className="relative h-36 sm:h-48 md:h-52 bg-[#0b1f6e] overflow-hidden">
+          <div className="relative h-28 sm:h-36 bg-[#0b1f6e] overflow-hidden">
             {perfil.banner_url && !contaRestrita ? (
               <img
                 src={perfil.banner_url}
@@ -1394,7 +1374,7 @@ export default function PerfilCidadao() {
               <label
                 htmlFor="input-capa"
                 title="Tamanho recomendado: 1500 × 400 px"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/90 hover:bg-white text-[#0b1f6e] text-[11px] font-bold shadow-sm backdrop-blur-sm transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/90 hover:bg-white text-[#0b1f6e] text-[11px] font-semibold backdrop-blur-sm transition cursor-pointer"
               >
                 {salvandoCapa ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
                 {perfil.banner_url ? "Trocar capa" : "Adicionar capa"}
@@ -1413,15 +1393,15 @@ export default function PerfilCidadao() {
           <div className="px-5 sm:px-8 pb-6">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               {/* AVATAR — só ele sobe por cima da capa */}
-              <div className="relative w-28 h-28 sm:w-32 sm:h-32 shrink-0 -mt-14 sm:-mt-16 z-10">
-                <div className="w-full h-full rounded-full ring-4 ring-white shadow-md overflow-hidden bg-white">
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 -mt-12 sm:-mt-14 z-10">
+                <div className="w-full h-full rounded-full ring-4 ring-white overflow-hidden bg-white">
                   {renderAvatar("w-full h-full", "text-4xl")}
                 </div>
                 <label
                   htmlFor="input-avatar"
                   title="Trocar foto"
                   hidden={contaRestrita}
-                  className="absolute bottom-1 right-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-md cursor-pointer transition-all ring-2 ring-white flex items-center justify-center active:scale-90"
+                  className="absolute bottom-0.5 right-0.5 bg-slate-900 hover:bg-slate-700 text-white p-1.5 rounded-full cursor-pointer transition-colors ring-2 ring-white flex items-center justify-center"
                 >
                   <Camera size={13} />
                 </label>
@@ -1438,7 +1418,7 @@ export default function PerfilCidadao() {
               <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:pt-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">
                       {perfil.nome_completo || "Usuário"}
                     </h1>
                     {contaInfo.emailConfirmado && (
@@ -1446,42 +1426,42 @@ export default function PerfilCidadao() {
                     )}
                   </div>
                   {perfil.email && (
-                    <p className="text-xs text-slate-500 font-medium truncate mt-0.5">{perfil.email}</p>
+                    <p className="text-sm text-slate-500 truncate mt-0.5">{perfil.email}</p>
                   )}
 
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full border border-blue-100">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-md">
                       <MapPin size={11} />
                       {perfil.cidade
                         ? `${perfil.bairro ? perfil.bairro + ", " : ""}${perfil.cidade}`
                         : "Cidade não informada"}
                     </span>
                     {contaInfo.criadoEm && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-600 text-[11px] font-bold rounded-full border border-slate-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-md">
                         <CalendarDays size={11} />
                         Membro desde {formatarData(contaInfo.criadoEm, { month: "long", year: "numeric" })}
                       </span>
                     )}
                     {idade !== null && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-600 text-[11px] font-bold rounded-full border border-slate-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-md">
                         <User size={11} />
                         {idade} anos
                       </span>
                     )}
                     {perfil.tipo_sanguineo && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-600 text-[11px] font-bold rounded-full border border-red-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 text-xs font-medium rounded-md">
                         <Droplet size={11} />
                         {perfil.tipo_sanguineo}
                       </span>
                     )}
                     {perfil.pcd && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-violet-50 text-violet-700 text-[11px] font-bold rounded-full border border-violet-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-md">
                         <Accessibility size={11} />
                         PCD
                       </span>
                     )}
                     {contaRestrita && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 text-[11px] font-bold rounded-full border border-amber-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 text-xs font-medium rounded-md">
                         <ShieldCheck size={11} />
                         Conta protegida · menor de {IDADE_MINIMA_SEM_RESTRICAO}
                       </span>
@@ -1493,9 +1473,9 @@ export default function PerfilCidadao() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => trocarSecao("notificacoes")}
-                    className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-lg border cursor-pointer transition ${alertasAtivos
-                      ? "text-emerald-700 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"
-                      : "text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100"
+                    className={`flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-md border cursor-pointer transition-colors ${alertasAtivos
+                      ? "text-slate-700 bg-white border-slate-300 hover:bg-slate-50"
+                      : "text-slate-500 bg-white border-slate-300 hover:bg-slate-50"
                       }`}
                   >
                     <span
@@ -1506,7 +1486,7 @@ export default function PerfilCidadao() {
                   <button
                     onClick={handleSair}
                     disabled={saindo}
-                    className="flex items-center gap-1.5 text-[11px] font-bold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 border border-red-100 hover:border-red-500 rounded-lg px-3 py-2 transition-all cursor-pointer disabled:opacity-60"
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-600 bg-white hover:bg-red-50 border border-slate-300 hover:border-red-200 rounded-md px-3 py-2 transition-colors cursor-pointer disabled:opacity-60"
                   >
                     {saindo ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
                     {saindo ? "Saindo..." : "Sair da conta"}
@@ -1517,7 +1497,7 @@ export default function PerfilCidadao() {
           </div>
 
           {/* ABAS DO PERFIL — estilo canal do YouTube */}
-          <nav className="border-t border-slate-100 px-2 sm:px-6">
+          <nav className="border-t border-slate-200 px-2 sm:px-6">
             <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
               {itensMenu.map((item) => {
                 const ativo = secaoAtiva === item.id;
@@ -1525,14 +1505,14 @@ export default function PerfilCidadao() {
                   <li key={item.id} className="shrink-0">
                     <button
                       onClick={() => trocarSecao(item.id)}
-                      className={`relative flex items-center gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-[13px] font-bold whitespace-nowrap transition-colors cursor-pointer ${ativo ? "text-[#0b1f6e]" : "text-slate-500 hover:text-slate-800"
+                      className={`relative flex items-center gap-2 px-3 sm:px-4 py-3.5 text-[13px] font-medium whitespace-nowrap transition-colors cursor-pointer ${ativo ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
                         }`}
                     >
                       {item.icon}
                       {item.label}
                       {item.contador !== undefined && item.contador > 0 && (
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-md ${ativo ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}
+                          className={`text-[11px] px-1.5 py-0.5 rounded-md ${ativo ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}
                         >
                           {item.contador}
                         </span>
@@ -1541,7 +1521,7 @@ export default function PerfilCidadao() {
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Informações pendentes" />
                       )}
                       <span
-                        className={`absolute inset-x-2 bottom-0 h-[3px] rounded-t-full transition-colors ${ativo ? "bg-blue-600" : "bg-transparent"}`}
+                        className={`absolute inset-x-2 bottom-0 h-[2px] transition-colors ${ativo ? "bg-[#0b1f6e]" : "bg-transparent"}`}
                       />
                     </button>
                   </li>
@@ -1553,12 +1533,12 @@ export default function PerfilCidadao() {
 
         {/* ═══════════════ AVISO DO MODO RESTRITO ═══════════════ */}
         {contaRestrita && (
-          <section className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center gap-4">
+          <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-5 flex flex-col md:flex-row md:items-center gap-4">
             <span className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
               <ShieldCheck size={20} />
             </span>
             <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-bold text-amber-900">
+              <h2 className="text-sm font-semibold text-amber-900">
                 Perfil restrito para menores de {IDADE_MINIMA_SEM_RESTRICAO} anos
               </h2>
               <p className="text-xs text-amber-800 leading-relaxed mt-0.5">
@@ -1570,7 +1550,7 @@ export default function PerfilCidadao() {
             {!(perfil.contato_emergencia_nome && perfil.contato_emergencia_telefone) && (
               <button
                 onClick={() => trocarSecao("emergencia")}
-                className="self-start md:self-auto shrink-0 px-3.5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition cursor-pointer"
+                className="self-start md:self-auto shrink-0 px-3.5 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition cursor-pointer"
               >
                 Cadastrar responsável
               </button>
@@ -1585,17 +1565,17 @@ export default function PerfilCidadao() {
             return (
               <div
                 key={e.label}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3.5 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                className={`rounded-lg border px-5 py-4 flex items-center justify-between gap-3 ${e.fundo}`}
               >
-                <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${e.cor}`}>
-                  <Icone size={19} />
-                </span>
                 <div className="min-w-0">
-                  <p className="text-2xl font-black text-slate-900 leading-none">
+                  <p className="text-[13px] text-slate-600 truncate">{e.label}</p>
+                  <p className={`text-2xl font-semibold leading-tight mt-1 tabular-nums ${e.texto}`}>
                     {carregandoPublicacoes ? "–" : e.valor}
                   </p>
-                  <p className="text-xs text-slate-500 font-semibold mt-1 truncate">{e.label}</p>
                 </div>
+                <span className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 ${e.cor}`}>
+                  <Icone size={18} />
+                </span>
               </div>
             );
           })}
@@ -1610,10 +1590,10 @@ export default function PerfilCidadao() {
                 <div className="lg:col-span-2 flex flex-col gap-5">
 
                   {/* INFORMACOES PESSOAIS */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-5">
                     {renderCardHeader(<User size={15} />, "Informações Pessoais", "pessoais")}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                       {renderCampo(
                         "Nome completo",
                         <User size={11} />,
@@ -1650,7 +1630,7 @@ export default function PerfilCidadao() {
                           <>
                             {formatarNascimento(perfil.data_nascimento)}
                             {idade !== null && (
-                              <span className="text-slate-400 font-medium"> · {idade} anos</span>
+                              <span className="text-slate-500 font-medium"> · {idade} anos</span>
                             )}
                           </>
                         ) : (
@@ -1659,7 +1639,7 @@ export default function PerfilCidadao() {
                         contaRestrita ? (
                           <span className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-800 mt-1">
                             {formatarNascimento(perfil.data_nascimento)}
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
                               <Lock size={11} />
                               bloqueada · fale com o suporte para corrigir
                             </span>
@@ -1682,7 +1662,7 @@ export default function PerfilCidadao() {
                         <span className="flex items-center gap-1.5">
                           <span className="truncate">{perfil.email || NAO_INFORMADO}</span>
                           {contaInfo.emailConfirmado && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 shrink-0">
+                            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 shrink-0">
                               <BadgeCheck size={12} />
                               verificado
                             </span>
@@ -1694,7 +1674,7 @@ export default function PerfilCidadao() {
                   </div>
 
                   {/* ENDEREÇO */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="bg-sky-50/70 rounded-lg border border-sky-200 p-5">
                     {renderCardHeader(
                       <MapPin size={15} />,
                       "Endereço",
@@ -1702,7 +1682,7 @@ export default function PerfilCidadao() {
                       "Usado para enviar alertas da sua região.",
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
                       {renderCampo(
                         "CEP",
                         <MapPin size={11} />,
@@ -1722,7 +1702,7 @@ export default function PerfilCidadao() {
                           {buscandoCep && (
                             <Loader2
                               size={13}
-                              className="absolute right-2 top-1/2 -translate-y-1/3 text-slate-400 animate-spin"
+                              className="absolute right-2 top-1/2 -translate-y-1/3 text-slate-500 animate-spin"
                             />
                           )}
                         </div>,
@@ -1760,7 +1740,7 @@ export default function PerfilCidadao() {
                     </div>
 
                     {editandoBloco === "endereco" && (
-                      <p className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-3">
+                      <p className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-3">
                         <Info size={12} />
                         Digite o CEP que a cidade e o bairro são preenchidos automaticamente.
                       </p>
@@ -1768,7 +1748,7 @@ export default function PerfilCidadao() {
                   </div>
 
                   {/* ACESSIBILIDADE */}
-                  <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="flex-1 bg-violet-50/60 rounded-lg border border-violet-200 p-5">
                     {renderCardHeader(
                       <Accessibility size={15} />,
                       "Acessibilidade",
@@ -1808,7 +1788,7 @@ export default function PerfilCidadao() {
                     ) : (
                       <div className="flex items-center gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${perfil.pcd
+                          className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${perfil.pcd
                             ? "bg-violet-50 text-violet-700 border-violet-100"
                             : "bg-white text-slate-500 border-slate-200"
                             }`}
@@ -1825,10 +1805,10 @@ export default function PerfilCidadao() {
 
                 <aside className="flex flex-col gap-5">
                   {/* COMPLETUDE DO PERFIL */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-5">
                     <div className="flex items-center justify-between mb-2.5">
-                      <h3 className="text-sm font-bold text-slate-800">Perfil completo</h3>
-                      <span className="text-lg font-black text-slate-800">{percentualCompleto}%</span>
+                      <h3 className="text-sm font-semibold text-slate-800">Perfil completo</h3>
+                      <span className="text-lg font-semibold text-slate-800">{percentualCompleto}%</span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
@@ -1859,20 +1839,20 @@ export default function PerfilCidadao() {
                       </ul>
                     )}
 
-                    <p className="flex items-start gap-1.5 text-[11px] text-slate-400 leading-relaxed mt-3 pt-3 border-t border-slate-100">
+                    <p className="flex items-start gap-1.5 text-[11px] text-slate-500 leading-relaxed mt-3 pt-3 border-t border-slate-100">
                       <Info size={12} className="mt-0.5 shrink-0" />
                       Um perfil completo ajuda a Defesa Civil a te alertar e a te atender mais rápido numa emergência.
                     </p>
                   </div>
 
                   {/* ATIVIDADE RECENTE — sempre no máximo 3 itens, não cresce com o número de posts */}
-                  <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="flex-1 bg-white rounded-lg border border-slate-200 p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-slate-800">Atividade recente</h3>
+                      <h3 className="text-sm font-semibold text-slate-800">Atividade recente</h3>
                       {minhasPublicacoes.length > 0 && (
                         <button
                           onClick={() => trocarSecao("publicacoes")}
-                          className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                          className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
                         >
                           Ver todas ({minhasPublicacoes.length})
                         </button>
@@ -1885,12 +1865,12 @@ export default function PerfilCidadao() {
                       </div>
                     ) : minhasPublicacoes.length === 0 ? (
                       <div className="text-center py-3">
-                        <p className="text-xs text-slate-400 font-medium mb-3">
+                        <p className="text-xs text-slate-500 font-medium mb-3">
                           Você ainda não reportou nenhuma ocorrência.
                         </p>
                         <button
                           onClick={() => router.push("/Feed")}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition cursor-pointer"
                         >
                           <Plus size={13} />
                           Reportar ocorrência
@@ -1906,7 +1886,7 @@ export default function PerfilCidadao() {
                                 onClick={() => setPublicacaoSelecionada(pub.id)}
                                 className="w-full flex items-center gap-3 text-left rounded-xl px-2 py-2 -mx-2 hover:bg-slate-50 transition cursor-pointer"
                               >
-                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-blue-50 flex items-center justify-center shrink-0">
+                                <div className="w-12 h-12 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">
                                   {pub.imagemUrl ? (
                                     <img src={pub.imagemUrl} alt="" className="w-full h-full object-cover" />
                                   ) : (
@@ -1914,13 +1894,13 @@ export default function PerfilCidadao() {
                                   )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-slate-800 truncate">{pub.tipo}</p>
+                                  <p className="text-xs font-semibold text-slate-800 truncate">{pub.tipo}</p>
                                   <p className="text-[11px] text-slate-500 truncate">
                                     {pub.bairro} · {pub.tempo}
                                   </p>
                                 </div>
                                 <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${estilo.badge}`}
+                                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${estilo.badge}`}
                                 >
                                   {estilo.texto}
                                 </span>
@@ -1939,13 +1919,13 @@ export default function PerfilCidadao() {
             {secaoAtiva === "publicacoes" && (
               <div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                <div className="bg-white rounded-lg border border-slate-200 p-5">
                   <div className="flex items-center gap-2.5 mb-4">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-600 shrink-0">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-md bg-slate-100 text-slate-600 shrink-0">
                       <ImageIcon size={15} />
                     </span>
                     <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-slate-800 leading-tight">Minhas Publicações</h3>
+                      <h3 className="text-sm font-semibold text-slate-800 leading-tight">Minhas Publicações</h3>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Ocorrências que você reportou no feed. Clique numa foto para ver os detalhes.
                       </p>
@@ -1965,7 +1945,7 @@ export default function PerfilCidadao() {
                                 setFiltroStatus(status);
                                 setLimitePublicacoes(PUBLICACOES_POR_PAGINA);
                               }}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap border transition cursor-pointer ${ativo
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition cursor-pointer ${ativo
                                 ? "bg-[#091f75] text-white border-[#091f75]"
                                 : "bg-white text-slate-500 border-slate-200 hover:border-[#091f75]/40 hover:text-[#091f75]"
                                 }`}
@@ -1974,7 +1954,7 @@ export default function PerfilCidadao() {
                                 <span className={`w-1.5 h-1.5 rounded-full ${STATUS_ESTILO_PUB[status].ponto}`} />
                               )}
                               {status}
-                              <span className={ativo ? "text-white/70" : "text-slate-400"}>
+                              <span className={ativo ? "text-white/70" : "text-slate-500"}>
                                 {contagemPorStatus[status] ?? 0}
                               </span>
                             </button>
@@ -1992,23 +1972,23 @@ export default function PerfilCidadao() {
                     </div>
                   ) : minhasPublicacoes.length === 0 ? (
                     <div className="py-12 text-center">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-3">
+                      <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <ImageIcon size={24} className="text-[#091f75]/50" />
                       </div>
-                      <p className="text-sm font-bold text-slate-700">Nenhuma publicação ainda</p>
-                      <p className="text-xs text-slate-400 mt-1 mb-4 max-w-xs mx-auto">
+                      <p className="text-sm font-semibold text-slate-700">Nenhuma publicação ainda</p>
+                      <p className="text-xs text-slate-500 mt-1 mb-4 max-w-xs mx-auto">
                         Viu um alagamento, uma árvore caída ou um deslizamento? Avise a comunidade pelo feed.
                       </p>
                       <button
                         onClick={() => router.push("/Feed")}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition cursor-pointer"
                       >
                         <Plus size={14} />
                         Reportar ocorrência
                       </button>
                     </div>
                   ) : publicacoesFiltradas.length === 0 ? (
-                    <p className="py-10 text-center text-xs text-slate-400 font-medium">
+                    <p className="py-10 text-center text-xs text-slate-500 font-medium">
                       Nenhuma publicação com o status “{filtroStatus}”.
                     </p>
                   ) : (
@@ -2036,7 +2016,7 @@ export default function PerfilCidadao() {
 
                               {/* SELO DE STATUS */}
                               <span
-                                className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full border flex items-center gap-1 ${estilo.badge}`}
+                                className={`absolute top-2 right-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-full border flex items-center gap-1 ${estilo.badge}`}
                               >
                                 <span className={`w-1.5 h-1.5 rounded-full ${estilo.ponto}`} />
                                 {estilo.texto}
@@ -2044,19 +2024,19 @@ export default function PerfilCidadao() {
 
                               {/* LEGENDA INFERIOR */}
                               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent p-2.5 pt-8 text-left">
-                                <p className="text-[11px] font-bold text-white truncate">{pub.tipo}</p>
-                                <p className="text-[10px] text-white/70 truncate">
+                                <p className="text-[11px] font-semibold text-white truncate">{pub.tipo}</p>
+                                <p className="text-[11px] text-white/70 truncate">
                                   {pub.bairro} · {pub.tempo}
                                 </p>
                               </div>
 
                               {/* CURTIDAS E COMENTÁRIOS NO HOVER */}
                               <div className="absolute inset-0 bg-slate-950/0 group-hover:bg-slate-950/45 transition-all flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
-                                <span className="flex items-center gap-1.5 text-white text-xs font-bold">
+                                <span className="flex items-center gap-1.5 text-white text-xs font-semibold">
                                   <ThumbsUp size={14} fill="currentColor" />
                                   {pub.curtidas}
                                 </span>
-                                <span className="flex items-center gap-1.5 text-white text-xs font-bold">
+                                <span className="flex items-center gap-1.5 text-white text-xs font-semibold">
                                   <MessageSquare size={14} fill="currentColor" />
                                   {pub.comentarios.length}
                                 </span>
@@ -2069,7 +2049,7 @@ export default function PerfilCidadao() {
                         <div className="flex justify-center pt-5">
                           <button
                             onClick={() => setLimitePublicacoes((n) => n + PUBLICACOES_POR_PAGINA)}
-                            className="px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-lg transition cursor-pointer"
+                            className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-md transition-colors cursor-pointer"
                           >
                             Mostrar mais ({publicacoesFiltradas.length - limitePublicacoes})
                           </button>
@@ -2086,32 +2066,32 @@ export default function PerfilCidadao() {
               <div className="space-y-5">
 
                 {/* CARTÃO DE EMERGÊNCIA (resumo visual) */}
-                <div className="rounded-2xl overflow-hidden shadow-sm border border-red-100 bg-white">
+                <div className="rounded-lg overflow-hidden border border-red-100 bg-white">
                   <div className="bg-gradient-to-r from-red-600 to-rose-500 px-5 py-3 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-white text-[11px] font-black uppercase tracking-[0.2em]">
+                    <span className="flex items-center gap-2 text-white text-[11px] font-semibold uppercase tracking-[0.2em]">
                       <HeartPulse size={15} />
                       Cartão de emergência
                     </span>
-                    <span className="text-white/80 text-[10px] font-bold">Pluvite</span>
+                    <span className="text-white/80 text-[11px] font-semibold">Pluvite</span>
                   </div>
                   <div className="p-5 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-5">
                     <div className="flex sm:flex-col items-center gap-3">
-                      <div className="w-20 h-20 rounded-2xl bg-red-50 border-2 border-red-100 flex flex-col items-center justify-center shrink-0">
+                      <div className="w-20 h-20 rounded-lg bg-red-50 border-2 border-red-100 flex flex-col items-center justify-center shrink-0">
                         <Droplet size={14} className="text-red-400" />
-                        <span className="text-2xl font-black text-red-600 leading-none mt-0.5">
+                        <span className="text-2xl font-semibold text-red-600 leading-none mt-0.5">
                           {perfil.tipo_sanguineo || "?"}
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                         Tipo sanguíneo
                       </span>
                     </div>
                     <div className="space-y-3 min-w-0">
                       <div>
-                        <p className="text-base font-bold text-slate-800 truncate">
+                        <p className="text-base font-semibold text-slate-800 truncate">
                           {perfil.nome_completo || "Usuário"}
                         </p>
-                        <p className="text-[11px] text-slate-400 font-medium">
+                        <p className="text-[11px] text-slate-500 font-medium">
                           {[
                             idade !== null ? `${idade} anos` : null,
                             perfil.pcd ? `PCD${perfil.tipo_deficiencia ? ` (${perfil.tipo_deficiencia})` : ""}` : null,
@@ -2127,8 +2107,8 @@ export default function PerfilCidadao() {
                           { label: "Condições", valor: perfil.condicoes_medicas, icone: <Stethoscope size={11} /> },
                           { label: "Medicamentos", valor: perfil.medicamentos_uso, icone: <Pill size={11} /> },
                         ].map((item) => (
-                          <div key={item.label} className="bg-slate-50 rounded-lg px-2.5 py-2">
-                            <span className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                          <div key={item.label} className="bg-red-50 border border-red-100 rounded-md px-2.5 py-2">
+                            <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                               {item.icone}
                               {item.label}
                             </span>
@@ -2144,17 +2124,17 @@ export default function PerfilCidadao() {
                           <span className="font-semibold text-slate-700 truncate">
                             {perfil.contato_emergencia_nome}
                             {perfil.contato_emergencia_parentesco && (
-                              <span className="text-slate-400 font-medium"> ({perfil.contato_emergencia_parentesco})</span>
+                              <span className="text-slate-500 font-medium"> ({perfil.contato_emergencia_parentesco})</span>
                             )}
                             {perfil.contato_emergencia_telefone && (
                               <span className="text-slate-500"> · {perfil.contato_emergencia_telefone}</span>
                             )}
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic">Nenhum contato de emergência cadastrado</span>
+                          <span className="text-slate-500 italic">Nenhum contato de emergência cadastrado</span>
                         )}
                       </div>
-                      <p className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-2 border-t border-slate-100">
+                      <p className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-2 border-t border-slate-100">
                         <Shield size={12} className="shrink-0" />
                         Essas informações só são usadas em caso de resgate durante uma emergência.
                       </p>
@@ -2164,10 +2144,10 @@ export default function PerfilCidadao() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                   {/* INFORMACOES MEDICAS */}
-                  <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 p-5">
                     {renderCardHeader(<Stethoscope size={15} />, "Informações Médicas", "medico")}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                       {renderCampo(
                         "Tipo sanguíneo",
                         <Droplet size={11} />,
@@ -2233,7 +2213,7 @@ export default function PerfilCidadao() {
                   </div>
 
                   {/* CONTATO DE EMERGENCIA */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                  <div className="bg-red-50/60 rounded-lg border border-red-200 p-5">
                     {renderCardHeader(
                       <Phone size={15} />,
                       contaRestrita ? "Responsável Legal" : "Contato de Emergência",
@@ -2305,7 +2285,7 @@ export default function PerfilCidadao() {
             {secaoAtiva === "notificacoes" && (
               <div className="space-y-5">
 
-                <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center gap-3">
                   <MapPin size={16} className="text-[#091f75] shrink-0" />
                   <p className="text-xs text-slate-600 leading-relaxed flex-1">
                     {perfil.cidade ? (
@@ -2322,7 +2302,7 @@ export default function PerfilCidadao() {
                   </p>
                   <button
                     onClick={() => trocarSecao("dados")}
-                    className="text-[11px] font-bold text-[#0f35a0] hover:underline cursor-pointer shrink-0"
+                    className="text-[11px] font-semibold text-[#0f35a0] hover:underline cursor-pointer shrink-0"
                   >
                     {perfil.cidade ? "Alterar" : "Cadastrar"}
                   </button>
@@ -2369,8 +2349,8 @@ export default function PerfilCidadao() {
                       ],
                     },
                   ].map(({ grupo, itens }) => (
-                    <div key={grupo} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                      <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-3">{grupo}</h3>
+                    <div key={grupo} className="bg-white rounded-lg border border-slate-200 p-5">
+                      <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-3">{grupo}</h3>
                       <div className="divide-y divide-slate-100">
                         {itens.map(({ label, desc, campo, icon, fundo }) => {
                           const chave = campo as "notif_chuva_forte" | "notif_deslizamento" | "notif_email" | "notif_push";
@@ -2379,8 +2359,8 @@ export default function PerfilCidadao() {
                               <div className="flex items-start gap-3">
                                 <div className={`p-2 rounded-xl ${fundo} shrink-0`}>{icon}</div>
                                 <div>
-                                  <span className="text-xs font-bold text-slate-800 block">{label}</span>
-                                  <span className="text-[11px] text-slate-400 leading-snug block mt-0.5">{desc}</span>
+                                  <span className="text-xs font-semibold text-slate-800 block">{label}</span>
+                                  <span className="text-[11px] text-slate-500 leading-snug block mt-0.5">{desc}</span>
                                 </div>
                               </div>
 
@@ -2408,8 +2388,8 @@ export default function PerfilCidadao() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                 {/* RESUMO DA CONTA */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                  <h3 className="text-sm font-bold text-slate-800 mb-4">Sua conta</h3>
+                <div className="bg-white rounded-lg border border-slate-200 p-5">
+                  <h3 className="text-sm font-semibold text-slate-800 mb-4">Sua conta</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
                       {
@@ -2444,7 +2424,7 @@ export default function PerfilCidadao() {
                           {item.icone}
                         </span>
                         <div className="min-w-0">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide block">
+                          <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wide block">
                             {item.label}
                           </span>
                           <span className={`text-xs font-semibold block truncate ${item.destaque || "text-slate-700"}`}>
@@ -2457,13 +2437,13 @@ export default function PerfilCidadao() {
                 </div>
 
                 {entraComSenha ? (
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+                  <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
                     {/* ALTERAR SENHA */}
                     <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <span className="text-xs font-bold text-slate-800 block">Alterar senha</span>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                          <span className="text-xs font-semibold text-slate-800 block">Alterar senha</span>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
                             Use pelo menos 8 caracteres, misturando letras, números e símbolos.
                           </span>
                         </div>
@@ -2472,7 +2452,7 @@ export default function PerfilCidadao() {
                             setAlterandoSenha((prev) => !prev);
                             setSenha({ atual: "", nova: "", confirmar: "" });
                           }}
-                          className="px-3 py-1.5 text-xs font-bold text-[#091f75] bg-blue-50 hover:bg-blue-100 rounded-lg transition-all cursor-pointer border border-blue-100 shrink-0"
+                          className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 rounded-md transition-colors cursor-pointer border border-slate-300 shrink-0"
                         >
                           {alterandoSenha ? "Cancelar" : "Alterar"}
                         </button>
@@ -2481,7 +2461,7 @@ export default function PerfilCidadao() {
                       {alterandoSenha && (
                         <div className="pt-3 border-t border-slate-200/60 space-y-3">
                           <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Senha atual</span>
+                            <span className="text-[11px] text-slate-500 font-semibold uppercase block">Senha atual</span>
                             <input
                               type="password"
                               autoComplete="current-password"
@@ -2491,9 +2471,9 @@ export default function PerfilCidadao() {
                               className={CLASSE_INPUT}
                             />
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                             <div>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase block">Nova senha</span>
+                              <span className="text-[11px] text-slate-500 font-semibold uppercase block">Nova senha</span>
                               <input
                                 type="password"
                                 autoComplete="new-password"
@@ -2504,7 +2484,7 @@ export default function PerfilCidadao() {
                               />
                             </div>
                             <div>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase block">
+                              <span className="text-[11px] text-slate-500 font-semibold uppercase block">
                                 Confirmar nova senha
                               </span>
                               <input
@@ -2529,7 +2509,7 @@ export default function PerfilCidadao() {
                                   />
                                 ))}
                               </div>
-                              <p className={`text-[11px] font-bold ${nivelSenha.textoCor}`}>{nivelSenha.texto}</p>
+                              <p className={`text-[11px] font-semibold ${nivelSenha.textoCor}`}>{nivelSenha.texto}</p>
                             </div>
                           )}
                           {senha.confirmar && senha.confirmar !== senha.nova && (
@@ -2539,7 +2519,7 @@ export default function PerfilCidadao() {
                           <button
                             onClick={salvarNovaSenha}
                             disabled={salvandoSenha}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-[#091f75] hover:bg-[#0f35a0] text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-60"
+                            className="flex items-center gap-1.5 px-4 py-2 bg-[#091f75] hover:bg-[#0f35a0] text-white text-xs font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-60"
                           >
                             {salvandoSenha ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                             Salvar nova senha
@@ -2551,22 +2531,22 @@ export default function PerfilCidadao() {
                     {/* ESQUECI MINHA SENHA */}
                     <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <span className="text-xs font-bold text-slate-800 block">Esqueceu sua senha?</span>
-                        <span className="text-[11px] text-slate-400 block mt-0.5">
+                        <span className="text-xs font-semibold text-slate-800 block">Esqueceu sua senha?</span>
+                        <span className="text-[11px] text-slate-500 block mt-0.5">
                           Enviaremos um link de redefinição para{" "}
                           <strong className="text-slate-600">{perfil.email}</strong>
                         </span>
                       </div>
                       <button
                         onClick={enviarLinkRedefinicao}
-                        className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-all cursor-pointer border border-slate-200 shrink-0 self-start sm:self-auto"
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-all cursor-pointer border border-slate-200 shrink-0 self-start sm:self-auto"
                       >
                         Enviar link
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-start gap-3">
                     <Info size={16} className="text-[#091f75] mt-0.5 shrink-0" />
                     <p className="text-xs text-slate-600 leading-relaxed">
                       Você entra no Pluvite com sua conta{" "}
@@ -2603,7 +2583,7 @@ export default function PerfilCidadao() {
               </button>
 
               <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
+                className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* IMAGEM GRANDE */}
@@ -2613,7 +2593,7 @@ export default function PerfilCidadao() {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-white/60 p-10 text-center">
                       <ImageIcon size={36} />
-                      <span className="text-xs font-bold">{pub.tipo}</span>
+                      <span className="text-xs font-semibold">{pub.tipo}</span>
                       <span className="text-[11px] text-white/40">Essa publicação não tem foto</span>
                     </div>
                   )}
@@ -2626,10 +2606,10 @@ export default function PerfilCidadao() {
                     <div className="flex items-center gap-3 min-w-0">
                       {renderAvatar("w-10 h-10", "text-xs")}
                       <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">
+                        <h3 className="font-semibold text-slate-900 text-sm leading-snug truncate">
                           {perfil.nome_completo || "Você"}
                         </h3>
-                        <span className="text-[11px] text-slate-400">{pub.tempo}</span>
+                        <span className="text-[11px] text-slate-500">{pub.tempo}</span>
                       </div>
                     </div>
 
@@ -2638,7 +2618,7 @@ export default function PerfilCidadao() {
                         <div className="relative" ref={menuAcoesRef}>
                           <button
                             onClick={() => setMenuAcoesAberto((prev) => !prev)}
-                            className="p-1.5 text-slate-400 hover:text-[#091f75] hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-[#091f75] hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
                             title="Mais ações"
                           >
                             <MoreVertical size={16} />
@@ -2651,7 +2631,7 @@ export default function PerfilCidadao() {
                                   onClick={() => iniciarEdicaoPublicacao(pub)}
                                   className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                                 >
-                                  <Pencil size={14} className="text-slate-400" />
+                                  <Pencil size={14} className="text-slate-500" />
                                   Editar
                                 </button>
                               </li>
@@ -2660,7 +2640,7 @@ export default function PerfilCidadao() {
                                   onClick={() => handleCompartilharPub(pub)}
                                   className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                                 >
-                                  <Share2 size={14} className="text-slate-400" />
+                                  <Share2 size={14} className="text-slate-500" />
                                   Compartilhar
                                 </button>
                               </li>
@@ -2678,7 +2658,7 @@ export default function PerfilCidadao() {
                           )}
 
                           {linkCopiadoPub && (
-                            <span className="absolute right-0 top-full mt-1.5 z-30 flex items-center gap-1 bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                            <span className="absolute right-0 top-full mt-1.5 z-30 flex items-center gap-1 bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
                               <LinkIcon size={11} />
                               Link copiado!
                             </span>
@@ -2686,7 +2666,7 @@ export default function PerfilCidadao() {
                         </div>
                       )}
                       <span
-                        className={`text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 border shrink-0 ${estiloPub.badge}`}
+                        className={`text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 border shrink-0 ${estiloPub.badge}`}
                       >
                         <StatusIconPub size={11} />
                         {estiloPub.texto}
@@ -2697,7 +2677,7 @@ export default function PerfilCidadao() {
                   {/* DETALHES DA OCORRÊNCIA */}
                   {!editandoPublicacao && (
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 space-y-1.5 shrink-0">
-                      <p className="text-xs font-bold text-slate-800">{pub.tipo}</p>
+                      <p className="text-xs font-semibold text-slate-800">{pub.tipo}</p>
                       <p className="flex items-start gap-1.5 text-[11px] text-slate-500">
                         <MapPin size={12} className="mt-0.5 shrink-0" />
                         {[pub.endereco, pub.bairro, pub.cidade].filter(Boolean).join(", ")}
@@ -2715,7 +2695,7 @@ export default function PerfilCidadao() {
                       /* FORMULÁRIO DE EDIÇÃO */
                       <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">
+                          <span className="text-[11px] text-slate-500 font-semibold uppercase block">
                             Tipo de ocorrência
                           </span>
                           <select
@@ -2732,7 +2712,7 @@ export default function PerfilCidadao() {
                         </div>
 
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Cidade</span>
+                          <span className="text-[11px] text-slate-500 font-semibold uppercase block">Cidade</span>
                           <select
                             value={edicaoPub.cidade}
                             onChange={(e) => setEdicaoPub((prev) => prev && { ...prev, cidade: e.target.value })}
@@ -2748,7 +2728,7 @@ export default function PerfilCidadao() {
 
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Bairro</span>
+                            <span className="text-[11px] text-slate-500 font-semibold uppercase block">Bairro</span>
                             <input
                               type="text"
                               value={edicaoPub.bairro}
@@ -2757,7 +2737,7 @@ export default function PerfilCidadao() {
                             />
                           </div>
                           <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase block">Endereço</span>
+                            <span className="text-[11px] text-slate-500 font-semibold uppercase block">Endereço</span>
                             <input
                               type="text"
                               value={edicaoPub.endereco}
@@ -2768,7 +2748,7 @@ export default function PerfilCidadao() {
                         </div>
 
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Descrição</span>
+                          <span className="text-[11px] text-slate-500 font-semibold uppercase block">Descrição</span>
                           <textarea
                             rows={3}
                             value={edicaoPub.descricao}
@@ -2780,7 +2760,7 @@ export default function PerfilCidadao() {
                         <div className="flex items-center justify-end gap-2 pt-1">
                           <button
                             onClick={cancelarEdicaoPublicacao}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 rounded-lg transition-all cursor-pointer border border-slate-200"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 rounded-lg transition-all cursor-pointer border border-slate-200"
                           >
                             <X size={13} />
                             Cancelar
@@ -2788,7 +2768,7 @@ export default function PerfilCidadao() {
                           <button
                             onClick={() => salvarEdicaoPublicacao(pub.id)}
                             disabled={salvandoEdicaoPub}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition-all cursor-pointer disabled:opacity-60"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#091f75] hover:bg-[#0f35a0] rounded-lg transition-all cursor-pointer disabled:opacity-60"
                           >
                             {salvandoEdicaoPub ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                             Salvar
@@ -2798,9 +2778,9 @@ export default function PerfilCidadao() {
                     ) : (
                       pub.descricao && (
                         <div className="flex items-start gap-2.5">
-                          {renderAvatar("w-7 h-7", "text-[10px]")}
+                          {renderAvatar("w-7 h-7", "text-[11px]")}
                           <p className="text-xs text-slate-700 leading-relaxed">
-                            <span className="font-bold text-slate-900">{perfil.nome_completo || "Você"}</span>{" "}
+                            <span className="font-semibold text-slate-900">{perfil.nome_completo || "Você"}</span>{" "}
                             {pub.descricao}
                           </p>
                         </div>
@@ -2817,19 +2797,19 @@ export default function PerfilCidadao() {
                     ) : pub.comentarios.length === 0 ? (
                       <div className="text-center py-6">
                         <MessageSquare size={22} className="text-slate-200 mx-auto mb-1.5" />
-                        <p className="text-xs text-slate-400 font-medium">Nenhum comentário ainda.</p>
+                        <p className="text-xs text-slate-500 font-medium">Nenhum comentário ainda.</p>
                       </div>
                     ) : (
                       pub.comentarios.map((com) => (
                         <div key={com.id} className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-[10px] shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center text-[11px] shrink-0">
                             {gerarIniciais(com.autor)}
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs text-slate-700 leading-relaxed">
-                              <span className="font-bold text-slate-900">{com.autor}</span> {com.texto}
+                              <span className="font-semibold text-slate-900">{com.autor}</span> {com.texto}
                             </p>
-                            {com.tempo && <span className="text-[10px] text-slate-400">{com.tempo}</span>}
+                            {com.tempo && <span className="text-[11px] text-slate-500">{com.tempo}</span>}
                           </div>
                         </div>
                       ))
@@ -2841,7 +2821,7 @@ export default function PerfilCidadao() {
                     <div className="flex items-center gap-4 px-4 pt-3">
                       <button
                         onClick={() => handleCurtirPublicacao(pub.id)}
-                        className={`transition cursor-pointer active:scale-90 ${pub.curtido ? "text-[#091f75]" : "text-slate-500 hover:text-[#091f75]"}`}
+                        className={`transition cursor-pointer ${pub.curtido ? "text-[#091f75]" : "text-slate-500 hover:text-[#091f75]"}`}
                         title="Curtir"
                       >
                         <ThumbsUp size={20} fill={pub.curtido ? "currentColor" : "none"} />
@@ -2850,11 +2830,11 @@ export default function PerfilCidadao() {
                     </div>
 
                     <div className={`px-4 pt-2 ${contaRestrita ? "pb-4" : ""}`}>
-                      <span className="text-xs font-bold text-slate-800">
+                      <span className="text-xs font-semibold text-slate-800">
                         {pub.curtidas} {pub.curtidas === 1 ? "curtida" : "curtidas"}
                       </span>
                       {!contaRestrita && (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {" "}
                           · {pub.comentarios.length} {pub.comentarios.length === 1 ? "comentário" : "comentários"}
                         </span>
@@ -2891,7 +2871,7 @@ export default function PerfilCidadao() {
       {aviso && (
         <div
           role="status"
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[10010] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-xs font-bold max-w-[calc(100%-2rem)] ${aviso.tipo === "sucesso" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[10010] flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold max-w-[calc(100%-2rem)] ${aviso.tipo === "sucesso" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
             }`}
         >
           {aviso.tipo === "sucesso" ? <CheckCircle size={15} /> : <AlertTriangle size={15} />}

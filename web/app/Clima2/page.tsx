@@ -5,6 +5,14 @@ import {
   MapPin,
   CloudRain,
   Sun,
+  Moon,
+  Cloud,
+  CloudSun,
+  CloudMoon,
+  CloudFog,
+  CloudDrizzle,
+  CloudLightning,
+  CloudSnow,
   Wind,
   Droplets,
   Sunrise,
@@ -14,58 +22,27 @@ import {
   ShieldAlert,
   Leaf,
   Loader2,
+  Thermometer,
+  ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import { MUNICIPIOS, CENTRO_MUNICIPIO, normalizar } from "@/app/lib/constantes";
 
-const CLIMA_EMOJIS: { [key: number]: string } = {
-  1000: "☀️",
-  1003: "⛅",
-  1006: "☁️",
-  1009: "☁️",
-  1030: "🌫️",
-  1063: "🌦️",
-  1066: "❄️",
-  1069: "🌨️",
-  1072: "🌨️",
-  1087: "⛈️",
-  1114: "❄️",
-  1117: "❄️",
-  1135: "🌫️",
-  1147: "🌫️",
-  1150: "🌦️",
-  1153: "🌦️",
-  1168: "🌨️",
-  1171: "🌨️",
-  1180: "🌦️",
-  1183: "🌧️",
-  1186: "🌧️",
-  1189: "🌧️",
-  1192: "🌧️",
-  1195: "🌧️",
-  1198: "🌨️",
-  1201: "🌨️",
-  1204: "🌨️",
-  1207: "🌨️",
-  1210: "❄️",
-  1213: "❄️",
-  1216: "❄️",
-  1219: "❄️",
-  1222: "❄️",
-  1225: "❄️",
-  1237: "🧊",
-  1240: "🌦️",
-  1243: "🌧️",
-  1246: "🌧️",
-  1249: "🌨️",
-  1252: "🌨️",
-  1255: "❄️",
-  1258: "❄️",
-  1261: "🧊",
-  1264: "🧊",
-  1273: "⛈️",
-  1276: "⛈️",
-  1279: "⛈️",
-  1282: "⛈️",
+// Ícone da condição do tempo a partir do código da WeatherAPI (no lugar dos emojis)
+const CODIGOS_TROVOADA = [1087, 1273, 1276, 1279, 1282];
+const CODIGOS_NEVE = [1066, 1069, 1072, 1114, 1117, 1168, 1171, 1198, 1201, 1204, 1207, 1210, 1213, 1216, 1219, 1222, 1225, 1237, 1249, 1252, 1255, 1258, 1261, 1264];
+const CODIGOS_GAROA = [1063, 1150, 1153, 1180, 1240];
+const CODIGOS_NEVOA = [1030, 1135, 1147];
+
+const iconeClima = (codigo: number, ehDia = 1): LucideIcon => {
+  if (codigo === 1000) return ehDia ? Sun : Moon;
+  if (codigo === 1003) return ehDia ? CloudSun : CloudMoon;
+  if (codigo === 1006 || codigo === 1009) return Cloud;
+  if (CODIGOS_NEVOA.includes(codigo)) return CloudFog;
+  if (CODIGOS_TROVOADA.includes(codigo)) return CloudLightning;
+  if (CODIGOS_NEVE.includes(codigo)) return CloudSnow;
+  if (CODIGOS_GAROA.includes(codigo)) return CloudDrizzle;
+  return CloudRain;
 };
 
 const formatarDiaSemana = (
@@ -210,10 +187,10 @@ export default function ClimaPage() {
 
   if (!cidadeAtual) {
     return (
-      <div className="h-[calc(100dvh-var(--altura-navbar))] flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="flex flex-col items-center gap-3 text-gray-500">
-          <Loader2 className="animate-spin" size={28} />
-          <p className="text-sm font-medium">Carregando previsão...</p>
+      <div className="h-[calc(100dvh-var(--altura-navbar))] flex items-center justify-center bg-fundo">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <Loader2 className="animate-spin" size={24} />
+          <p className="text-sm">Carregando previsão...</p>
         </div>
       </div>
     );
@@ -224,324 +201,271 @@ export default function ClimaPage() {
   const uv = nivelUV(current.uv);
   const aqi = current.air_quality?.["us-epa-index"];
   const aqiTexto = ["", "Boa", "Moderada", "Ruim p/ sensíveis", "Ruim", "Muito ruim", "Perigosa"][aqi] ?? null;
+  const IconeAgora = iconeClima(current.condition.code, current.is_day);
+
+  // Faixa de temperatura da semana, para desenhar a barra de mín./máx. de cada dia
+  const minSemana = Math.min(...forecast.forecastday.map((d: any) => d.day.mintemp_c));
+  const maxSemana = Math.max(...forecast.forecastday.map((d: any) => d.day.maxtemp_c));
+  const faixa = Math.max(maxSemana - minSemana, 1);
+
+  const detalhes: { Icone: LucideIcon; rotulo: string; valor: string; extra?: string; cor: string }[] = [
+    { Icone: CloudRain, rotulo: "Chance de chuva", valor: `${hoje.day.daily_chance_of_rain}%`, extra: `${hoje.day.totalprecip_mm} mm previstos`, cor: "bg-blue-50 border-blue-200 text-blue-700" },
+    { Icone: Thermometer, rotulo: "Sensação térmica", valor: `${Math.round(current.feelslike_c)}°C`, cor: "bg-orange-50 border-orange-200 text-orange-700" },
+    { Icone: Wind, rotulo: "Vento", valor: `${Math.round(current.wind_kph)} km/h`, extra: current.wind_dir ? `Direção ${current.wind_dir}` : undefined, cor: "bg-teal-50 border-teal-200 text-teal-700" },
+    { Icone: Droplets, rotulo: "Umidade", valor: `${Math.round(current.humidity)}%`, cor: "bg-sky-50 border-sky-200 text-sky-700" },
+    { Icone: Gauge, rotulo: "Pressão", valor: `${Math.round(current.pressure_mb)} hPa`, cor: "bg-slate-100 border-slate-200 text-slate-700" },
+    { Icone: Eye, rotulo: "Visibilidade", valor: `${current.vis_km} km`, cor: "bg-indigo-50 border-indigo-200 text-indigo-700" },
+  ];
+
+  const outrasCidades = [
+    { nome: "Ubatuba", dados: ubatuba },
+    { nome: "Aparecida", dados: aparecida },
+  ].filter((c) => c.dados?.current);
 
   return (
-    <main className="min-h-[calc(100dvh-var(--altura-navbar))] w-full bg-gradient-to-br from-slate-50 to-blue-50 pt-5 sm:pt-8 pb-10 sm:pb-12 flex flex-col items-center gap-4 sm:gap-6 px-4 sm:px-6 lg:px-10 xl:px-14">
-      {/* CABEÇALHO */}
-      <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Previsão do Tempo</h1>
-          <p className="text-sm text-gray-400">
-            Atualizado às {formatarHora(location.localtime)}
-          </p>
-        </div>
-
-        {/* BARRA PESQUISA */}
-        {/* min-w-0 no campo: sem ele o input não encolhe e empurra o botão para fora da tela no celular */}
-        <form
-          role="search"
-          onSubmit={handleBuscar}
-          className="w-full sm:w-96 bg-white rounded-full p-1.5 flex items-center gap-2 shadow-sm border border-gray-200 focus-within:ring-2 focus-within:ring-[#2a68e2]/30 transition-all"
-        >
-          <Search size={18} className="ml-3 shrink-0 text-gray-400" aria-hidden="true" />
-          <input
-            type="text"
-            enterKeyHint="search"
-            autoComplete="off"
-            aria-label="Buscar cidade"
-            placeholder="Buscar cidade..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="flex-1 min-w-0 w-full text-sm outline-none text-gray-700 bg-transparent"
-          />
-          <button
-            type="submit"
-            disabled={carregando}
-            className="shrink-0 min-w-[5rem] flex items-center justify-center bg-[#2a68e2] rounded-full text-white px-4 py-2 text-sm font-semibold hover:bg-[#1d54c4] active:scale-95 transition-all cursor-pointer disabled:opacity-60"
-          >
-            {carregando ? <Loader2 className="animate-spin" size={16} /> : "Buscar"}
-          </button>
-        </form>
-      </div>
-
-      {erro && (
-        <div className="w-full bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-2.5 rounded-xl">
-          {erro}
-        </div>
-      )}
-
-      {/* GRID */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* ESQUERDA */}
-        <div className="flex flex-col gap-4 sm:gap-6 min-w-0">
-          {/* CARD PRINCIPAL */}
-          {/* Nome da cidade ocupa a largura toda: ao lado do emoji, nomes longos como
-              "Pindamonhangaba" quebravam no meio da palavra no celular */}
-          <div className="relative p-5 sm:p-8 bg-gradient-to-br from-[#2a68e2] to-[#1a4fb8] rounded-3xl shadow-lg shadow-blue-200 overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 text-white/80">
-                <MapPin size={20} className="shrink-0" />
-                <h2 className="text-xl min-[340px]:text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight break-words min-w-0">
-                  {location.name}
-                </h2>
-              </div>
-              <p className="text-xs text-blue-100 font-medium mt-0.5 ml-7">
-                {location.region}, {location.country}
-              </p>
-            </div>
-
-            <div className="relative z-10 mt-4 flex justify-between items-center gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-blue-100 capitalize">
-                  {formatarDiaSemana(hoje.date, "long")}
-                </p>
-                <p className="text-xs text-blue-100/80 font-medium mt-0.5">
-                  {formatarDataCompleta(hoje.date)}
-                </p>
-                <h3 className="text-6xl font-bold mt-4 sm:mt-5 text-white mb-4 sm:mb-6 tracking-tight">
-                  {Math.round(current.temp_c)}°
-                </h3>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-blue-100 mb-4">
-                  <span className="whitespace-nowrap">Máx: {Math.round(hoje.day.maxtemp_c)}°</span>
-                  <span className="whitespace-nowrap">Mín: {Math.round(hoje.day.mintemp_c)}°</span>
-                  <span className="whitespace-nowrap">Sensação: {Math.round(current.feelslike_c)}°</span>
-                </div>
-                <p className="text-sm font-medium text-white px-3 py-1.5 bg-white/15 rounded-xl w-fit capitalize backdrop-blur-sm">
-                  {current.condition.text}
-                </p>
-              </div>
-
-              <span className="shrink-0 text-7xl sm:text-9xl select-none sm:pr-2 drop-shadow-lg">
-                {CLIMA_EMOJIS[current.condition.code] || "☀️"}
-              </span>
-            </div>
+    <main className="min-h-[calc(100dvh-var(--altura-navbar))] w-full bg-fundo pt-6 sm:pt-8 pb-10 sm:pb-12 px-4 sm:px-6 lg:px-10">
+      <div className="w-full max-w-6xl mx-auto flex flex-col gap-5">
+        {/* CABEÇALHO */}
+        <div className="w-full flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Previsão do tempo</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Atualizado às {formatarHora(location.localtime)} · dados WeatherAPI
+            </p>
           </div>
 
-          {/* PREVISÃO POR HORA */}
-          {proximasHoras.length > 0 && (
-            <div className="p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <span className="text-sm font-bold text-gray-800 block mb-3">
-                Nas próximas horas
-              </span>
-              <div className="flex gap-2 overflow-x-auto snap-x pb-1">
-                {proximasHoras.map((h) => (
-                  <div
-                    key={h.time}
-                    className="shrink-0 snap-start flex flex-col items-center gap-1 p-3 rounded-xl bg-gray-50 border border-gray-100 min-w-[64px] text-center"
-                  >
-                    <span className="text-xs font-semibold text-gray-500">
-                      {formatarHora(h.time)}
-                    </span>
-                    <span className="text-xl select-none">
-                      {CLIMA_EMOJIS[h.condition.code] || "☀️"}
-                    </span>
-                    <span className="text-xs font-bold text-gray-800">
-                      {Math.round(h.temp_c)}°
-                    </span>
-                    <span className="text-[10px] text-blue-500 font-medium">
-                      {h.chance_of_rain}%
-                    </span>
+          {/* BARRA PESQUISA */}
+          {/* min-w-0 no campo: sem ele o input não encolhe e empurra o botão para fora da tela no celular */}
+          <form
+            role="search"
+            onSubmit={handleBuscar}
+            className="w-full sm:w-96 bg-white rounded-md p-1 flex items-center gap-2 border border-slate-300 focus-within:border-[#0b1f6e] focus-within:ring-2 focus-within:ring-[#0b1f6e]/15 transition"
+          >
+            <Search size={16} className="ml-2.5 shrink-0 text-slate-400" aria-hidden="true" />
+            <input
+              type="text"
+              enterKeyHint="search"
+              autoComplete="off"
+              aria-label="Buscar cidade"
+              placeholder="Buscar cidade..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="flex-1 min-w-0 w-full text-sm outline-none text-slate-800 bg-transparent"
+            />
+            <button
+              type="submit"
+              disabled={carregando}
+              className="shrink-0 min-w-[5rem] flex items-center justify-center bg-[#0b1f6e] rounded text-white px-4 py-1.5 text-sm font-medium hover:bg-[#0f35a0] transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {carregando ? <Loader2 className="animate-spin" size={16} /> : "Buscar"}
+            </button>
+          </form>
+        </div>
+
+        {erro && (
+          <div className="w-full bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2.5 rounded-md">
+            {erro}
+          </div>
+        )}
+
+        {/* GRID */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-5 gap-5">
+          {/* ESQUERDA */}
+          <div className="lg:col-span-3 flex flex-col gap-5 min-w-0">
+            {/* CARD PRINCIPAL */}
+            <section className="bg-[#0b1f6e] rounded-lg p-6 sm:p-7 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-sm text-blue-100/80">
+                    <MapPin size={14} className="shrink-0" />
+                    {location.region}, {location.country}
+                  </p>
+                  <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight break-words mt-1">
+                    {location.name}
+                  </h2>
+                  <p className="text-sm text-blue-100/80 mt-1 capitalize">
+                    {formatarDiaSemana(hoje.date, "long")}, {formatarDataCompleta(hoje.date)}
+                  </p>
+                </div>
+                <IconeAgora size={56} strokeWidth={1.25} className="shrink-0 text-white/90" />
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-6xl font-semibold tracking-tight tabular-nums leading-none">
+                    {Math.round(current.temp_c)}°
+                  </p>
+                  <p className="text-base text-white mt-2 capitalize">{current.condition.text}</p>
+                </div>
+                <dl className="grid grid-cols-3 gap-6 text-sm">
+                  <div>
+                    <dt className="text-blue-100/70 text-xs">Máxima</dt>
+                    <dd className="font-medium tabular-nums">{Math.round(hoje.day.maxtemp_c)}°</dd>
+                  </div>
+                  <div>
+                    <dt className="text-blue-100/70 text-xs">Mínima</dt>
+                    <dd className="font-medium tabular-nums">{Math.round(hoje.day.mintemp_c)}°</dd>
+                  </div>
+                  <div>
+                    <dt className="text-blue-100/70 text-xs">Sensação</dt>
+                    <dd className="font-medium tabular-nums">{Math.round(current.feelslike_c)}°</dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+
+            {/* PREVISÃO POR HORA */}
+            {proximasHoras.length > 0 && (
+              <section className="bg-white rounded-lg border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-900 px-5 pt-4 pb-3 border-b border-slate-200">
+                  Próximas horas
+                </h3>
+                <div className="flex overflow-x-auto snap-x divide-x divide-slate-100">
+                  {proximasHoras.map((h) => {
+                    const IconeHora = iconeClima(h.condition.code, (h as any).is_day ?? 1);
+                    return (
+                      <div
+                        key={h.time}
+                        className="shrink-0 snap-start flex-1 flex flex-col items-center gap-1.5 px-3 py-4 min-w-[72px] text-center"
+                      >
+                        <span className="text-xs text-slate-500 tabular-nums">{formatarHora(h.time)}</span>
+                        <IconeHora size={20} className={h.chance_of_rain >= 30 ? "text-[#0f35a0]" : "text-amber-500"} />
+                        <span className="text-sm font-medium text-slate-900 tabular-nums">
+                          {Math.round(h.temp_c)}°
+                        </span>
+                        <span className={`text-[11px] tabular-nums ${h.chance_of_rain >= 30 ? "text-[#0f35a0] font-medium" : "text-slate-400"}`}>
+                          {h.chance_of_rain}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* PRÓXIMOS DIAS */}
+            <section className="bg-white rounded-lg border border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-900 px-5 pt-4 pb-3 border-b border-slate-200">
+                Próximos dias
+              </h3>
+              <ul className="divide-y divide-slate-100">
+                {forecast.forecastday.map((item: any, idx: number) => {
+                  const IconeDia = iconeClima(item.day.condition.code);
+                  const inicio = ((item.day.mintemp_c - minSemana) / faixa) * 100;
+                  const largura = ((item.day.maxtemp_c - item.day.mintemp_c) / faixa) * 100;
+                  return (
+                    <li key={idx} className="grid grid-cols-[5rem_1.5rem_1fr_3.5rem] sm:grid-cols-[6rem_1.5rem_4rem_1fr] items-center gap-3 px-5 py-3">
+                      <span className="text-sm text-slate-700 capitalize">
+                        {idx === 0 ? "Hoje" : formatarDiaSemana(item.date, "short")}
+                      </span>
+                      <IconeDia size={18} className={item.day.daily_chance_of_rain >= 30 ? "text-[#0f35a0]" : "text-amber-500"} />
+                      <span className="text-xs text-slate-500 flex items-center gap-1 tabular-nums max-sm:order-last max-sm:justify-end">
+                        <CloudRain size={12} className="shrink-0" /> {item.day.daily_chance_of_rain}%
+                      </span>
+                      <div className="flex items-center gap-2.5 text-sm tabular-nums max-sm:hidden">
+                        <span className="text-slate-500 w-8 text-right">{Math.round(item.day.mintemp_c)}°</span>
+                        <div className="relative flex-1 h-1.5 rounded-full bg-slate-100">
+                          <div
+                            className="absolute h-full rounded-full bg-gradient-to-r from-sky-400 to-orange-400"
+                            style={{ left: `${inicio}%`, width: `${Math.max(largura, 4)}%` }}
+                          />
+                        </div>
+                        <span className="text-slate-900 font-medium w-8">{Math.round(item.day.maxtemp_c)}°</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </div>
+
+          {/* DIREITA */}
+          <div className="lg:col-span-2 flex flex-col gap-5 min-w-0">
+            {/* DETALHES DE HOJE */}
+            <section className="bg-white rounded-lg border border-slate-200">
+              <h3 className="text-sm font-semibold text-slate-900 px-5 pt-4 pb-3 border-b border-slate-200">
+                Detalhes de hoje
+              </h3>
+              <div className="grid grid-cols-2 gap-2.5 p-4">
+                {detalhes.map((d) => (
+                  <div key={d.rotulo} className={`rounded-md border px-3.5 py-3 ${d.cor}`}>
+                    <p className="flex items-center gap-1.5 text-xs font-medium">
+                      <d.Icone size={14} className="shrink-0" />
+                      {d.rotulo}
+                    </p>
+                    <p className="text-lg font-semibold text-slate-900 mt-1.5 tabular-nums">{d.valor}</p>
+                    {d.extra && <p className="text-[11px] text-slate-600 mt-0.5">{d.extra}</p>}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* PRÓXIMOS DIAS */}
-          <div className="p-5 pb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-sm font-bold text-gray-800 block mb-3">
-              Próximos 2 dias
-            </span>
-            <div className="flex flex-col gap-1">
-              {forecast.forecastday.map((item: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between px-2 py-2.5 rounded-xl bg-zinc-50 border border-gray-100 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-xs font-bold text-gray-600 capitalize w-20">
-                    {idx === 0 ? "Hoje" : formatarDiaSemana(item.date, "short")}
-                  </span>
-                  <span className="text-2xl select-none">
-                    {CLIMA_EMOJIS[item.day.condition.code] || "☀️"}
-                  </span>
-                  <span className="text-xs text-gray-400 flex items-center gap-1 w-14">
-                    <CloudRain size={12} className="shrink-0" /> {item.day.daily_chance_of_rain}%
-                  </span>
-                  <div className="flex items-center gap-2 w-20 justify-end">
-                    <span className="text-xs text-gray-400">
-                      {Math.round(item.day.mintemp_c)}°
-                    </span>
-                    <span className="text-xs font-bold text-gray-800">
-                      {Math.round(item.day.maxtemp_c)}°
-                    </span>
+              {/* UV, QUALIDADE DO AR E SOL */}
+              <dl className="border-t border-slate-200 divide-y divide-slate-100 text-sm">
+                <div className="flex items-center justify-between px-5 py-3">
+                  <dt className="flex items-center gap-2 text-slate-600">
+                    <ShieldAlert size={15} className="text-violet-500" /> Índice UV
+                  </dt>
+                  <dd className="flex items-center gap-2">
+                    <span className="tabular-nums text-slate-900 font-medium">{current.uv}</span>
+                    <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${uv.cor}`}>{uv.texto}</span>
+                  </dd>
+                </div>
+                {aqiTexto && (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <dt className="flex items-center gap-2 text-slate-600">
+                      <Leaf size={15} className="text-emerald-600" /> Qualidade do ar
+                    </dt>
+                    <dd className="text-slate-900 font-medium">{aqiTexto}</dd>
                   </div>
+                )}
+                <div className="flex items-center justify-between px-5 py-3">
+                  <dt className="flex items-center gap-2 text-slate-600">
+                    <Sunrise size={15} className="text-amber-500" /> Nascer do sol
+                  </dt>
+                  <dd className="text-slate-900 font-medium tabular-nums">{formatarHoraAstro(hoje.astro.sunrise)}</dd>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* DIREITA */}
-        <div className="flex flex-col gap-4 sm:gap-6 min-w-0">
-          {/* MAIS INFORMAÇÕES */}
-          <div className="p-5 sm:p-9.5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-sm font-bold text-gray-800 block mb-4">
-              Detalhes de hoje
-            </span>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#256ffe] p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <CloudRain size={16} className="shrink-0" />
-                  <span className="text-xs">Chuva</span>
+                <div className="flex items-center justify-between px-5 py-3">
+                  <dt className="flex items-center gap-2 text-slate-600">
+                    <Sunset size={15} className="text-orange-500" /> Pôr do sol
+                  </dt>
+                  <dd className="text-slate-900 font-medium tabular-nums">{formatarHoraAstro(hoje.astro.sunset)}</dd>
                 </div>
-                <span className="text-lg font-bold text-white">
-                  {hoje.day.daily_chance_of_rain}%
-                </span>
-              </div>
+              </dl>
+            </section>
 
-              <div className="bg-[#ef8608] p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <Sun size={16} className="shrink-0" />
-                  <span className="text-xs">Sensação</span>
-                </div>
-                <span className="text-lg font-bold text-white">
-                  {Math.round(current.feelslike_c)}°C
-                </span>
-              </div>
-
-              <div className="bg-[#0db94a] p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <Wind size={16} className="shrink-0" />
-                  <span className="text-xs">Vento</span>
-                </div>
-                <span className="text-lg font-bold text-white">
-                  {Math.round(current.wind_kph)} km/h
-                </span>
-              </div>
-
-              <div className="bg-[#14b681] p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <Droplets size={16} className="shrink-0" />
-                  <span className="text-xs">Umidade</span>
-                </div>
-                <span className="text-lg font-bold text-white">
-                  {Math.round(current.humidity)}%
-                </span>
-              </div>
-
-              <div className="bg-slate-600 p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <Gauge size={16} className="shrink-0" />
-                  <span className="text-xs">Pressão</span>
-                </div>
-                <span className="text-lg font-bold text-white">
-                  {Math.round(current.pressure_mb)} mb
-                </span>
-              </div>
-
-              <div className="bg-cyan-600 p-3 min-[360px]:p-4 rounded-xl flex flex-col justify-between h-24 hover:scale-[1.02] transition-transform">
-                <div className="flex items-center gap-2 text-white/90">
-                  <Eye size={16} className="shrink-0" />
-                  <span className="text-xs">Visibilidade</span>
-                </div>
-                <span className="text-lg font-bold text-white">
-                  {current.vis_km} km
-                </span>
-              </div>
-            </div>
-
-            {/* UV E QUALIDADE DO AR (rótulo em cima e valor embaixo, como os do sol: lado a lado
-                não cabia no celular e o texto vazava do quadro) */}
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className={`p-3 rounded-xl flex items-center gap-2 ${uv.cor}`}>
-                <ShieldAlert size={18} className="shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold opacity-80">Índice UV · {current.uv}</p>
-                  <p className="text-sm font-bold leading-tight">{uv.texto}</p>
-                </div>
-              </div>
-
-              {aqiTexto && (
-                <div className="p-3 rounded-xl flex items-center gap-2 bg-gray-50 text-gray-600">
-                  <Leaf size={18} className="shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold text-gray-400">Qualidade do ar</p>
-                    <p className="text-sm font-bold leading-tight">{aqiTexto}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* SOL */}
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div className="p-3 rounded-xl bg-amber-50 flex items-center gap-2">
-                <Sunrise size={18} className="shrink-0 text-amber-500" />
-                <div>
-                  <p className="text-[10px] text-gray-400 font-medium">Nascer do sol</p>
-                  <p className="text-sm font-bold text-gray-700">{formatarHoraAstro(hoje.astro.sunrise)}</p>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-orange-50 flex items-center gap-2">
-                <Sunset size={18} className="shrink-0 text-orange-500" />
-                <div>
-                  <p className="text-[10px] text-gray-400 font-medium">Pôr do sol</p>
-                  <p className="text-sm font-bold text-gray-700">{formatarHoraAstro(hoje.astro.sunset)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* OUTRAS CIDADES */}
-          <div className="p-5 sm:p-8 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-sm font-bold text-gray-700 block mb-3">
-              Outras cidades próximas
-            </span>
-            <div className="flex flex-col gap-2">
-              {ubatuba && (
-                <button
-                  onClick={() => handleOutraCidade("Ubatuba")}
-                  className="w-full flex justify-between items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors text-left cursor-pointer"
-                >
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-gray-700 text-sm">Ubatuba</h4>
-                    <span className="text-xs text-gray-400 capitalize">
-                      {ubatuba.current.condition.text}
-                    </span>
-                  </div>
-                  <div className="shrink-0 flex items-center gap-3">
-                    <span className="text-sm font-bold text-gray-700">
-                      {Math.round(ubatuba.current.temp_c)}°
-                    </span>
-                    <span className="text-2xl">
-                      {CLIMA_EMOJIS[ubatuba.current.condition.code] || "☀️"}
-                    </span>
-                  </div>
-                </button>
-              )}
-
-              {aparecida && (
-                <button
-                  onClick={() => handleOutraCidade("Aparecida")}
-                  className="w-full flex justify-between items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors text-left cursor-pointer"
-                >
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-gray-700 text-sm">Aparecida</h4>
-                    <span className="text-xs text-gray-400 capitalize">
-                      {aparecida.current.condition.text}
-                    </span>
-                  </div>
-                  <div className="shrink-0 flex items-center gap-3">
-                    <span className="text-sm font-bold text-gray-700">
-                      {Math.round(aparecida.current.temp_c)}°
-                    </span>
-                    <span className="text-2xl">
-                      {CLIMA_EMOJIS[aparecida.current.condition.code] || "☀️"}
-                    </span>
-                  </div>
-                </button>
-              )}
-            </div>
+            {/* OUTRAS CIDADES */}
+            {outrasCidades.length > 0 && (
+              <section className="bg-white rounded-lg border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-900 px-5 pt-4 pb-3 border-b border-slate-200">
+                  Outras cidades da região
+                </h3>
+                <ul className="divide-y divide-slate-100">
+                  {outrasCidades.map(({ nome, dados }) => {
+                    const IconeCidade = iconeClima(dados.current.condition.code, dados.current.is_day);
+                    return (
+                      <li key={nome}>
+                        <button
+                          onClick={() => handleOutraCidade(nome)}
+                          className="w-full flex justify-between items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-900">{nome}</p>
+                            <p className="text-xs text-slate-500 capitalize truncate">{dados.current.condition.text}</p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-3 text-slate-600">
+                            <IconeCidade size={18} />
+                            <span className="text-sm font-medium text-slate-900 tabular-nums w-8 text-right">
+                              {Math.round(dados.current.temp_c)}°
+                            </span>
+                            <ChevronRight size={15} className="text-slate-300" />
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
           </div>
         </div>
       </div>

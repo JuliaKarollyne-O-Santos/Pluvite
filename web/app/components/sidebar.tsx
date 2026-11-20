@@ -5,15 +5,18 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/app/lib/banco";
 import {
-  AlertTriangle,
+  LayoutDashboard,
+  History,
+  CloudSun,
+  Settings,
   BellRing,
   Map,
   MessageCircle,
   Rss,
-  UserRound,
   LogOut,
   ChevronRight,
   Building2,
+  ShieldCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -27,24 +30,58 @@ export const TOPBAR_MOBILE_ALTURA = 64;
 interface Navbar3Props {
   expandida: boolean;
   onToggle: (expandida: boolean) => void;
+  // Fora de /Adm e /Prefeituras (Mapa, Feed, Perfil...) o endereço não diz de quem é a conta,
+  // então o NavbarWrapper informa o papel
+  papel?: "admin" | "servidor";
 }
 
 // Itens de menu por contexto: dentro de /Adm é a equipe Pluvite, dentro de
 // /Prefeituras é a conta de uma prefeitura específica. O visual da sidebar
 // é o mesmo nos dois — só muda o que aparece.
-const navItemsAdmin = [
-  { href: "/Adm", label: "Prefeituras", icon: Building2 },
-  { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
-  { href: "/Adm/WhatsApp", label: "Conectar WhatsApp", icon: MessageCircle },
-  { href: "/Feed", label: "Feed", icon: Rss },
-  { href: "/Mapa", label: "Mapa", icon: Map },
+type ItemMenu = { href: string; label: string; icon: any };
+type SecaoMenu = { titulo: string; itens: ItemMenu[] };
+
+const navItemsAdmin: SecaoMenu[] = [
+  {
+    titulo: "Gestão",
+    itens: [
+      { href: "/Adm", label: "Prefeituras", icon: Building2 },
+      { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
+      { href: "/Servidor", label: "Central de alertas", icon: History },
+      { href: "/Adm/WhatsApp", label: "Conectar WhatsApp", icon: MessageCircle },
+    ],
+  },
+  {
+    titulo: "Monitoramento",
+    itens: [
+      { href: "/Mapa", label: "Mapa", icon: Map },
+      { href: "/Feed", label: "Feed", icon: Rss },
+      { href: "/Clima2", label: "Clima", icon: CloudSun },
+    ],
+  },
 ];
 
-const navItemsServidor = [
-  { href: "/Prefeituras", label: "Painel", icon: AlertTriangle },
-  { href: "/Mapa", label: "Mapa", icon: Map },
-  { href: "/Feed", label: "Feed", icon: Rss },
-  { href: "/perfil", label: "Perfil", icon: UserRound },
+const navItemsServidor: SecaoMenu[] = [
+  {
+    titulo: "Gestão",
+    itens: [
+      { href: "/Prefeituras", label: "Painel", icon: LayoutDashboard },
+      { href: "/Servidor/Emitir", label: "Emitir alerta", icon: BellRing },
+      { href: "/Servidor", label: "Central de alertas", icon: History },
+    ],
+  },
+  {
+    titulo: "Monitoramento",
+    itens: [
+      { href: "/Mapa", label: "Mapa", icon: Map },
+      { href: "/Feed", label: "Ocorrências no Feed", icon: Rss },
+      { href: "/Clima2", label: "Clima", icon: CloudSun },
+    ],
+  },
+  {
+    titulo: "Conta",
+    itens: [{ href: "/Prefeituras/conta", label: "Minha conta", icon: Settings }],
+  },
 ];
 
 interface ContaLogada {
@@ -52,13 +89,20 @@ interface ContaLogada {
   sigla: string;
 }
 
-export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
+export default function Navbar3({ expandida, onToggle, papel }: Navbar3Props) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const ehAreaAdmin = pathname?.startsWith("/Adm");
+  const ehAreaAdmin = papel ? papel === "admin" : pathname?.startsWith("/Adm");
   const navItems = ehAreaAdmin ? navItemsAdmin : navItemsServidor;
   const linkLogo = ehAreaAdmin ? "/Adm" : "/Prefeituras";
+
+  // Item ativo = o endereço mais específico que bate com a página atual
+  // (em /Servidor/Emitir fica ativo "Emitir alerta", e não também "Central de alertas")
+  const itemAtivo = navItems
+    .flatMap((secao) => secao.itens.map((item) => item.href))
+    .filter((href) => pathname === href || pathname?.startsWith(href + "/"))
+    .sort((a, b) => b.length - a.length)[0];
 
   const [conta, setConta] = useState<ContaLogada>({
     nome: ehAreaAdmin ? "Equipe Pluvite" : "Carregando...",
@@ -116,7 +160,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
     <>
       <div>
         {/* Logo (some no drawer mobile, que já tem sua própria barra com logo) */}
-        <div className="hidden md:flex items-center px-5 pt-6 pb-6">
+        <div className="hidden md:flex items-center px-5 pt-5 pb-4">
           <Link href={linkLogo} className="flex items-center gap-3 min-w-0">
             <img
               src="/PluviteIcon.jpg"
@@ -134,7 +178,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
         {/* Botão de recolher/expandir — só faz sentido no desktop */}
         <button
           onClick={() => onToggle(!expandida)}
-          className="hidden md:flex items-center justify-center mx-auto mb-6 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+          className="hidden md:flex items-center justify-center mx-auto mb-4 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
           title={expandida ? "Recolher menu" : "Expandir menu"}
         >
           <ChevronRight
@@ -144,9 +188,18 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
         </button>
 
         {/* Navegação */}
-        <nav className="flex flex-col gap-1.5 px-3 mt-2 md:mt-0">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || pathname?.startsWith(href + "/");
+        <nav className="flex flex-col px-3 mt-2 md:mt-0">
+          {navItems.map((secao, indiceSecao) => (
+            <div key={secao.titulo} className={`flex flex-col gap-1 ${indiceSecao > 0 ? "mt-4" : ""}`}>
+              {mostrarLabels ? (
+                <span className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-white/40">
+                  {secao.titulo}
+                </span>
+              ) : (
+                indiceSecao > 0 && <span className="mx-3 mb-2 border-t border-white/10" />
+              )}
+          {secao.itens.map(({ href, label, icon: Icon }) => {
+            const isActive = href === itemAtivo;
 
             return (
               <Link
@@ -154,7 +207,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
                 href={href}
                 title={label}
                 onClick={() => setMenuMobileAberto(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer text-white
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-all duration-150 cursor-pointer text-white
                   ${mostrarLabels ? "" : "justify-center"}
                   ${isActive ? "bg-white/15 shadow-sm font-bold" : "hover:bg-white/10"}`}
               >
@@ -167,6 +220,8 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
               </Link>
             );
           })}
+            </div>
+          ))}
         </nav>
       </div>
 
@@ -176,7 +231,11 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
           title={conta.nome}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 ${mostrarLabels ? "" : "justify-center"}`}
         >
-          <UserRound size={18} className="text-white/70 shrink-0" />
+          {ehAreaAdmin ? (
+            <ShieldCheck size={18} className="text-white/70 shrink-0" />
+          ) : (
+            <Building2 size={18} className="text-white/70 shrink-0" />
+          )}
           {mostrarLabels && (
             <div className="flex flex-col leading-tight min-w-0">
               <span className="text-xs font-bold text-white truncate">
@@ -234,7 +293,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
 
       {/* Drawer mobile — desliza da esquerda */}
       <aside
-        className={`md:hidden fixed top-0 left-0 h-dvh w-64 z-[10002] flex flex-col justify-between pb-[env(safe-area-inset-bottom)]
+        className={`md:hidden fixed top-0 left-0 h-dvh w-64 z-[10002] flex flex-col justify-between overflow-y-auto [scrollbar-width:none] pb-[env(safe-area-inset-bottom)]
           shadow-[2px_0_10px_rgba(0,0,0,0.15)] transition-transform duration-300 ease-in-out
           ${menuMobileAberto ? "translate-x-0" : "-translate-x-full"}`}
         style={{ backgroundColor: "#091c4b" }}
@@ -263,7 +322,7 @@ export default function Navbar3({ expandida, onToggle }: Navbar3Props) {
 
       {/* Sidebar fixa — só em md+ */}
       <aside
-        className={`hidden md:flex fixed top-0 left-0 h-screen z-[10000] flex-col justify-between
+        className={`hidden md:flex fixed top-0 left-0 h-screen z-[10000] flex-col justify-between overflow-y-auto overflow-x-hidden [scrollbar-width:none]
           shadow-[2px_0_10px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out
           ${expandida ? "w-64" : "w-[84px]"}`}
         style={{ backgroundColor: "#091c4b" }}

@@ -35,14 +35,14 @@ const scrollTo = (id: string) => {
 
 export default function Home() {
   return (
-    <div className="tela-cheia overflow-y-auto bg-slate font-sans antialiased text-slate-800">
+    <div className="tela-cheia overflow-y-auto bg-fundo font-sans antialiased text-slate-800">
       <main>
         {/* ── HERO ──────────────────────────────────────────────────────────── */}
         <section
           id="hero"
           className="max-w-5xl mx-auto px-6 pt-8 pb-20 flex flex-col items-center text-center gap-10"
         >
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#ccddff] bg-[#eff5ff] text-slate-700 text-xs font-bold tracking-widest uppercase shadow-sm">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-md border border-[#ccddff] bg-[#eff5ff] text-slate-700 text-xs font-bold tracking-widest uppercase shadow-sm">
             <Activity size={13} className="text-[#2C4A6F]" />
             Monitoramento do Vale do Paraíba e Litoral Norte
           </div>
@@ -367,7 +367,7 @@ export default function Home() {
               <h3 className="text-base font-bold text-slate-900">
                 Principais Municípios Monitorados
               </h3>
-              <span className="text-xs font-bold text-[#0d43af] bg-[#0d43af]/5 border border-[#0d43af]/15 px-3.5 py-1.5 rounded-full">
+              <span className="text-xs font-bold text-[#0d43af] bg-[#0d43af]/5 border border-[#0d43af]/15 px-3.5 py-1.5 rounded-md">
                 39 municípios
               </span>
             </div>
@@ -602,7 +602,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Bloco de Textos, Recursos e Downloads */}
             <div className="lg:col-span-7 flex flex-col justify-start w-full">
-              <span className="text-sm font-bold text-[#0d43af] uppercase tracking-widest bg-[#0d43af]/10 px-3 py-1.5 rounded-full w-fit">
+              <span className="text-sm font-bold text-[#0d43af] uppercase tracking-widest bg-[#0d43af]/10 px-3 py-1.5 rounded-md w-fit">
                 Tecnologia na sua Mão
               </span>
               <h2 className="text-4xl md:text-5xl font-extrabold text-slate-950 mt-4 leading-tight">

@@ -13,30 +13,30 @@ const ATUALIZADO_EM = "19 de novembro de 2026";
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-2.5">
-      <h2 className="text-lg font-bold text-[#091f75]">{titulo}</h2>
-      <div className="space-y-2.5 text-[15px] leading-relaxed text-slate-700">{children}</div>
+    <section className="space-y-2.5 border-t border-slate-200 pt-6">
+      <h2 className="text-base font-semibold text-slate-900">{titulo}</h2>
+      <div className="space-y-2.5 text-[15px] leading-7 text-slate-600">{children}</div>
     </section>
   );
 }
 
 export default function Privacidade() {
   return (
-    <main className="min-h-dvh w-full bg-slate-50 px-4 py-10 sm:py-14 font-sans antialiased">
+    <main className="min-h-dvh w-full bg-fundo px-4 py-10 sm:py-14 font-sans antialiased">
       <div className="mx-auto w-full max-w-3xl">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#0f35a0] bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-sm transition-all"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-[#0f35a0] transition-colors"
         >
           <ArrowLeft size={15} />
           Voltar ao início
         </Link>
 
-        <article className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-10 shadow-sm space-y-8">
+        <article className="mt-6 rounded-md border border-slate-200 bg-white p-6 sm:p-12 space-y-6">
           <header className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight text-black">Política de Privacidade</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">Política de Privacidade</h1>
             <p className="text-sm text-slate-500">Última atualização: {ATUALIZADO_EM}</p>
-            <p className="text-[15px] leading-relaxed text-slate-700">
+            <p className="text-[15px] leading-7 text-slate-600">
               O Pluvite é uma plataforma de monitoramento de chuvas e alertas de risco que conecta cidadãos e
               prefeituras. Esta política explica quais dados coletamos, para que os usamos e quais são os seus
               direitos, de acordo com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 – LGPD).
@@ -117,7 +117,7 @@ export default function Privacidade() {
           <Secao titulo="6. Contato">
             <p>
               Para dúvidas ou pedidos sobre seus dados, incluindo a exclusão da conta, escreva para{" "}
-              <a href={`mailto:${EMAIL_CONTATO}`} className="font-semibold text-[#0f35a0] underline">
+              <a href={`mailto:${EMAIL_CONTATO}`} className="font-medium text-[#0f35a0] underline underline-offset-2">
                 {EMAIL_CONTATO}
               </a>
               .

@@ -106,7 +106,7 @@ export default function PainelPrioridades() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
           Níveis de Risco
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -138,11 +138,11 @@ export default function PainelPrioridades() {
       )}
 
       {carregando ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex items-center justify-center">
+        <div className="bg-white rounded-lg border border-slate-200 p-10 flex items-center justify-center">
           <Loader2 size={20} className="animate-spin text-[#091f75]" />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+        <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
           {TIPOS_OCORRENCIA.map((tipo) => {
             const prioridadeAtual = config[tipo] || "Zona Segura";
             const cor = CORES_PRIORIDADE[prioridadeAtual];
@@ -158,7 +158,7 @@ export default function PainelPrioridades() {
                     style={{ backgroundColor: cor }}
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-800 truncate">
+                    <p className="text-sm font-semibold text-slate-800 truncate">
                       {tipo}
                     </p>
                   </div>
@@ -175,7 +175,7 @@ export default function PainelPrioridades() {
                         }
                         disabled={usandoPadrao || salvandoTipo === tipo}
                         title={usandoPadrao ? "Rode a migration pra editar" : p}
-                        className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+                        className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
                           selecionada
                             ? "text-white border-transparent"
                             : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"

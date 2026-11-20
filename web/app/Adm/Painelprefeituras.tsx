@@ -158,7 +158,7 @@ export default function PainelPrefeituras() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
           Contas de Servidor
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -170,16 +170,16 @@ export default function PainelPrefeituras() {
       {/* FORMULÁRIO */}
       <form
         onSubmit={handleCriar}
-        className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4"
+        className="bg-white rounded-lg border border-slate-200 p-5 space-y-4"
       >
-        <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
           <Building2 size={16} className="text-[#091f75]" />
           Nova conta de servidor
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+            <span className="text-[11px] text-slate-400 font-semibold uppercase block mb-1">
               Nome
             </span>
             <input
@@ -191,7 +191,7 @@ export default function PainelPrefeituras() {
             />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+            <span className="text-[11px] text-slate-400 font-semibold uppercase block mb-1">
               Município
             </span>
             <select
@@ -208,7 +208,7 @@ export default function PainelPrefeituras() {
             </select>
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+            <span className="text-[11px] text-slate-400 font-semibold uppercase block mb-1">
               E-mail de login
             </span>
             <input
@@ -220,7 +220,7 @@ export default function PainelPrefeituras() {
             />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">
+            <span className="text-[11px] text-slate-400 font-semibold uppercase block mb-1">
               Senha inicial
             </span>
             <input
@@ -238,7 +238,7 @@ export default function PainelPrefeituras() {
         <button
           type="submit"
           disabled={salvando}
-          className="flex items-center gap-2 bg-[#091f75] hover:bg-[#0f2a8f] text-white text-sm font-bold px-4 py-2.5 rounded-xl transition cursor-pointer disabled:opacity-60"
+          className="flex items-center gap-2 bg-[#091f75] hover:bg-[#0f2a8f] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer disabled:opacity-60"
         >
           {salvando ? (
             <Loader2 size={15} className="animate-spin" />
@@ -250,8 +250,8 @@ export default function PainelPrefeituras() {
       </form>
 
       {/* LISTA */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <h2 className="text-sm font-bold text-slate-800 mb-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-800 mb-4">
           Servidores cadastrados
         </h2>
 
@@ -274,14 +274,14 @@ export default function PainelPrefeituras() {
                   <UserRound size={16} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-800 truncate">
+                  <p className="text-xs font-semibold text-slate-800 truncate">
                     {s.nome_completo}
                   </p>
                   <p className="text-[11px] text-slate-500 truncate">
                     {s.email}
                   </p>
                 </div>
-                <span className="text-[10px] font-bold text-[#091f75] bg-blue-50 px-2.5 py-1 rounded-md shrink-0">
+                <span className="text-[11px] font-semibold text-[#091f75] bg-blue-50 px-2.5 py-1 rounded-md shrink-0">
                   {s.municipio}
                 </span>
                 <button

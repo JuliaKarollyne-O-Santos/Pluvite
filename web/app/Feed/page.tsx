@@ -185,7 +185,7 @@ const tempoRelativo = (dataIso: string) => {
 
 // Campo padrão (inputs, textarea e gatilho dos menus suspensos): cantos bem arredondados.
 const CAMPO_CLASSE =
-  "w-full bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#0f2a8f] focus:ring-2 focus:ring-[#0f2a8f]/10";
+  "w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#0f2a8f] focus:ring-2 focus:ring-[#0f2a8f]/10";
 
 interface OpcaoMenu {
   valor: string;
@@ -359,7 +359,7 @@ function MenuSuspenso({
             scrollbarWidth: "thin",
             scrollbarColor: "#3d5cc9 transparent",
           }}
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-64 overflow-y-auto rounded-2xl border border-[#3d5cc9] bg-[#091f75] p-1.5 shadow-xl shadow-[#091f75]/30"
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-64 overflow-y-auto rounded-lg border border-[#3d5cc9] bg-[#0b1f6e] p-1.5 shadow-xl shadow-[#091f75]/30"
         >
           {opcoes.map((op, i) => {
             const escolhida = op.valor === valor;
@@ -406,7 +406,7 @@ function CampoModal({
     <div>
       <label
         htmlFor={htmlFor}
-        className="block text-xs font-bold text-slate-700 mb-1.5"
+        className="block text-xs font-semibold text-slate-700 mb-1.5"
       >
         {rotulo}
         {obrigatorio && <span className="text-[#0f2a8f] ml-0.5">*</span>}
@@ -939,7 +939,7 @@ export default function FeedPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#f4f5f7]">
+    <div className="min-h-screen w-full bg-fundo">
       {/* Animação do like — "pop" no ícone + onda saindo dele */}
       <style>{`
                 @keyframes pluviteCurtirPop {
@@ -953,13 +953,11 @@ export default function FeedPage() {
                 }
             `}</style>
       {/* Um único acento de marca, discreto, no topo — em vez de vários blobs azuis espalhados */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-[#091f75]/[0.04] to-transparent" />
-
-      <main className="relative z-10 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="relative z-10 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* BANNER — no lugar do título, mapa decorativo com "pessoas" e marcações plotadas */}
-        <div className="relative overflow-hidden rounded-2xl bg-[#091f75] p-6 sm:p-8 text-white shadow-sm">
+        <div className="relative overflow-hidden rounded-lg bg-[#0b1f6e] p-6 sm:p-7 text-white">
           <svg
-            className="absolute inset-0 w-full h-full opacity-[0.18]"
+            className="absolute inset-0 w-full h-full opacity-[0.08]"
             viewBox="0 0 1200 220"
             fill="none"
             preserveAspectRatio="xMidYMid slice"
@@ -1009,55 +1007,14 @@ export default function FeedPage() {
             }}
           />
 
-          {/* Marcações "pin" com foto — como pessoas plotadas no mapa */}
-          {[
-            { img: 11, left: "42%", top: "10%", size: 40 },
-            { img: 32, left: "54%", top: "56%", size: 32 },
-            { img: 47, left: "66%", top: "16%", size: 44 },
-            { img: 5, left: "78%", top: "50%", size: 36 },
-            { img: 59, left: "90%", top: "12%", size: 36, lgOnly: true },
-          ].map((m) => (
-            <div
-              key={m.img}
-              className={`${m.lgOnly ? "hidden lg:block" : "hidden sm:block"} absolute -translate-x-1/2`}
-              style={{ left: m.left, top: m.top }}
-            >
-              <div className="relative flex flex-col items-center">
-                <img
-                  src={`https://i.pravatar.cc/100?img=${m.img}`}
-                  alt=""
-                  aria-hidden="true"
-                  style={{ width: m.size, height: m.size }}
-                  className="rounded-full object-cover ring-2 ring-white shadow-md"
-                />
-                {/* ponta do pin */}
-                <span className="w-2.5 h-2.5 bg-white rotate-45 -mt-[5px] shadow-sm" />
-              </div>
-            </div>
-          ))}
-
-          {/* Marcações simples, sem foto — reforçam a leitura de "vários pontos no mapa" */}
-          {[
-            { left: "35%", top: "40%" },
-            { left: "60%", top: "38%" },
-            { left: "73%", top: "68%" },
-            { left: "25%", top: "62%" },
-          ].map((m, i) => (
-            <MapPin
-              key={i}
-              size={16}
-              strokeWidth={2.5}
-              className="hidden sm:block absolute -translate-x-1/2 -translate-y-full text-white/70 drop-shadow"
-              style={{ left: m.left, top: m.top }}
-            />
-          ))}
 
           <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-5">
             <div className="max-w-xl space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                Feed de Ocorrências
+              <p className="text-xs font-medium uppercase tracking-wider text-blue-100/70">Comunidade</p>
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
+                Feed de ocorrências
               </h1>
-              <p className="text-xs sm:text-sm text-white leading-relaxed">
+              <p className="text-sm text-blue-100/90 leading-relaxed">
                 Aqui você acompanha, em tempo real, alagamentos, quedas de
                 árvore, buracos e outros riscos relatados pela comunidade da sua
                 região. Publique o que você vê, siga o status de cada
@@ -1067,10 +1024,10 @@ export default function FeedPage() {
 
             <button
               onClick={handleAbrirModal}
-              className="flex items-center justify-center gap-2 bg-white hover:bg-blue-50 text-[#091f75] text-sm font-semibold px-5 py-3 rounded-xl transition cursor-pointer shadow-sm shrink-0"
+              className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0b1f6e] text-sm font-medium px-4 py-2.5 rounded-md transition-colors cursor-pointer shrink-0"
             >
-              <Plus size={18} />
-              <span>Publicar Ocorrência</span>
+              <Plus size={16} />
+              <span>Publicar ocorrência</span>
             </button>
           </div>
         </div>
@@ -1079,8 +1036,8 @@ export default function FeedPage() {
           {/* COLUNA ESQUERDA */}
           <div className="w-full lg:w-2/3">
             {/* FILTROS DE PESQUISA  */}
-            <div className="pt-6 pb-2 md:bg-[#f4f5f7] md:sticky md:top-[var(--altura-navbar)] md:z-30">
-              <div className="bg-white px-3 py-4 sm:px-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="pt-5 pb-2 md:bg-fundo md:sticky md:top-[var(--altura-navbar)] md:z-30">
+              <div className="bg-white px-3 py-3.5 sm:px-4 rounded-lg border border-slate-200 space-y-3">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <MenuSuspenso
                     id="filtro-cidade"
@@ -1136,9 +1093,9 @@ export default function FeedPage() {
                       <button
                         key={cat}
                         onClick={() => setCategoriaAtiva(cat)}
-                        className={`group flex items-center gap-1 pl-2 pr-1 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer border ${ativa
-                          ? "bg-[#091f75] text-white border-[#091f75] shadow-sm shadow-[#091f75]/25"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-[#091f75]/30 hover:bg-blue-50/60 hover:text-[#091f75]"
+                        className={`group flex items-center gap-1.5 pl-2 pr-1 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors cursor-pointer border ${ativa
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                           }`}
                       >
                         <IconeCat
@@ -1146,12 +1103,12 @@ export default function FeedPage() {
                           className={
                             ativa
                               ? "text-white"
-                              : "text-slate-400 group-hover:text-[#091f75]"
+                              : "text-slate-400 group-hover:text-slate-700"
                           }
                         />
                         {cat}
                         <span
-                          className={`min-w-[16px] text-center rounded-md px-0.5 py-px text-[10px] font-bold ${ativa
+                          className={`min-w-[18px] text-center rounded px-1 py-px text-[11px] font-medium tabular-nums ${ativa
                             ? "bg-white/20 text-white"
                             : "bg-slate-100 text-slate-500 group-hover:bg-white"
                             }`}
@@ -1165,7 +1122,7 @@ export default function FeedPage() {
                   {temFiltroAtivo && (
                     <button
                       onClick={limparFiltros}
-                      className="ml-auto pl-3 flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-red-600 whitespace-nowrap shrink-0 cursor-pointer transition"
+                      className="ml-auto pl-3 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-red-600 whitespace-nowrap shrink-0 cursor-pointer transition"
                     >
                       <X size={13} />
                       Limpar filtros
@@ -1177,7 +1134,7 @@ export default function FeedPage() {
 
             {/* FEED */}
             <div className="space-y-4 pt-4">
-              <p className="text-xs font-semibold text-slate-500 px-1">
+              <p className="text-xs text-slate-500 px-1">
                 {ocorrenciasFiltradas.length}{" "}
                 {ocorrenciasFiltradas.length === 1
                   ? "ocorrência encontrada"
@@ -1185,7 +1142,7 @@ export default function FeedPage() {
               </p>
 
               {carregandoFeed && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex flex-col items-center text-center gap-3">
+                <div className="bg-white rounded-lg border border-slate-200 p-10 flex flex-col items-center text-center gap-3">
                   <p className="text-xs text-slate-500 font-semibold">
                     Carregando ocorrências...
                   </p>
@@ -1193,11 +1150,11 @@ export default function FeedPage() {
               )}
 
               {!carregandoFeed && ocorrenciasFiltradas.length === 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex flex-col items-center text-center gap-3">
+                <div className="bg-white rounded-lg border border-slate-200 p-10 flex flex-col items-center text-center gap-3">
                   <div className="p-3 rounded-full bg-slate-100 text-slate-400">
                     <Search size={22} />
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm">
+                  <h3 className="font-semibold text-slate-800 text-sm">
                     Nenhuma ocorrência encontrada
                   </h3>
                   <p className="text-xs text-slate-500 max-w-xs">
@@ -1206,7 +1163,7 @@ export default function FeedPage() {
                   </p>
                   <button
                     onClick={limparFiltros}
-                    className="mt-1 bg-[#091f75] hover:bg-[#0f2a8f] text-white text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                    className="mt-1 bg-[#0b1f6e] hover:bg-[#0f35a0] text-white text-xs font-medium px-4 py-2 rounded-md transition-colors cursor-pointer"
                   >
                     Limpar filtros
                   </button>
@@ -1220,11 +1177,11 @@ export default function FeedPage() {
                 return (
                   <article
                     key={oc.id}
-                    className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-slate-300 transition"
+                    className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-slate-300 transition"
                   >
                     <div className="p-4 sm:p-5 flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-[#091f75] text-white font-bold flex items-center justify-center text-xs shrink-0 overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-[#0b1f6e] text-white font-semibold flex items-center justify-center text-xs shrink-0 overflow-hidden">
                           {oc.autorAvatarUrl ? (
                             <img
                               src={oc.autorAvatarUrl}
@@ -1237,7 +1194,7 @@ export default function FeedPage() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">
+                          <h3 className="font-semibold text-slate-900 text-sm leading-snug truncate">
                             {oc.autor}
                           </h3>
                           <div className="flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 mt-0.5">
@@ -1247,7 +1204,7 @@ export default function FeedPage() {
                             />
                             <span className="truncate">{oc.endereco}</span>
                             <span className="text-slate-300">•</span>
-                            <span className="font-semibold text-slate-700">
+                            <span className="font-medium text-slate-700">
                               {oc.bairro}
                             </span>
                             <span className="text-slate-300">•</span>
@@ -1257,11 +1214,11 @@ export default function FeedPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <span className="text-[11px] text-slate-400 font-medium">
+                        <span className="text-xs text-slate-500">
                           {oc.tempo}
                         </span>
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border ${estilo.badge}`}
+                          className={`text-[11px] font-medium px-2 py-0.5 rounded flex items-center gap-1.5 border ${estilo.badge}`}
                         >
                           <StatusIcon size={12} />
                           {estilo.texto}
@@ -1271,7 +1228,7 @@ export default function FeedPage() {
 
                     {/* TIPO DA OCORRÊNCIA — chip neutro, quadrado, combinando com os filtros */}
                     <div className="px-4 sm:px-5 pb-3 -mt-1.5">
-                      <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
+                      <span className="text-[11px] font-medium text-[#0b1f6e] bg-[#0b1f6e]/[0.07] px-2 py-0.5 rounded">
                         {oc.tipo}
                       </span>
                     </div>
@@ -1291,7 +1248,7 @@ export default function FeedPage() {
                     )}
 
                     {/* BARRA DE INTERAÇÕES E AÇÕES */}
-                    <div className="px-4 sm:px-5 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
+                    <div className="px-4 sm:px-5 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
                       <div className="flex items-center gap-4">
                         <button
                           onClick={() => handleCurtir(oc.id)}
@@ -1331,9 +1288,9 @@ export default function FeedPage() {
                     {oc.descricao && (
                       <button
                         onClick={() => abrirPost(oc.id)}
-                        className="block w-full text-left px-4 sm:px-5 pb-3 text-xs text-slate-700 font-medium leading-relaxed cursor-pointer"
+                        className="block w-full text-left px-4 sm:px-5 pb-3 text-[13px] text-slate-700 leading-relaxed cursor-pointer"
                       >
-                        <span className="font-bold text-slate-900">
+                        <span className="font-semibold text-slate-900">
                           {oc.autor}
                         </span>{" "}
                         <span className="line-clamp-2">{oc.descricao}</span>
@@ -1343,7 +1300,7 @@ export default function FeedPage() {
                     {oc.comentarios.length > 0 && (
                       <button
                         onClick={() => abrirPost(oc.id)}
-                        className="block w-full text-left px-4 sm:px-5 pb-4 -mt-1.5 text-xs text-slate-400 font-semibold hover:text-slate-600 cursor-pointer"
+                        className="block w-full text-left px-4 sm:px-5 pb-4 -mt-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
                       >
                         Ver{" "}
                         {oc.comentarios.length === 1
@@ -1358,117 +1315,101 @@ export default function FeedPage() {
           </div>
 
           {/* COLUNA DIREITA */}
-          <aside className="w-full lg:w-1/3 lg:sticky lg:top-[var(--altura-navbar)] lg:self-start pt-6 space-y-3">
+          <aside className="w-full lg:w-1/3 lg:sticky lg:top-[var(--altura-navbar)] lg:self-start pt-5 space-y-4">
             {/* STATUS */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center gap-1 shadow-sm">
-                <div className="p-1.5 rounded-lg bg-red-50 text-red-600">
-                  <AlertTriangle size={15} />
-                </div>
-                <span className="text-lg font-black text-slate-800 leading-tight">
-                  {contagem.aguardando}
-                </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Aguardando
-                </span>
+            <section>
+              <h3 className="px-1 pb-2 text-sm font-semibold text-slate-900">Situação dos atendimentos</h3>
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { rotulo: "Aguardando", valor: contagem.aguardando, Icone: AlertTriangle, card: "bg-red-50 border-red-200", icone: "text-red-600", numero: "text-red-900" },
+                  { rotulo: "Em andamento", valor: contagem.andamento, Icone: Wrench, card: "bg-amber-50 border-amber-200", icone: "text-amber-600", numero: "text-amber-900" },
+                  { rotulo: "Visualizados", valor: contagem.visualizado, Icone: Eye, card: "bg-emerald-50 border-emerald-200", icone: "text-emerald-600", numero: "text-emerald-900" },
+                ].map(({ rotulo, valor, Icone, card, icone, numero }) => (
+                  <div key={rotulo} className={`rounded-lg border px-3.5 py-3.5 ${card}`}>
+                    <Icone size={16} className={icone} />
+                    <p className={`text-2xl font-semibold tabular-nums mt-2 leading-none ${numero}`}>{valor}</p>
+                    <p className="text-xs text-slate-600 mt-1.5">{rotulo}</p>
+                  </div>
+                ))}
               </div>
-
-              <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm">
-                <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-                  <Wrench size={15} />
-                </div>
-                <span className="text-lg font-black text-slate-800 leading-tight">
-                  {contagem.andamento}
-                </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Em Andamento
-                </span>
-              </div>
-
-              <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center gap-1 shadow-sm">
-                <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
-                  <Eye size={15} />
-                </div>
-                <span className="text-lg font-black text-slate-800 leading-tight">
-                  {contagem.visualizado}
-                </span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Visualizados
-                </span>
-              </div>
-            </div>
-
-            {/* CARD BAIRROS */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                <TrendingUp size={16} className="text-[#091f75]" />
-                Bairros com mais relatos
-              </h3>
-
-              <div className="space-y-2 pt-1">
-                {bairrosRanking.length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium">
-                    Nenhum relato nessa região ainda.
-                  </p>
-                ) : (
-                  bairrosRanking.map(([bairro, chamados]) => (
-                    <div
-                      key={bairro}
-                      className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100"
-                    >
-                      <span className="font-semibold text-slate-700">
-                        {bairro}
-                      </span>
-                      <span className="text-[11px] font-bold text-[#091f75] bg-blue-50 px-2 py-0.5 rounded-md">
-                        {chamados} {chamados === 1 ? "relato" : "relatos"}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            </section>
 
             {/* CARD ESTATÍSTICAS DA COMUNIDADE */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                <Users size={16} className="text-[#091f75]" />
-                Estatísticas da comunidade
+            <section className="bg-[#0b1f6e] text-white rounded-lg">
+              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold border-b border-white/10 flex items-center gap-2">
+                <Users size={15} className="text-blue-200" />
+                Comunidade
               </h3>
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 flex flex-col items-center gap-0.5">
-                  <span className="text-lg font-black text-[#091f75] leading-tight">
-                    {estatisticas.total}
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Relatos no total
-                  </span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col items-center gap-0.5">
-                  <span className="text-lg font-black text-emerald-600 leading-tight">
-                    {estatisticas.concluidas}
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Resolvidos
-                  </span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col items-center gap-0.5">
-                  <span className="text-lg font-black text-slate-800 leading-tight">
-                    {estatisticas.cidadaosAtivos}
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Cidadãos ativos
-                  </span>
-                </div>
+              <div className="grid grid-cols-3 divide-x divide-white/10">
+                {[
+                  { rotulo: "Relatos", valor: estatisticas.total },
+                  { rotulo: "Resolvidos", valor: estatisticas.concluidas },
+                  { rotulo: "Cidadãos ativos", valor: estatisticas.cidadaosAtivos },
+                ].map(({ rotulo, valor }) => (
+                  <div key={rotulo} className="px-4 py-4">
+                    <p className="text-xs text-blue-100/80">{rotulo}</p>
+                    <p className="text-2xl font-semibold tabular-nums mt-1">{valor}</p>
+                  </div>
+                ))}
               </div>
-            </div>
+              {estatisticas.total > 0 && (
+                <div className="px-5 pb-4">
+                  <div className="flex items-center justify-between text-xs text-blue-100/80 mb-1.5">
+                    <span>Taxa de resolução</span>
+                    <span className="font-medium text-white tabular-nums">
+                      {Math.round((estatisticas.concluidas / estatisticas.total) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 rounded-full"
+                      style={{ width: `${(estatisticas.concluidas / estatisticas.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* CARD BAIRROS */}
+            <section className="bg-white border border-slate-200 rounded-lg">
+              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold text-slate-900 border-b border-slate-200 flex items-center gap-2">
+                <TrendingUp size={15} className="text-[#0f35a0]" />
+                Bairros com mais relatos
+              </h3>
+              {bairrosRanking.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-slate-500">Nenhum relato nessa região ainda.</p>
+              ) : (
+                <ol className="divide-y divide-slate-100">
+                  {bairrosRanking.map(([bairro, chamados], i) => {
+                    const maior = bairrosRanking[0][1] || 1;
+                    return (
+                      <li key={bairro} className="px-5 py-2.5">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-xs font-semibold text-[#0f35a0] tabular-nums w-4">{i + 1}</span>
+                            <span className="text-slate-800 truncate">{bairro}</span>
+                          </span>
+                          <span className="text-xs text-slate-500 tabular-nums shrink-0">
+                            {chamados} {chamados === 1 ? "relato" : "relatos"}
+                          </span>
+                        </div>
+                        <div className="ml-6.5 mt-1.5 h-1 rounded-full bg-slate-100 overflow-hidden">
+                          <div className="h-full bg-[#0f35a0]/60 rounded-full" style={{ width: `${(chamados / maior) * 100}%` }} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
 
             {/* CARD DICAS DE SEGURANÇA */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                <ShieldAlert size={16} className="text-[#091f75]" />
+            <section className="bg-amber-50 border border-amber-200 rounded-lg">
+              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold text-amber-950 border-b border-amber-200 flex items-center gap-2">
+                <ShieldAlert size={15} className="text-amber-600" />
                 Dicas de segurança
               </h3>
-              <ul className="space-y-1.5">
+              <ul className="px-5 py-4 space-y-2.5">
                 {[
                   "Evite atravessar ruas alagadas, mesmo que a água pareça rasa.",
                   "Em caso de deslizamento, afaste-se de encostas e barrancos.",
@@ -1476,16 +1417,20 @@ export default function FeedPage() {
                 ].map((dica, i) => (
                   <li
                     key={i}
-                    className="flex items-start gap-2 text-[11px] text-slate-600 leading-snug"
+                    className="flex items-start gap-2.5 text-[13px] text-amber-950 leading-snug"
                   >
-                    <span className="w-4 h-4 rounded-full bg-blue-50 text-[#091f75] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                      {i + 1}
+                    <span className="text-xs font-semibold text-amber-700 tabular-nums w-4 shrink-0 mt-px">
+                      {i + 1}.
                     </span>
                     {dica}
                   </li>
                 ))}
               </ul>
-            </div>
+              <p className="px-5 py-3 text-xs text-amber-900 border-t border-amber-200">
+                Emergência: Defesa Civil <span className="font-semibold">199</span> · Bombeiros{" "}
+                <span className="font-semibold">193</span> · SAMU <span className="font-semibold">192</span>
+              </p>
+            </section>
           </aside>
         </div>
       </main>
@@ -1512,7 +1457,7 @@ export default function FeedPage() {
               </button>
 
               <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
+                className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* IMAGEM GRANDE */}
@@ -1531,7 +1476,7 @@ export default function FeedPage() {
                   {/* CABEÇALHO DO POST */}
                   <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-[#091f75] text-white font-bold flex items-center justify-center text-xs shadow-sm shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-[#0b1f6e] text-white font-semibold flex items-center justify-center text-xs shrink-0 overflow-hidden">
                         {post.autorAvatarUrl ? (
                           <img
                             src={post.autorAvatarUrl}
@@ -1544,7 +1489,7 @@ export default function FeedPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 text-sm leading-snug truncate">
+                        <h3 className="font-semibold text-slate-900 text-sm leading-snug truncate">
                           {post.autor}
                         </h3>
                         <div className="flex items-center gap-1 text-[11px] text-slate-500 truncate">
@@ -1559,7 +1504,7 @@ export default function FeedPage() {
                       </div>
                     </div>
                     <span
-                      className={`text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 border shrink-0 ${estiloPost.badge}`}
+                      className={`text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 border shrink-0 ${estiloPost.badge}`}
                     >
                       <StatusIconPost size={11} />
                       {estiloPost.texto}
@@ -1568,13 +1513,13 @@ export default function FeedPage() {
 
                   {/* LEGENDA + COMENTÁRIOS (rolável) */}
                   <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5">
-                    <span className="inline-block text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
+                    <span className="inline-block text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg">
                       {post.tipo}
                     </span>
 
                     {post.descricao && (
                       <div className="flex items-start gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-[#091f75] text-white font-bold flex items-center justify-center text-[10px] shrink-0 overflow-hidden">
+                        <div className="w-7 h-7 rounded-full bg-[#0b1f6e] text-white font-semibold flex items-center justify-center text-[11px] shrink-0 overflow-hidden">
                           {post.autorAvatarUrl ? (
                             <img
                               src={post.autorAvatarUrl}
@@ -1587,7 +1532,7 @@ export default function FeedPage() {
                           )}
                         </div>
                         <p className="text-xs text-slate-700 leading-relaxed">
-                          <span className="font-bold text-slate-900">
+                          <span className="font-semibold text-slate-900">
                             {post.autor}
                           </span>{" "}
                           {post.descricao}
@@ -1602,11 +1547,11 @@ export default function FeedPage() {
                     ) : (
                       post.comentarios.map((com) => (
                         <div key={com.id} className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-[10px] shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center text-[11px] shrink-0">
                             {gerarIniciais(com.autor)}
                           </div>
                           <p className="text-xs text-slate-700 leading-relaxed">
-                            <span className="font-bold text-slate-900">
+                            <span className="font-semibold text-slate-900">
                               {com.autor}
                             </span>{" "}
                             {com.texto}
@@ -1650,11 +1595,11 @@ export default function FeedPage() {
                     </div>
 
                     <div className="px-4 pt-2">
-                      <span className="text-xs font-bold text-slate-800 block">
+                      <span className="text-xs font-semibold text-slate-800 block">
                         {post.curtidas}{" "}
                         {post.curtidas === 1 ? "curtida" : "curtidas"}
                       </span>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">
+                      <span className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">
                         {post.tempo}
                       </span>
                     </div>
@@ -1678,7 +1623,7 @@ export default function FeedPage() {
                       />
                       <button
                         onClick={() => handleEnviarComentario(post.id)}
-                        className="p-2.5 rounded-xl bg-[#091f75] hover:bg-[#0f2a8f] text-white transition cursor-pointer shrink-0"
+                        className="p-2.5 rounded-xl bg-[#0b1f6e] hover:bg-[#0f2a8f] text-white transition cursor-pointer shrink-0"
                         title="Enviar comentário"
                       >
                         <Send size={14} />
@@ -1721,7 +1666,7 @@ export default function FeedPage() {
               href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`,
               classe: "bg-[#1877F2]",
               icone: (
-                <span className="text-white font-black text-base leading-none">
+                <span className="text-white font-semibold text-base leading-none">
                   f
                 </span>
               ),
@@ -1731,7 +1676,7 @@ export default function FeedPage() {
               href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(link)}&text=${encodeURIComponent(texto)}`,
               classe: "bg-slate-900",
               icone: (
-                <span className="text-white font-black text-sm leading-none">
+                <span className="text-white font-semibold text-sm leading-none">
                   X
                 </span>
               ),
@@ -1750,13 +1695,13 @@ export default function FeedPage() {
               onClick={fecharCompartilhar}
             >
               <div
-                className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden"
+                className="bg-white rounded-lg shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* CABEÇALHO */}
                 <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-100">
                   <div className="min-w-0">
-                    <h2 className="font-bold text-slate-900 text-sm leading-tight">
+                    <h2 className="font-semibold text-slate-900 text-sm leading-tight">
                       Compartilhar
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">
@@ -1784,11 +1729,11 @@ export default function FeedPage() {
                         className="flex flex-col items-center gap-1.5 group"
                       >
                         <span
-                          className={`w-11 h-11 rounded-full flex items-center justify-center shadow-sm transition group-hover:opacity-90 group-active:scale-95 ${op.classe}`}
+                          className={`w-11 h-11 rounded-full flex items-center justify-center transition group-hover:opacity-90 group-active:scale-95 ${op.classe}`}
                         >
                           {op.icone}
                         </span>
-                        <span className="text-[10px] font-semibold text-slate-600 text-center leading-tight">
+                        <span className="text-[11px] font-semibold text-slate-600 text-center leading-tight">
                           {op.nome}
                         </span>
                       </a>
@@ -1798,15 +1743,15 @@ export default function FeedPage() {
 
                 {/* LINK COPIÁVEL */}
                 <div className="px-5 pb-5 pt-3">
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 pl-3.5">
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 pl-3.5">
                     <span className="flex-1 text-xs text-slate-500 truncate">
                       {link}
                     </span>
                     <button
                       onClick={() => handleCopiarLink(oc.id)}
-                      className={`flex items-center gap-1.5 shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer ${linkCopiado
+                      className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer ${linkCopiado
                         ? "bg-emerald-50 text-emerald-600"
-                        : "bg-[#091f75] hover:bg-[#0f2a8f] text-white"
+                        : "bg-[#0b1f6e] hover:bg-[#0f2a8f] text-white"
                         }`}
                     >
                       {linkCopiado ? <Check size={14} /> : <Copy size={14} />}
@@ -1829,17 +1774,17 @@ export default function FeedPage() {
           onClick={handleFecharModal}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-200 border-t-[3px] border-t-[#091f75] w-full max-w-4xl max-h-[92dvh] flex flex-col"
+            className="bg-white rounded-lg shadow-2xl border border-slate-200 border-t-[3px] border-t-[#091f75] w-full max-w-4xl max-h-[92dvh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* CABEÇALHO */}
             <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#091f75]/[0.08] text-[#091f75] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#0b1f6e]/[0.08] text-[#091f75] flex items-center justify-center shrink-0">
                   <Megaphone size={18} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900 text-base leading-tight">
+                  <h2 className="font-semibold text-slate-900 text-base leading-tight">
                     Publicar Ocorrência
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -1862,7 +1807,7 @@ export default function FeedPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6">
                 {/* COLUNA ESQUERDA: TIPO E LOCALIZAÇÃO */}
                 <div className="space-y-4 md:pr-8">
-                  <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     <MapPin size={13} className="text-[#091f75]/70" />
                     Tipo e localização
                   </h3>
@@ -1926,7 +1871,7 @@ export default function FeedPage() {
 
                 {/* COLUNA DIREITA: DESCRIÇÃO E FOTO */}
                 <div className="space-y-4 md:pl-8 md:border-l md:border-slate-100">
-                  <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     <FileText size={13} className="text-[#091f75]/70" />
                     Detalhes
                   </h3>
@@ -1951,7 +1896,7 @@ export default function FeedPage() {
                   />
 
                   <div>
-                    <p className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
                       <Camera size={13} className="text-slate-400" />
                       Foto
                       <span className="font-medium text-slate-400">
@@ -1960,7 +1905,7 @@ export default function FeedPage() {
                     </p>
 
                     {novaImagemPreview ? (
-                      <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-slate-200">
+                      <div className="relative w-full h-36 rounded-lg overflow-hidden border border-slate-200">
                         <img
                           src={novaImagemPreview}
                           alt="Prévia"
@@ -1980,10 +1925,10 @@ export default function FeedPage() {
                     ) : (
                       <button
                         onClick={() => inputImagemRef.current?.click()}
-                        className="w-full h-36 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 hover:border-[#091f75]/50 hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-[#091f75] transition cursor-pointer"
+                        className="w-full h-36 flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-200 hover:border-[#091f75]/50 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-[#091f75] transition cursor-pointer"
                       >
                         <ImagePlus size={22} />
-                        <span className="text-xs font-bold">
+                        <span className="text-xs font-semibold">
                           Adicionar foto
                         </span>
                         <span className="text-[11px] font-medium text-slate-400">
@@ -2010,14 +1955,14 @@ export default function FeedPage() {
               <div className="flex items-center justify-end gap-2 shrink-0">
                 <button
                   onClick={handleFecharModal}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handlePublicar}
                   disabled={!formularioValido || publicando}
-                  className="flex items-center gap-2 bg-[#091f75] hover:bg-[#0f2a8f] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
+                  className="flex items-center gap-2 bg-[#0b1f6e] hover:bg-[#0f2a8f] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition cursor-pointer"
                 >
                   <Plus size={14} />
                   {publicando ? "Publicando..." : "Publicar"}

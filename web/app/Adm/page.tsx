@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import {
+  Activity,
   BellRing,
   Building2,
+  FileText,
+  Smartphone,
+  Users,
   Loader2,
   Rss,
   ShieldAlert,
   SlidersHorizontal,
 } from "lucide-react";
-import Navbar3 from "../components/sidebar";
 import PainelPrefeituras from "./Painelprefeituras";
 import PainelModeracao from "./Painelmoderacao";
 import PainelPrioridades from "./Painelprioridades";
@@ -36,7 +39,13 @@ export default function AdminPage() {
   const [estadoAcesso, setEstadoAcesso] = useState<EstadoAcesso>("verificando");
   const [mensagemNegado, setMensagemNegado] = useState("");
   const [abaAtiva, setAbaAtiva] = useState<Aba>("prefeituras");
-  const [sidebarExpandida, setSidebarExpandida] = useState(false);
+  const [resumo, setResumo] = useState<Record<string, number> | null>(null);
+
+  // Volta ao painel na mesma sessão: abre na hora (sem a tela de carregamento piscando)
+  // e confirma o acesso em segundo plano
+  useLayoutEffect(() => {
+    if (sessionStorage.getItem("pluvite-admin") === "1") setEstadoAcesso("autorizado");
+  }, []);
 
   useEffect(() => {
     verificarAcesso();
@@ -49,6 +58,7 @@ export default function AdminPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      sessionStorage.removeItem("pluvite-admin");
       router.replace("/login");
       return;
     }
@@ -60,6 +70,7 @@ export default function AdminPage() {
       .maybeSingle();
 
     if (error || !adminRow) {
+      sessionStorage.removeItem("pluvite-admin");
       setEstadoAcesso("negado");
       setMensagemNegado(
         "Essa conta não tem acesso ao painel de administração da Pluvite.",
@@ -67,12 +78,29 @@ export default function AdminPage() {
       return;
     }
 
+    sessionStorage.setItem("pluvite-admin", "1");
     setEstadoAcesso("autorizado");
+    carregarResumo();
+  };
+
+  // Números do topo; se a rota falhar (ex.: sem a chave de serviço no servidor), mostra "–"
+  const carregarResumo = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const resposta = await fetch("/api/admin/resumo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resposta.ok) setResumo(await resposta.json());
+    } catch (erro) {
+      console.error("Erro ao carregar resumo do admin:", erro);
+    }
   };
 
   if (estadoAcesso === "verificando") {
     return (
-      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#f4f5f7] p-4">
+      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-fundo p-4">
         <Loader2 size={24} className="animate-spin text-[#091f75]" />
       </main>
     );
@@ -80,18 +108,18 @@ export default function AdminPage() {
 
   if (estadoAcesso === "negado") {
     return (
-      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-[#f4f5f7] p-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5 text-center">
+      <main className="min-h-dvh -mt-[var(--altura-navbar)] w-full flex items-center justify-center bg-fundo p-4">
+        <div className="w-full max-w-sm bg-white rounded-lg border border-slate-200 p-6 sm:p-8 space-y-5 text-center">
           <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
             <ShieldAlert size={22} />
           </div>
-          <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-lg font-semibold text-slate-900 tracking-tight">
             Acesso restrito
           </h1>
           <p className="text-xs text-slate-500">{mensagemNegado}</p>
           <button
             onClick={() => router.push("/login")}
-            className="w-full bg-[#091f75] hover:bg-[#0f2a8f] text-white text-sm font-bold py-2.5 rounded-xl transition cursor-pointer"
+            className="w-full bg-[#091f75] hover:bg-[#0f2a8f] text-white text-sm font-semibold py-2.5 rounded-xl transition cursor-pointer"
           >
             Voltar para o login
           </button>
@@ -101,38 +129,63 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-[#f4f5f7]">
-      <Navbar3 expandida={sidebarExpandida} onToggle={setSidebarExpandida} />
+    <div className="min-h-screen -mt-[var(--altura-navbar)] w-full font-sans text-slate-800 bg-fundo">
 
       {/* No celular a sidebar vira a barra superior fixa (64px, TOPBAR_MOBILE_ALTURA): sem recuo
           lateral e com espaço no topo para as abas não ficarem escondidas atrás dela */}
       <div
-        className={`pt-24 md:pt-8 md:pr-10 pb-16 transition-all duration-300 ease-in-out ${
-          sidebarExpandida ? "md:pl-64" : "md:pl-[84px]"
-        }`}
+        className="pt-24 md:pt-8 md:px-6 pb-16"
       >
-        <div className="max-w-4xl mx-auto px-6 md:px-4 space-y-6">
-          <div className="flex justify-end">
+        <div className="max-w-5xl mx-auto px-6 md:px-4 space-y-6">
+          {/* CABEÇALHO */}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Equipe Pluvite</p>
+              <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mt-1">Administração</h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Gerencie prefeituras, modere o feed e ajuste os níveis de risco da plataforma.
+              </p>
+            </div>
             <Link
               href="/Servidor/Emitir"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d1b54] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#0d163b]"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-[#0b1f6e] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#0f35a0] shrink-0"
             >
-              <BellRing size={18} />
+              <BellRing size={16} />
               Emitir alerta
             </Link>
           </div>
 
+          {/* NÚMEROS DA PLATAFORMA */}
+          <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { rotulo: "Cidadãos", valor: resumo?.cidadaos, Icone: Users, cor: "bg-blue-50 border-blue-200 text-blue-700" },
+              { rotulo: "Prefeituras", valor: resumo?.prefeituras, Icone: Building2, cor: "bg-indigo-50 border-indigo-200 text-indigo-700" },
+              { rotulo: "Ocorrências", valor: resumo?.ocorrencias, Icone: FileText, cor: "bg-white border-slate-200 text-slate-700" },
+              { rotulo: "Em aberto", valor: resumo?.ocorrenciasAtivas, Icone: Activity, cor: "bg-amber-50 border-amber-200 text-amber-700" },
+              { rotulo: "Alertas (24h)", valor: resumo?.alertas24h, Icone: BellRing, cor: "bg-red-50 border-red-200 text-red-700" },
+              { rotulo: "Aparelhos c/ push", valor: resumo?.dispositivos, Icone: Smartphone, cor: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+            ].map(({ rotulo, valor, Icone, cor }) => (
+              <div key={rotulo} className={`rounded-lg border px-4 py-4 ${cor}`}>
+                <Icone size={17} />
+                <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-3 leading-none">
+                  {valor ?? "–"}
+                </p>
+                <p className="text-xs text-slate-500 mt-1.5">{rotulo}</p>
+              </div>
+            ))}
+          </section>
+
           {/* Abas do painel admin */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm w-fit overflow-x-auto max-w-full">
+          <div className="border-b border-slate-200 flex items-center gap-1 overflow-x-auto max-w-full">
             {ABAS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setAbaAtiva(id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all cursor-pointer
+                className={`relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer
                   ${
                     abaAtiva === id
-                      ? "bg-[#091f75] text-white shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50"
+                      ? "text-slate-900 after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:bg-[#0b1f6e]"
+                      : "text-slate-500 hover:text-slate-900"
                   }`}
               >
                 <Icon size={15} />

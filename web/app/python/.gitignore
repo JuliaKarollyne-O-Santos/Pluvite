@@ -2,7 +2,9 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-chatbot/.wwebjs_auth/
+chatbot/.wwebjs_auth*/
 chatbot/.wwebjs_cache/
 chatbot/inscritos.json
 chatbot/cursor-alertas.json
+chatbot/logs/
+chatbot/.env.chatbot

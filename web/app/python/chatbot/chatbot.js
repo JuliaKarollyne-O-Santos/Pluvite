@@ -7,7 +7,11 @@ const path = require("node:path");
 const readline = require("node:readline");
 const MUNICIPIOS = Object.keys(require("../municipios.json"));
 
-// Usa o mesmo .env do backend de alertas (web/app/python/.env)
+// chatbot/.env.chatbot (opcional, modo automático) vem primeiro e tem prioridade:
+// loadEnvFile não sobrescreve variáveis já definidas. Depois, o mesmo .env do
+// backend de alertas (web/app/python/.env) completa o resto.
+const arquivoEnvChatbot = path.join(__dirname, ".env.chatbot");
+if (existsSync(arquivoEnvChatbot)) process.loadEnvFile(arquivoEnvChatbot);
 const arquivoEnv = path.join(__dirname, "..", ".env");
 if (existsSync(arquivoEnv)) process.loadEnvFile(arquivoEnv);
 
@@ -49,6 +53,26 @@ const caminhosNavegador = [
 ].filter(Boolean);
 const executavelNavegador = caminhosNavegador.find((caminho) => existsSync(caminho));
 const DIRETORIO_DADOS = path.resolve(process.env.PLUVITE_CHATBOT_DATA_PATH || __dirname);
+
+// =====================================
+// NÚMERO FIXO DO CHATBOT (OPCIONAL)
+// Com WHATSAPP_NUMERO_CHATBOT no .env, a conexão é feita por código de
+// pareamento enviado a esse número, sem QR Code. Comentada, volta o QR.
+// =====================================
+function normalizarNumeroChatbot(bruto) {
+  let digitos = String(bruto || "").replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) {
+    digitos = (process.env.WHATSAPP_DDI_PADRAO || "55") + digitos;
+  }
+  return digitos.length >= 12 ? digitos : "";
+}
+const NUMERO_CHATBOT = normalizarNumeroChatbot(process.env.WHATSAPP_NUMERO_CHATBOT);
+if (process.env.WHATSAPP_NUMERO_CHATBOT && !NUMERO_CHATBOT) {
+  console.warn(
+    `⚠️ WHATSAPP_NUMERO_CHATBOT inválido (${process.env.WHATSAPP_NUMERO_CHATBOT}). ` +
+      "Use o formato 5512999999999. Usando QR Code."
+  );
+}
 mkdirSync(DIRETORIO_DADOS, { recursive: true });
 const ARQUIVO_CURSOR_ALERTAS = path.join(DIRETORIO_DADOS, "cursor-alertas.json");
 
@@ -142,6 +166,10 @@ function criarCliente() {
       type: "local",
       path: path.join(__dirname, ".wwebjs_cache"),
     },
+    // Número fixo: pede um código de pareamento em vez de gerar QR Code
+    ...(NUMERO_CHATBOT
+      ? { pairWithPhoneNumber: { phoneNumber: NUMERO_CHATBOT, showNotification: true } }
+      : {}),
     puppeteer: {
       ...(executavelNavegador ? { executablePath: executavelNavegador } : {}),
       headless: true,
@@ -160,10 +188,27 @@ function criarCliente() {
     qrcode.generate(qr, { small: true });
   });
 
+  // CÓDIGO DE PAREAMENTO (só com WHATSAPP_NUMERO_CHATBOT; renovado a cada 3 min)
+  novoCliente.on("code", (codigo) => {
+    const formatado = `${codigo.slice(0, 4)}-${codigo.slice(4)}`;
+    console.log(`🔑 Código de pareamento para +${NUMERO_CHATBOT}: ${formatado}`);
+    console.log(
+      "   No celular desse número: toque na notificação do WhatsApp (ou vá em " +
+        "Aparelhos conectados > Conectar aparelho > Conectar com número de telefone) e digite o código."
+    );
+  });
+
   // WHATSAPP CONECTADO
   novoCliente.on("ready", () => {
     conectado = true;
     console.log("✅ Tudo certo! WhatsApp conectado.");
+    const numeroConectado = novoCliente.info?.wid?.user;
+    if (NUMERO_CHATBOT && numeroConectado && numeroConectado !== NUMERO_CHATBOT) {
+      console.warn(
+        `⚠️ A sessão salva é do número +${numeroConectado}, não de +${NUMERO_CHATBOT} ` +
+          '(WHATSAPP_NUMERO_CHATBOT). Digite "logout" para trocar.'
+      );
+    }
     console.log(`📋 Inscritos nos alertas: ${inscritos.size}`);
     console.log("Digite \"logout\" para desvincular e apagar a sessão local e os inscritos.");
     void avisarInscritosSemMunicipio();

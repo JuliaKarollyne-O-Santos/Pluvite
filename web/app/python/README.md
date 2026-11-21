@@ -55,6 +55,15 @@ desconectar o aparelho pelo celular).
 5. Teste só o WhatsApp (não grava no banco nem dispara site/push):
    `python -m backend.canais.whatsapp`
 
+**Sem QR Code (número fixo):** tire o `#` de `WHATSAPP_NUMERO_CHATBOT` no `.env`
+(formato `5512999999999`). O chatbot passa a mostrar um **código de pareamento**
+de 8 caracteres em vez do QR. No celular desse número, toque na notificação do
+WhatsApp (ou em *Aparelhos conectados → Conectar aparelho → Conectar com número
+de telefone*) e digite o código. Isso só é preciso na primeira vez: a sessão
+fica salva em `.wwebjs_auth` e os próximos inícios conectam sozinhos. Para voltar
+ao QR, comente a linha de novo. Se a sessão salva for de outro número, o terminal
+avisa; digite `logout` para trocar.
+
 Os modos `qr` e `qr-poll` usam o mesmo formato do alerta no WhatsApp: título
 com prioridade, tipo, município, endereço/região, prioridade, status,
 descrição e orientação de segurança.
@@ -156,6 +165,29 @@ O cursor de entrega e a sessão QR ficam na pasta local definida por
 chatbot. O modo `qr-poll` requer `CHATBOT_TOKEN` e Supabase configurados; sem
 persistência no banco, o chatbot não consegue buscar os alertas. Nunca coloque
 `CHATBOT_TOKEN` ou `SUPABASE_KEY` na Vercel como variáveis `NEXT_PUBLIC_*`.
+
+#### Chatbot automático no Windows (sem terminal)
+
+Para não precisar abrir terminal nem `npm run dev`, o chatbot pode ligar sozinho,
+escondido, sempre que o usuário entra no Windows. Ele fala direto com a API do
+Render (`qr-poll`) e se reinicia se cair. O PC precisa estar ligado e com internet.
+
+1. Crie `chatbot/.env.chatbot` (ignorado pelo git). Ele tem prioridade sobre o
+   `.env` e não atrapalha o desenvolvimento local:
+   ```
+   WHATSAPP_PROVEDOR=qr-poll
+   PLUVITE_API_ALERTAS_URL=https://<url-publica-da-api-render>
+   CHATBOT_TOKEN=<mesmo-segredo-do-render>
+   WHATSAPP_NUMERO_CHATBOT=5512999999999
+   ```
+2. Instale o início automático (uma vez):
+   `powershell -ExecutionPolicy Bypass -File chatbot/instalar-inicio-automatico.ps1`
+3. Na primeira vez, o código de pareamento aparece em `chatbot/logs/chatbot.log`.
+   Acompanhe com `Get-Content chatbot/logs/chatbot.log -Wait` e digite o código no
+   celular do número. Depois disso a sessão fica salva e não pede mais nada.
+
+Para desligar: o mesmo script com `-Remover`. Com o chatbot automático ligado,
+não inicie outro (`npm start`): os dois usariam a mesma sessão do WhatsApp.
 
 O painel exige uma sessão Supabase válida de uma conta cadastrada como
 `servidor` ou `admin`. O backend valida o perfil: servidores só podem emitir

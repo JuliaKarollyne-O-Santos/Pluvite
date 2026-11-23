@@ -36,6 +36,10 @@ Recebem os alertas **só** os contatos que mandarem `pluvite` no privado do
 WhatsApp conectado e escolherem um município (os telefones da tabela `cidadao`
 não são usados nesse modo). Cada alerta municipal chega apenas aos inscritos
 daquela cidade. Envie `cidade` para alterar a escolha ou `sair` para cancelar.
+Ao escolher a cidade (e sempre que um inscrito manda `pluvite` ou o nome de
+uma cidade), o chatbot envia um resumo montado por `chatbot/resumoCidade.js`
+com as mesmas regras do Mapa: situação, clima e chuva da WeatherAPI
+(`WEATHER_API_KEY`) e ocorrências ativas do Feed (`SUPABASE_URL`/`SUPABASE_KEY`).
 A lista fica em `chatbot/inscritos.json` (ignorado pelo git), sobrevive a
 reinícios com Ctrl+C e é **apagada no logout** (comando `logout` no terminal ou
 desconectar o aparelho pelo celular).

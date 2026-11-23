@@ -21,6 +21,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "../lib/banco";
+import { CENTRO_MUNICIPIO } from "../lib/constantes";
+import {
+  analisarChuva,
+  motivoDaChuva,
+  nivelNoMapa,
+  riscoDaChuva,
+  situacaoDaCidade,
+  NIVEIS_MAPA,
+  type ContagemGravidade,
+  type NivelMapa,
+} from "../lib/riscoMapa";
 
 // O dynamic() é guardado em globalThis pra o MESMO componente sobreviver aos hot reloads do
 // modo desenvolvimento. Sem isso, salvar este arquivo recria o dynamic(), o React remonta o mapa
@@ -84,18 +95,29 @@ const WEATHER_API_KEY =
   process.env.NEXT_PUBLIC_WEATHER_API_KEY ?? "b73dd481d238464caf6232135262005";
 const VALIDADE_CLIMA_MS = 10 * 60 * 1000; // reaproveita a consulta por 10 min
 
-// ───── INTENSIDADE DA CHUVA (em mm por hora) ─────
-const classificarChuva = (mmPorHora: number) => {
-  if (mmPorHora < 0.1) return { texto: "Sem chuva", nivel: 0 };
-  if (mmPorHora < 2.5) return { texto: "Chuva fraca", nivel: 1 };
-  if (mmPorHora < 7.6) return { texto: "Chuva moderada", nivel: 2 };
-  if (mmPorHora < 25) return { texto: "Chuva forte", nivel: 3 };
-  return { texto: "Chuva muito forte", nivel: 4 };
-};
+// Coordenadas de cada município (evita cidades homônimas de outros estados na WeatherAPI)
+const COORDENADA_POR_CIDADE: Record<string, [number, number]> = Object.fromEntries(
+  Object.entries(CENTRO_MUNICIPIO).map(([nome, coordenada]) => [normalizar(nome), coordenada]),
+);
+
+async function buscarClimaCidade(cidade: string): Promise<any> {
+  const coordenada = COORDENADA_POR_CIDADE[normalizar(cidade)];
+  // Pelas coordenadas; sem elas, pelo nome com estado/país e depois só o nome
+  const consultas = coordenada
+    ? [`${coordenada[0]},${coordenada[1]}`]
+    : [`${cidade}, São Paulo, Brazil`, cidade];
+  for (const q of consultas) {
+    const res = await fetch(
+      `https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(q)}&days=2&aqi=no&alerts=no&lang=pt`,
+    );
+    if (res.ok) return res.json();
+  }
+  throw new Error(`Sem dados de clima para ${cidade}`);
+}
+
+const SEM_OCORRENCIAS: ContagemGravidade = { critico: 0, medio: 0, baixo: 0 };
 
 // ───── VISUAL DO CARD CONFORME A SITUAÇÃO ─────
-type NivelSituacao = "critico" | "atencao" | "tranquilo";
-
 const ESTILO_SITUACAO = {
   critico: {
     Icone: TriangleAlert,
@@ -160,9 +182,6 @@ export default function PluviteVale() {
   const [buscaCidade, setBuscaCidade] = useState("");
   const [cidadeSelecionada, setCidadeSelecionada] = useState("");
   const [painelAberto, setPainelAberto] = useState(false);
-  const [climaPorCidade, setClimaPorCidade] = useState<{ [key: string]: any }>(
-    {},
-  );
 
   // Ocorrências vindas do mesmo banco do feed (só os campos necessários)
   const [ocorrencias, setOcorrencias] = useState<
@@ -177,9 +196,10 @@ export default function PluviteVale() {
   >([]);
   const [carregandoOcorrencias, setCarregandoOcorrencias] = useState(true);
 
-  // Previsão do tempo (WeatherAPI) por cidade, com cache
+  // Previsão do tempo (WeatherAPI) por cidade, com cache. Chave: nome normalizado.
+  // dados null = a consulta falhou (a cidade é colorida só pelas ocorrências)
   const [climaWeather, setClimaWeather] = useState<{
-    [key: string]: { dados: any; ts: number };
+    [key: string]: { dados: any | null; ts: number };
   }>({});
   const [erroClima, setErroClima] = useState(false);
 
@@ -229,35 +249,49 @@ export default function PluviteVale() {
     };
   }, []);
 
-  // BUSCA DA PREVISÃO DO TEMPO DA CIDADE ABERTA (WeatherAPI, como na página de Clima)
+  // PREVISÃO DO TEMPO DE TODAS AS CIDADES (cores do mapa), renovada a cada 10 min
+  useEffect(() => {
+    let cancelado = false;
+    const carregarClimaDoVale = () => {
+      for (const cidade of Object.keys(CENTRO_MUNICIPIO)) {
+        buscarClimaCidade(cidade)
+          .then((dados) => ({ dados, ts: Date.now() }))
+          .catch((e) => {
+            console.error(`Erro ao buscar clima de ${cidade}:`, e);
+            return { dados: null, ts: Date.now() };
+          })
+          .then((entrada) => {
+            if (!cancelado) {
+              setClimaWeather((prev) => ({ ...prev, [normalizar(cidade)]: entrada }));
+            }
+          });
+      }
+    };
+    carregarClimaDoVale();
+    const intervalo = setInterval(carregarClimaDoVale, VALIDADE_CLIMA_MS);
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+    };
+  }, []);
+
+  // BUSCA DA PREVISÃO DO TEMPO DA CIDADE ABERTA (se ainda não veio, falhou ou venceu)
   useEffect(() => {
     if (!localAberto) return;
     const cidade = localAberto;
     setErroClima(false);
 
-    const emCache = climaWeather[cidade];
-    if (emCache && Date.now() - emCache.ts < VALIDADE_CLIMA_MS) return;
+    const emCache = climaWeather[normalizar(cidade)];
+    if (emCache?.dados && Date.now() - emCache.ts < VALIDADE_CLIMA_MS) return;
 
     let cancelado = false;
     const buscar = async () => {
       try {
-        // Primeiro com estado/país pra não confundir com cidade homônima; depois só o nome
-        const consultas = [`${cidade}, São Paulo, Brazil`, cidade];
-        let dados: any = null;
-        for (const q of consultas) {
-          const res = await fetch(
-            `https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(q)}&days=2&aqi=no&alerts=no&lang=pt`,
-          );
-          if (res.ok) {
-            dados = await res.json();
-            break;
-          }
-        }
-        if (!dados) throw new Error("Sem dados de clima");
+        const dados = await buscarClimaCidade(cidade);
         if (!cancelado) {
           setClimaWeather((prev) => ({
             ...prev,
-            [cidade]: { dados, ts: Date.now() },
+            [normalizar(cidade)]: { dados, ts: Date.now() },
           }));
         }
       } catch (e) {
@@ -274,7 +308,7 @@ export default function PluviteVale() {
   }, [localAberto]);
 
   // TRATAMENTO E EXTRAÇÃO DOS DADOS DE CLIMA DA CIDADE SELECIONADA
-  const climaCidadeAberta = localAberto ? climaWeather[localAberto]?.dados : null;
+  const climaCidadeAberta = localAberto ? climaWeather[normalizar(localAberto)]?.dados : null;
   const temperaturaAtual = climaCidadeAberta?.current?.temp_c?.toFixed(1);
   const umidade = climaCidadeAberta?.current?.humidity;
   const sensacao = climaCidadeAberta?.current?.feelslike_c?.toFixed(0);
@@ -284,63 +318,10 @@ export default function PluviteVale() {
   const hoje = climaCidadeAberta?.forecast?.forecastday?.[0]?.day;
   const atualizadoAs: string = climaCidadeAberta?.current?.last_updated?.split(" ")[1] ?? "";
 
-  let chuvaTotal = 0; // mm acumulados nas próximas 24h
-  let proximasHoras: any[] = []; // próximas 6 horas, pra faixa de chance de chuva
-  let chuva = {
-    nivel: 0,
-    texto: "Sem chuva",
-    linha: "Sem previsão de chuva",
-    emAndamento: false,
-  };
-
-  if (climaCidadeAberta) {
-    const agoraLocal = new Date(
-      climaCidadeAberta.location.localtime.replace(" ", "T"),
-    ).getTime();
-
-    // Próximas 24 horas (incluindo a hora atual), juntando hoje e amanhã
-    const proximas24h: any[] = climaCidadeAberta.forecast.forecastday
-      .flatMap((dia: any) => dia.hour)
-      .filter(
-        (h: any) =>
-          new Date(h.time.replace(" ", "T")).getTime() > agoraLocal - 3600000,
-      )
-      .slice(0, 24);
-
-    const mmAgora: number = climaCidadeAberta.current.precip_mm ?? 0;
-    const mmPorHora: number[] = proximas24h.map((h: any) => h.precip_mm ?? 0);
-    const mmMax = Math.max(mmAgora, ...mmPorHora, 0);
-    chuvaTotal = mmPorHora.reduce((soma, mm) => soma + mm, 0);
-    proximasHoras = proximas24h.slice(0, 6);
-
-    const classe = classificarChuva(mmMax);
-    const primeiraHoraComChuva = proximas24h.find(
-      (h: any) => (h.precip_mm ?? 0) >= 0.1,
-    );
-
-    if (mmAgora >= 0.1) {
-      chuva = {
-        nivel: classe.nivel,
-        texto: classe.texto,
-        linha: `${classificarChuva(mmAgora).texto} agora`,
-        emAndamento: true,
-      };
-    } else if (primeiraHoraComChuva) {
-      chuva = {
-        nivel: classe.nivel,
-        texto: classe.texto,
-        linha: `${classe.texto} prevista às ${primeiraHoraComChuva.time.split(" ")[1]}`,
-        emAndamento: false,
-      };
-    } else {
-      chuva = {
-        nivel: 0,
-        texto: "Sem chuva",
-        linha: `${climaCidadeAberta.current.condition.text} · sem chuva prevista`,
-        emAndamento: false,
-      };
-    }
-  }
+  // Chuva agora / prevista, total em 24h e próximas 6 horas (lib/riscoMapa.ts)
+  const chuva = analisarChuva(climaCidadeAberta);
+  const chuvaTotal = chuva.total;
+  const proximasHoras = chuva.proximasHoras;
 
   // CONTAGEM DAS OCORRÊNCIAS DA CIDADE ABERTA, DIRETO DO FEED
   // - "contagem": todas as publicações da cidade (todos os bairros), separadas por gravidade
@@ -378,16 +359,30 @@ export default function PluviteVale() {
   ).size;
 
   // SITUAÇÃO GERAL DA CIDADE (alertas ativos do feed + intensidade da chuva)
-  let nivelSituacao: NivelSituacao = "tranquilo";
-  if (ativas.critico > 0 || chuva.nivel >= 4) nivelSituacao = "critico";
-  else if (ativas.medio > 0 || chuva.nivel >= 3) nivelSituacao = "atencao";
+  const nivelSituacao = situacaoDaCidade(ativas, riscoDaChuva(chuva));
+
+  // NÍVEL DE CADA CIDADE NO MAPA — mesma regra do card acima, para as 39 cidades.
+  // Sem entrada = ainda carregando (marcador cinza)
+  const ativasPorCidade: Record<string, ContagemGravidade> = {};
+  for (const oc of ativasVale) {
+    const chave = normalizar(cidadeDaOcorrencia(oc));
+    ativasPorCidade[chave] ??= { critico: 0, medio: 0, baixo: 0 };
+    ativasPorCidade[chave][GRAVIDADE_POR_TIPO[oc.tipo] ?? "baixo"]++;
+  }
+  const nivelPorCidade: Record<string, NivelMapa> = {};
+  if (!carregandoOcorrencias) {
+    for (const [chave, entrada] of Object.entries(climaWeather)) {
+      nivelPorCidade[chave] = nivelNoMapa(
+        ativasPorCidade[chave] ?? SEM_OCORRENCIAS,
+        riscoDaChuva(analisarChuva(entrada.dados)),
+      );
+    }
+  }
 
   const estiloSituacao = ESTILO_SITUACAO[nivelSituacao];
   const IconeSituacao = estiloSituacao.Icone;
 
-  const mensagemChuva = chuva.emAndamento
-    ? `${chuva.texto} em andamento em ${localAberto}.`
-    : `${chuva.texto} prevista para ${localAberto} nas próximas 24h.`;
+  const mensagemChuva = motivoDaChuva(chuva, localAberto ?? "");
 
   const sufixoResolvidas =
     resolvidas > 0
@@ -422,8 +417,7 @@ export default function PluviteVale() {
           bairrosDados={dadosBairros}
           setLocalAberto={setLocalAberto}
           cidadeSelecionada={cidadeSelecionada}
-          climaPorCidade={climaPorCidade}
-          setClimaPorCidade={setClimaPorCidade}
+          nivelPorCidade={nivelPorCidade}
         />
       ) : (
         <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white">
@@ -463,12 +457,7 @@ export default function PluviteVale() {
           <div className="px-4 py-2.5 border-t border-slate-200 bg-slate-50">
             <p className="text-[11px] text-slate-500 mb-1.5">Nível de risco no mapa</p>
             <div className="flex items-center justify-between gap-2">
-              {[
-                { cor: "#16a34a", rotulo: "Baixo" },
-                { cor: "#ea580c", rotulo: "Médio" },
-                { cor: "#dc2626", rotulo: "Alto" },
-                { cor: "#7c3aed", rotulo: "Crítico" },
-              ].map((n) => (
+              {NIVEIS_MAPA.map((n) => (
                 <span key={n.rotulo} className="flex items-center gap-1.5 text-xs text-slate-700">
                   <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: n.cor }} />
                   {n.rotulo}

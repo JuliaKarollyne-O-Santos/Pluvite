@@ -511,7 +511,7 @@ export default function PerfilCidadao() {
           supabase.from("curtidas").select("ocorrencia_id, usuario_id").in("ocorrencia_id", ids),
           supabase
             .from("comentarios")
-            .select("id, ocorrencia_id, texto, criado_em, cidadao(nome_completo)")
+            .select("id, ocorrencia_id, texto, criado_em, cidadao:cidadao_publico(nome_completo)")
             .in("ocorrencia_id", ids)
             .order("criado_em", { ascending: true }),
         ]);

@@ -245,7 +245,7 @@ export default function PainelServidor() {
 
     const { data: linhas, error } = await supabase
       .from("ocorrencias")
-      .select("*, cidadao!ocorrencias_autor_id_fkey(nome_completo)")
+      .select("*, cidadao:cidadao_publico!ocorrencias_autor_id_fkey(nome_completo)")
       .eq("cidade", meuMunicipio)
       .order("criado_em", { ascending: false });
 

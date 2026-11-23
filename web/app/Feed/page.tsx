@@ -544,7 +544,7 @@ export default function FeedPage() {
     const { data: linhas, error: erroOcorrencias } = await supabase
       .from("ocorrencias")
       .select(
-        "*, cidadao!ocorrencias_autor_id_fkey(nome_completo, avatar_url)",
+        "*, cidadao:cidadao_publico!ocorrencias_autor_id_fkey(nome_completo, avatar_url)",
       )
       .order("criado_em", { ascending: false });
 
@@ -564,7 +564,7 @@ export default function FeedPage() {
       .select("ocorrencia_id, usuario_id");
     const { data: comentariosLinhas } = await supabase
       .from("comentarios")
-      .select("id, ocorrencia_id, texto, cidadao(nome_completo)")
+      .select("id, ocorrencia_id, texto, cidadao:cidadao_publico(nome_completo)")
       .order("criado_em", { ascending: true });
 
     // idUsuarioAtual precisa ser o id de "cidadao" (mesmo valor de usuarioId),

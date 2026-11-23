@@ -186,12 +186,12 @@ export default function Feed() {
     const [resOcorrencias, resCurtidas, resComentarios] = await Promise.all([
       supabase
         .from("ocorrencias")
-        .select("*, cidadao!ocorrencias_autor_id_fkey(nome_completo, avatar_url)")
+        .select("*, cidadao:cidadao_publico!ocorrencias_autor_id_fkey(nome_completo, avatar_url)")
         .order("criado_em", { ascending: false }),
       supabase.from("curtidas").select("ocorrencia_id, usuario_id"),
       supabase
         .from("comentarios")
-        .select("id, ocorrencia_id, texto, cidadao(nome_completo)")
+        .select("id, ocorrencia_id, texto, cidadao:cidadao_publico(nome_completo)")
         .order("criado_em", { ascending: true }),
     ]);
 

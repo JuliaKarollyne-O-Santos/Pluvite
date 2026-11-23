@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 // Ajuste este caminho se você já tem um cliente Supabase em outro arquivo do projeto
 import { supabase } from "@/app/lib/banco";
+import { cidadeDaOcorrencia } from "@/app/lib/constantes";
 import {
   AlertTriangle,
   Wrench,
@@ -35,13 +36,21 @@ import {
   Mountain,
   Ban,
   LayoutGrid,
+  ImageOff,
 } from "lucide-react";
 
 interface Comentario {
   id: string;
   autor: string;
   texto: string;
+  /** Foto de perfil de quem comentou (null = mostra as iniciais) */
+  avatarUrl?: string | null;
 }
+
+// avatar_url pode ser um caminho relativo ("/perfil.png", o padrão de quem nunca trocou a
+// foto) — nesse caso trata como "sem foto" e mostra as iniciais
+const avatarValido = (url: string | null | undefined) =>
+  url && url !== "/perfil.png" ? url : null;
 
 type StatusOcorrencia =
   | "Aguardando"
@@ -168,6 +177,20 @@ const normalizar = (texto: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+
+// "quiririm" -> "Quiririm", "jardim das na\u00e7\u00f5es" -> "Jardim das Na\u00e7\u00f5es" (ranking de bairros)
+const PALAVRAS_MINUSCULAS = new Set(["de", "da", "do", "das", "dos", "e"]);
+const nomeDeBairro = (texto: string) =>
+  texto
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .map((palavra, i) =>
+      i > 0 && PALAVRAS_MINUSCULAS.has(palavra)
+        ? palavra
+        : palavra.charAt(0).toLocaleUpperCase("pt-BR") + palavra.slice(1),
+    )
+    .join(" ");
 
 // Calcula um texto relativo ("há 15 minutos", "há 2 horas"...) a partir do
 // timestamp `criado_em` que vem do Supabase
@@ -419,6 +442,8 @@ function CampoModal({
 export default function FeedPage() {
   const [busca, setBusca] = useState("");
   const [cidade, setCidade] = useState("");
+  // Card "Bairros com mais relatos" (menu suspenso, começa fechado)
+  const [rankingAberto, setRankingAberto] = useState(false);
   const [categoriaAtiva, setCategoriaAtiva] = useState("Todas");
 
   const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
@@ -564,7 +589,7 @@ export default function FeedPage() {
       .select("ocorrencia_id, usuario_id");
     const { data: comentariosLinhas } = await supabase
       .from("comentarios")
-      .select("id, ocorrencia_id, texto, cidadao:cidadao_publico(nome_completo)")
+      .select("id, ocorrencia_id, texto, cidadao:cidadao_publico(nome_completo, avatar_url)")
       .order("criado_em", { ascending: true });
 
     // idUsuarioAtual precisa ser o id de "cidadao" (mesmo valor de usuarioId),
@@ -590,14 +615,11 @@ export default function FeedPage() {
           id: c.id,
           autor: c.cidadao?.nome_completo || "Cidadão",
           texto: c.texto,
+          avatarUrl: avatarValido(c.cidadao?.avatar_url),
         }));
 
       const nomeAutor = linha.cidadao?.nome_completo || "Cidadão";
-      // avatar_url pode ser um caminho relativo (ex: "/perfil.png", o padrão de
-      // quem nunca trocou a foto) — nesse caso trata como "sem foto"
-      const avatarAutor = linha.cidadao?.avatar_url;
-      const avatarAutorValido =
-        avatarAutor && avatarAutor !== "/perfil.png" ? avatarAutor : null;
+      const avatarAutorValido = avatarValido(linha.cidadao?.avatar_url);
 
       return {
         id: linha.id,
@@ -919,16 +941,22 @@ export default function FeedPage() {
       .length,
   };
 
-  // Ranking de bairros calculado a partir das publicações (respeita a cidade escolhida)
-  const bairrosRanking = Object.entries(
+  // Ranking de bairros calculado a partir das publicações (respeita a cidade escolhida).
+  // Junta grafias do mesmo bairro ("quiririm" e "Quiririm") e guarda a cidade dele, já
+  // corrigida pelo bairro (Quiririm marcado como Arapeí conta em Taubaté).
+  const bairrosRanking = Object.values(
     ocorrencias
-      .filter((o) => !cidade || o.cidade === cidade)
-      .reduce<Record<string, number>>((acc, o) => {
-        acc[o.bairro] = (acc[o.bairro] || 0) + 1;
+      .filter((o) => o.bairro?.trim())
+      .map((o) => ({ bairro: o.bairro, cidade: cidadeDaOcorrencia(o) }))
+      .filter((o) => !cidade || normalizar(o.cidade) === normalizar(cidade))
+      .reduce<Record<string, { bairro: string; cidade: string; relatos: number }>>((acc, o) => {
+        const chave = `${normalizar(o.bairro)}|${normalizar(o.cidade)}`;
+        acc[chave] ??= { bairro: nomeDeBairro(o.bairro), cidade: o.cidade, relatos: 0 };
+        acc[chave].relatos++;
         return acc;
       }, {}),
   )
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b.relatos - a.relatos)
     .slice(0, 3);
 
   // Números gerais da comunidade (sempre do total, sem respeitar filtros do feed)
@@ -1315,20 +1343,26 @@ export default function FeedPage() {
           </div>
 
           {/* COLUNA DIREITA */}
-          <aside className="w-full lg:w-1/3 lg:sticky lg:top-[var(--altura-navbar)] lg:self-start pt-5 space-y-4">
+          {/* Fixa no topo ao rolar. Os cards são compactos para a coluna inteira caber na
+              tela, até o fim das dicas (telefones de emergência). Se mesmo assim não couber
+              (tela baixa ou ranking de bairros aberto), a coluna ganha rolagem própria. */}
+          <aside className="w-full lg:w-1/3 lg:sticky lg:top-[var(--altura-navbar)] lg:self-start lg:max-h-[calc(100dvh-var(--altura-navbar))] lg:overflow-y-auto lg:overscroll-contain pt-4 pb-4 space-y-3 [scrollbar-width:thin]">
             {/* STATUS */}
             <section>
-              <h3 className="px-1 pb-2 text-sm font-semibold text-slate-900">Situação dos atendimentos</h3>
-              <div className="grid grid-cols-3 gap-2.5">
+              <h3 className="px-1 pb-1.5 text-sm font-semibold text-slate-900">Situação dos atendimentos</h3>
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { rotulo: "Aguardando", valor: contagem.aguardando, Icone: AlertTriangle, card: "bg-red-50 border-red-200", icone: "text-red-600", numero: "text-red-900" },
                   { rotulo: "Em andamento", valor: contagem.andamento, Icone: Wrench, card: "bg-amber-50 border-amber-200", icone: "text-amber-600", numero: "text-amber-900" },
                   { rotulo: "Visualizados", valor: contagem.visualizado, Icone: Eye, card: "bg-emerald-50 border-emerald-200", icone: "text-emerald-600", numero: "text-emerald-900" },
                 ].map(({ rotulo, valor, Icone, card, icone, numero }) => (
-                  <div key={rotulo} className={`rounded-lg border px-3.5 py-3.5 ${card}`}>
-                    <Icone size={16} className={icone} />
-                    <p className={`text-2xl font-semibold tabular-nums mt-2 leading-none ${numero}`}>{valor}</p>
-                    <p className="text-xs text-slate-600 mt-1.5">{rotulo}</p>
+                  <div key={rotulo} className={`rounded-lg border px-3 py-2.5 ${card}`}>
+                    {/* Ícone e número na mesma linha (antes um embaixo do outro) */}
+                    <div className="flex items-center gap-2">
+                      <Icone size={15} className={icone} />
+                      <p className={`text-xl font-semibold tabular-nums leading-none ${numero}`}>{valor}</p>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1">{rotulo}</p>
                   </div>
                 ))}
               </div>
@@ -1336,7 +1370,7 @@ export default function FeedPage() {
 
             {/* CARD ESTATÍSTICAS DA COMUNIDADE */}
             <section className="bg-[#0b1f6e] text-white rounded-lg">
-              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold border-b border-white/10 flex items-center gap-2">
+              <h3 className="px-5 pt-3 pb-2.5 text-sm font-semibold border-b border-white/10 flex items-center gap-2">
                 <Users size={15} className="text-blue-200" />
                 Comunidade
               </h3>
@@ -1346,14 +1380,14 @@ export default function FeedPage() {
                   { rotulo: "Resolvidos", valor: estatisticas.concluidas },
                   { rotulo: "Cidadãos ativos", valor: estatisticas.cidadaosAtivos },
                 ].map(({ rotulo, valor }) => (
-                  <div key={rotulo} className="px-4 py-4">
+                  <div key={rotulo} className="px-4 py-2.5">
                     <p className="text-xs text-blue-100/80">{rotulo}</p>
-                    <p className="text-2xl font-semibold tabular-nums mt-1">{valor}</p>
+                    <p className="text-xl font-semibold tabular-nums mt-0.5">{valor}</p>
                   </div>
                 ))}
               </div>
               {estatisticas.total > 0 && (
-                <div className="px-5 pb-4">
+                <div className="px-5 pb-3">
                   <div className="flex items-center justify-between text-xs text-blue-100/80 mb-1.5">
                     <span>Taxa de resolução</span>
                     <span className="font-medium text-white tabular-nums">
@@ -1370,46 +1404,60 @@ export default function FeedPage() {
               )}
             </section>
 
-            {/* CARD BAIRROS */}
+            {/* CARD BAIRROS — menu suspenso, fechado por padrão para as dicas de segurança
+                aparecerem logo abaixo sem rolar */}
             <section className="bg-white border border-slate-200 rounded-lg">
-              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold text-slate-900 border-b border-slate-200 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setRankingAberto((v) => !v)}
+                aria-expanded={rankingAberto}
+                className={`w-full px-5 py-3 text-sm font-semibold text-slate-900 flex items-center gap-2 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors ${rankingAberto ? "border-b border-slate-200 rounded-b-none" : ""}`}
+              >
                 <TrendingUp size={15} className="text-[#0f35a0]" />
-                Bairros com mais relatos
-              </h3>
-              {bairrosRanking.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-slate-500">Nenhum relato nessa região ainda.</p>
-              ) : (
-                <ol className="divide-y divide-slate-100">
-                  {bairrosRanking.map(([bairro, chamados], i) => {
-                    const maior = bairrosRanking[0][1] || 1;
-                    return (
-                      <li key={bairro} className="px-5 py-2.5">
-                        <div className="flex items-center justify-between gap-3 text-sm">
-                          <span className="flex items-center gap-2.5 min-w-0">
-                            <span className="text-xs font-semibold text-[#0f35a0] tabular-nums w-4">{i + 1}</span>
-                            <span className="text-slate-800 truncate">{bairro}</span>
-                          </span>
-                          <span className="text-xs text-slate-500 tabular-nums shrink-0">
-                            {chamados} {chamados === 1 ? "relato" : "relatos"}
-                          </span>
-                        </div>
-                        <div className="ml-6.5 mt-1.5 h-1 rounded-full bg-slate-100 overflow-hidden">
-                          <div className="h-full bg-[#0f35a0]/60 rounded-full" style={{ width: `${(chamados / maior) * 100}%` }} />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
+                <span className="flex-1 text-left">Bairros com mais relatos</span>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-400 transition-transform duration-200 ${rankingAberto ? "rotate-180" : ""}`}
+                />
+              </button>
+              {rankingAberto &&
+                (bairrosRanking.length === 0 ? (
+                  <p className="px-5 py-4 text-sm text-slate-500">Nenhum relato nessa região ainda.</p>
+                ) : (
+                  <ol className="divide-y divide-slate-100">
+                    {bairrosRanking.map(({ bairro, cidade: cidadeBairro, relatos }, i) => {
+                      const maior = bairrosRanking[0].relatos || 1;
+                      return (
+                        <li key={`${bairro}|${cidadeBairro}`} className="px-5 py-2.5">
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-xs font-semibold text-[#0f35a0] tabular-nums w-4">{i + 1}</span>
+                              <span className="min-w-0 truncate">
+                                <span className="text-slate-800">{bairro}</span>
+                                <span className="text-xs text-slate-400"> · {cidadeBairro}</span>
+                              </span>
+                            </span>
+                            <span className="text-xs text-slate-500 tabular-nums shrink-0">
+                              {relatos} {relatos === 1 ? "relato" : "relatos"}
+                            </span>
+                          </div>
+                          <div className="ml-6.5 mt-1.5 h-1 rounded-full bg-slate-100 overflow-hidden">
+                            <div className="h-full bg-[#0f35a0]/60 rounded-full" style={{ width: `${(relatos / maior) * 100}%` }} />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                ))}
             </section>
 
             {/* CARD DICAS DE SEGURANÇA */}
             <section className="bg-amber-50 border border-amber-200 rounded-lg">
-              <h3 className="px-5 pt-4 pb-3 text-sm font-semibold text-amber-950 border-b border-amber-200 flex items-center gap-2">
+              <h3 className="px-5 pt-3 pb-2.5 text-sm font-semibold text-amber-950 border-b border-amber-200 flex items-center gap-2">
                 <ShieldAlert size={15} className="text-amber-600" />
                 Dicas de segurança
               </h3>
-              <ul className="px-5 py-4 space-y-2.5">
+              <ul className="px-5 py-3 space-y-2">
                 {[
                   "Evite atravessar ruas alagadas, mesmo que a água pareça rasa.",
                   "Em caso de deslizamento, afaste-se de encostas e barrancos.",
@@ -1426,7 +1474,7 @@ export default function FeedPage() {
                   </li>
                 ))}
               </ul>
-              <p className="px-5 py-3 text-xs text-amber-900 border-t border-amber-200">
+              <p className="px-5 py-2.5 text-xs text-amber-900 border-t border-amber-200">
                 Emergência: Defesa Civil <span className="font-semibold">199</span> · Bombeiros{" "}
                 <span className="font-semibold">193</span> · SAMU <span className="font-semibold">192</span>
               </p>
@@ -1460,14 +1508,21 @@ export default function FeedPage() {
                 className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-hidden flex flex-col md:flex-row"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* IMAGEM GRANDE */}
-                {post.imagemUrl && (
+                {/* IMAGEM GRANDE — sem foto, o espaço fica com o aviso "sem mídia"
+                    (antes a coluna sumia e sobrava uma área branca à direita) */}
+                {post.imagemUrl ? (
                   <div className="w-full md:w-3/5 bg-black flex items-center justify-center max-h-[45dvh] md:max-h-[90dvh] shrink-0">
                     <img
                       src={post.imagemUrl}
                       alt="Foto da ocorrência"
                       className="w-full h-full object-contain"
                     />
+                  </div>
+                ) : (
+                  <div className="w-full md:w-3/5 h-40 md:h-auto md:min-h-[26rem] bg-slate-100 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col items-center justify-center gap-2 text-slate-400 shrink-0">
+                    <ImageOff size={36} strokeWidth={1.5} />
+                    <p className="text-sm font-semibold text-slate-500">Sem mídia</p>
+                    <p className="text-xs">Esta publicação não tem foto.</p>
                   </div>
                 )}
 
@@ -1547,8 +1602,17 @@ export default function FeedPage() {
                     ) : (
                       post.comentarios.map((com) => (
                         <div key={com.id} className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center text-[11px] shrink-0">
-                            {gerarIniciais(com.autor)}
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center text-[11px] shrink-0 overflow-hidden">
+                            {com.avatarUrl ? (
+                              <img
+                                src={com.avatarUrl}
+                                alt={com.autor}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              gerarIniciais(com.autor)
+                            )}
                           </div>
                           <p className="text-xs text-slate-700 leading-relaxed">
                             <span className="font-semibold text-slate-900">

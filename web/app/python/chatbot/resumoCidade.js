@@ -32,6 +32,7 @@ const BAIRROS_POR_CIDADE = {
   [normalizar("Cecap")]: "Taubaté",
   [normalizar("Três Marias")]: "Taubaté",
   [normalizar("Quiririm")]: "Taubaté",
+  [normalizar("Gurilândia")]: "Taubaté",
 };
 const cidadeDaOcorrencia = (oc) => BAIRROS_POR_CIDADE[normalizar(oc.bairro)] ?? oc.cidade;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/app/lib/banco";
 import Navbar from "./navbar";
@@ -49,6 +49,7 @@ export default function NavbarWrapper() {
   const pathname = usePathname();
   const [papel, setPapel] = useState<Papel | null>(null);
   const [sidebarExpandida, setSidebarExpandida] = useState(false);
+  const saidaPendente = useRef(false);
 
   // Antes da primeira pintura: usa o papel já conhecido nesta sessão, para a sidebar
   // aparecer junto com a página (sem um quadro sem menu). Depois confirma com o banco.
@@ -63,13 +64,23 @@ export default function NavbarWrapper() {
       if (evento === "SIGNED_OUT") {
         // Esquece também o que os painéis guardaram desta conta
         ["pluvite-papel", "pluvite-servidor", "pluvite-admin"].forEach((k) => sessionStorage.removeItem(k));
-        setPapel("cidadao");
+        // Não troca o menu agora: o "Sair" já está levando para o login, e a sidebar deve
+        // sair junto com a tela (ver o efeito de pathname abaixo), não antes dela
+        saidaPendente.current = true;
       } else if (evento === "SIGNED_IN") {
         descobrirPapel().then(setPapel);
       }
     });
     return () => data.subscription.unsubscribe();
   }, []);
+
+  // Depois de sair da conta, o menu só muda quando a página de destino já abriu
+  useLayoutEffect(() => {
+    if (saidaPendente.current) {
+      saidaPendente.current = false;
+      setPapel("cidadao");
+    }
+  }, [pathname]);
 
   const paginaDePainel =
     pathname?.startsWith("/Prefeituras") || pathname?.startsWith("/Adm");

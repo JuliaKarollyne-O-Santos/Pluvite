@@ -1207,9 +1207,8 @@ export default function PerfilCidadao() {
         sessionStorage.clear();
       }
 
-      setPerfil(PERFIL_VAZIO);
-      setNascimentoSalvo("");
-      router.push("/");
+      // Vai direto para o login (a tela some junto com o menu, sem esvaziar o perfil antes)
+      router.push("/login");
     } catch (err: any) {
       console.error("Erro ao sair:", err);
       mostrarAviso("erro", "Erro ao sair da conta: " + err.message);

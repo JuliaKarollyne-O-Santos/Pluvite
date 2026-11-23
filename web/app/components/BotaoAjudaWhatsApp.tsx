@@ -162,7 +162,7 @@ export default function BotaoAjudaWhatsApp({
       className={`relative flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-200 active:scale-95 cursor-pointer
         ${destaque
           ? "w-20 h-20 shrink-0 bg-[#25D366] hover:bg-[#0fa84a]"
-          : "w-10 h-10 ring-2 ring-white/30 bg-red-600 hover:bg-red-700"}`}
+          : "w-10 h-10 ring-2 ring-white/30 bg-[#25D366] hover:bg-[#0fa84a]"}`}
     >
       {/* ANÉIS PISCANDO (só na tela inicial) */}
       {destaque && (

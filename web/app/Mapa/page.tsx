@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "../lib/banco";
-import { CENTRO_MUNICIPIO } from "../lib/constantes";
+import { CENTRO_MUNICIPIO, cidadeDaOcorrencia } from "../lib/constantes";
 import {
   analisarChuva,
   motivoDaChuva,
@@ -77,18 +77,7 @@ const normalizar = (texto: string) =>
     .toLowerCase()
     .trim();
 
-// ───── BAIRRO -> CIDADE ─────
-// Se alguém publicar no feed com a cidade errada (ex.: bairro Quiririm marcado como Arapeí),
-// o bairro manda: a ocorrência é contada na cidade a que ele pertence.
-// Para cobrir mais bairros, é só acrescentar linhas aqui (use só nomes que existam numa cidade).
-const BAIRROS_POR_CIDADE: Record<string, string> = {
-  [normalizar("Cecap")]: "Taubaté",
-  [normalizar("Três Marias")]: "Taubaté",
-  [normalizar("Quiririm")]: "Taubaté",
-};
-
-const cidadeDaOcorrencia = (oc: { cidade: string; bairro: string }) =>
-  BAIRROS_POR_CIDADE[normalizar(oc.bairro)] ?? oc.cidade;
+// Bairro -> cidade (ex.: Quiririm marcado como Arapeí conta em Taubaté): lib/constantes.ts
 
 // ───── PREVISÃO DO TEMPO (mesma API da página de Clima) ─────
 const WEATHER_API_KEY =

@@ -128,6 +128,21 @@ export const normalizar = (texto: string) =>
     .toLowerCase()
     .trim();
 
+// ───── BAIRRO -> CIDADE ─────
+// Se alguém publicar no feed com a cidade errada (ex.: bairro Quiririm marcado como Arapeí),
+// o bairro manda: a ocorrência é contada na cidade a que ele pertence (Mapa e Feed).
+// Para cobrir mais bairros, é só acrescentar linhas aqui (use só nomes que existam numa cidade).
+// O chatbot (python/chatbot/resumoCidade.js) tem uma cópia desta lista.
+export const BAIRROS_POR_CIDADE: Record<string, string> = {
+  [normalizar("Cecap")]: "Taubaté",
+  [normalizar("Três Marias")]: "Taubaté",
+  [normalizar("Quiririm")]: "Taubaté",
+  [normalizar("Gurilândia")]: "Taubaté",
+};
+
+export const cidadeDaOcorrencia = (oc: { cidade: string; bairro: string | null }) =>
+  BAIRROS_POR_CIDADE[normalizar(oc.bairro ?? "")] ?? oc.cidade;
+
 // Fluxo de status de uma ocorrência, nessa ordem
 export const STATUS_OCORRENCIA = [
   "Aguardando",

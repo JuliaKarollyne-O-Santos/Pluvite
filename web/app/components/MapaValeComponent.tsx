@@ -2,145 +2,48 @@
 
 import { MapContainer, TileLayer, GeoJSON, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect } from "react";
 import L from "leaflet";
+import { normalizar } from "@/app/lib/constantes";
+import { COR_NIVEL_MAPA, type NivelMapa } from "@/app/lib/riscoMapa";
 
 interface MapaProps {
   bairrosDados: any;
   setLocalAberto: (nome: string) => void;
   cidadeSelecionada: string;
-  climaPorCidade: { [key: string]: any };
-  setClimaPorCidade: (fn: (anterior: any) => any) => void;
+  /** Nível de cada cidade (chave: nome normalizado), calculado em Mapa/page.tsx com a
+   * mesma regra do card "Situação". Cidade sem entrada = ainda carregando. */
+  nivelPorCidade: Record<string, NivelMapa>;
 }
+
+const COR_CARREGANDO = "#475569";
 
 export default function MapaValeComponent({
   bairrosDados,
   setLocalAberto,
   cidadeSelecionada,
-  climaPorCidade,
-  setClimaPorCidade,
+  nivelPorCidade,
 }: MapaProps) {
-  const cidades = [
-    "Aparecida",
-    "Arapeí",
-    "Areias",
-    "Bananal",
-    "Caçapava",
-    "Cachoeira Paulista",
-    "Campos do Jordão",
-    "Canas",
-    "Caraguatatuba",
-    "Cruzeiro",
-    "Cunha",
-    "Guararema",
-    "Guaratinguetá",
-    "Igaratá",
-    "Ilhabela",
-    "Jacareí",
-    "Jambeiro",
-    "Lagoinha",
-    "Lavrinhas",
-    "Lorena",
-    "Monteiro Lobato",
-    "Natividade da Serra",
-    "Paraibuna",
-    "Pindamonhangaba",
-    "Piquete",
-    "Potim",
-    "Queluz",
-    "Redenção da Serra",
-    "Roseira",
-    "Santa Branca",
-    "Santo Antônio do Pinhal",
-    "São Bento do Sapucaí",
-    "São José do Barreiro",
-    "São José dos Campos",
-    "São Luiz do Paraitinga",
-    "São Sebastião",
-    "Silveiras",
-    "Taubaté",
-    "Tremembé",
-    "Ubatuba",
-  ];
+  const nivelDa = (nomeCidade: string): NivelMapa | undefined =>
+    nivelPorCidade[normalizar(nomeCidade)];
 
-  useEffect(() => {
-    Promise.all(
-      cidades.map((cidade) =>
-        fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(cidade)},BR&appid=aea3caae2787bef2039681102761e6d1&units=metric&lang=pt_br`,
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.cod !== "200") return;
-            setClimaPorCidade((anterior) => ({
-              ...anterior,
-              [cidade]: data,
-            }));
-          }),
-      ),
-    );
-  }, []);
-
-  function obterCor(chuva: number) {
-    if (chuva < 1) return "green";
-    if (chuva >= 1 && chuva < 3) return "orange";
-    if (chuva >= 3 && chuva < 6) return "red";
-    if (chuva > 6) return "purple";
-    return "green";
-  }
-
-  // 🔥 SVGS PADRONIZADOS COM O MESMO TAMANHO ABSOLUTO E CORES ULTRA VIVAS
+  // MARCADOR: círculo na cor do nível; Alto e Crítico ganham o "!"
   function obterIconeStatus(nomeCidade: string) {
-    const dadosClima = climaPorCidade[nomeCidade];
-
-    // Estado de carregamento: Cinza escuro padronizado
-    if (!dadosClima) {
+    const nivel = nivelDa(nomeCidade);
+    if (!nivel) {
       return `
         <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="13" cy="13" r="10" fill="#475569" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="13" cy="13" r="10" fill="${COR_CARREGANDO}" stroke="#ffffff" stroke-width="2"/>
         </svg>
       `;
     }
-
-    const lista = dadosClima?.list?.slice(0, 8) ?? [];
-    const chuva =
-      lista.length > 0
-        ? Math.max(...lista.map((item: any) => item?.rain?.["3h"] ?? 0))
-        : 0;
-
-    // Risco Extremo / Crítico (Roxo Forte Sólido) - Tamanho idêntico aos outros
-    if (chuva > 6) {
-      return `
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="13" cy="13" r="10" fill="#7c3aed" stroke="#000000" stroke-width="2"/>
-          <path d="M13 8V14M13 18H13.01" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `;
-    }
-
-    // Risco Alto / Perigo (Vermelho Forte Sólido)
-    if (chuva >= 3 && chuva <= 6) {
-      return `
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="13" cy="13" r="10" fill="#dc2626" stroke="#000000" stroke-width="2"/>
-          <path d="M13 8V14M13 18H13.01" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `;
-    }
-
-    // Risco Médio / Atenção (Laranja Forte Sólido)
-    if (chuva >= 1 && chuva < 3) {
-      return `
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="13" cy="13" r="10" fill="#ea580c" stroke="#000000" stroke-width="2"/>
-        </svg>
-      `;
-    }
-
-    // Risco Baixo / Seguro (Verde Vibrante Sólido)
+    const exclamacao =
+      nivel === "alto" || nivel === "critico"
+        ? `<path d="M13 8V14M13 18H13.01" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`
+        : "";
     return `
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="13" cy="13" r="10" fill="#16a34a" stroke="#000000" stroke-width="2"/>
+        <circle cx="13" cy="13" r="10" fill="${COR_NIVEL_MAPA[nivel]}" stroke="#000000" stroke-width="2"/>
+        ${exclamacao}
       </svg>
     `;
   }
@@ -180,17 +83,15 @@ export default function MapaValeComponent({
             const selecionada =
               cidadeSelecionada && nomeGeoJSON === cidadeSelecionada;
 
-            const lista = climaPorCidade[nomeGeoJSON]?.list?.slice(0, 8) ?? [];
-            const chuva =
-              lista.length > 0
-                ? Math.max(...lista.map((item: any) => item?.rain?.["3h"] ?? 0))
-                : 0;
+            const nivel = nivelDa(nomeGeoJSON);
 
+            // Selecionada: mantém a cor do nível e ganha borda branca grossa
+            // (antes ficava vermelha, igual ao "Alto" da legenda)
             return {
-              color: selecionada ? "#ef4444" : "white",
-              weight: selecionada ? 3 : 1,
-              fillOpacity: selecionada ? 0.6 : 0.3,
-              fillColor: selecionada ? "#ef4444" : obterCor(chuva),
+              color: "white",
+              weight: selecionada ? 4 : 1,
+              fillOpacity: selecionada ? 0.55 : 0.3,
+              fillColor: nivel ? COR_NIVEL_MAPA[nivel] : COR_CARREGANDO,
             };
           }}
           onEachFeature={(feature, layer) => {

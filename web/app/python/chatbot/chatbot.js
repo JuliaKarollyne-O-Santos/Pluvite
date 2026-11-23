@@ -6,6 +6,7 @@ const http = require("node:http");
 const path = require("node:path");
 const readline = require("node:readline");
 const MUNICIPIOS = Object.keys(require("../municipios.json"));
+const { montarResumoCidade } = require("./resumoCidade");
 
 // chatbot/.env.chatbot (opcional, modo automático) vem primeiro e tem prioridade:
 // loadEnvFile não sobrescreve variáveis já definidas. Depois, o mesmo .env do
@@ -133,8 +134,8 @@ function mensagemEscolhaMunicipio() {
   return (
     "📍 Qual município você quer acompanhar? Responda com o nome de uma cidade:\n" +
     MUNICIPIOS.map((municipio) => `• ${municipio}`).join("\n") +
-    "\n\nVocê começará a receber alertas após escolher a cidade. " +
-    "Para parar, envie *SAIR*."
+    "\n\nAssim que você escolher, eu mando como está a situação e o clima da cidade agora, " +
+    "e você passa a receber os alertas de risco de lá. Para parar, envie *SAIR*."
   );
 }
 
@@ -593,10 +594,12 @@ async function tratarMensagem(msg) {
     // =====================================
     if (texto === "pluvite") {
       if (inscritos.get(msg.from)) {
+        await client.sendMessage(msg.from, await montarResumoCidade(inscritos.get(msg.from)));
         await client.sendMessage(
           msg.from,
           `Você já recebe alertas para *${inscritos.get(msg.from)}*. ` +
-            "Para trocar, envie *CIDADE*. Para parar, envie *SAIR*."
+            "Mande o nome de outra cidade para ver como ela está. " +
+            "Para trocar a cidade dos alertas, envie *CIDADE*. Para parar, envie *SAIR*."
         );
         return;
       }
@@ -639,10 +642,21 @@ async function tratarMensagem(msg) {
       return;
     }
 
+    const municipioDigitado = MUNICIPIOS.find(
+      (opcao) => normalizarMunicipio(opcao) === normalizarMunicipio(texto)
+    );
+
+    // =====================================
+    // CONSULTA: inscrito manda o nome de uma cidade e recebe o resumo dela
+    // (n\u00e3o muda a cidade dos alertas; para isso existe o comando CIDADE)
+    // =====================================
+    if (inscritos.get(msg.from) && municipioDigitado) {
+      await client.sendMessage(msg.from, await montarResumoCidade(municipioDigitado));
+      return;
+    }
+
     if (inscritos.has(msg.from) && !inscritos.get(msg.from)) {
-      const normalizar = (valor) =>
-        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-      const municipio = MUNICIPIOS.find((opcao) => normalizar(opcao) === normalizar(texto));
+      const municipio = municipioDigitado;
       if (!municipio) {
         await client.sendMessage(
           msg.from,
@@ -654,9 +668,12 @@ async function tratarMensagem(msg) {
       inscritos.set(msg.from, municipio);
       salvarInscritos();
       console.log(`✅ Inscrito configurado para ${municipio}`);
+      await client.sendMessage(msg.from, await montarResumoCidade(municipio));
       await client.sendMessage(
         msg.from,
-        `✅ Pronto! Você receberá alertas para *${municipio}*. Para trocar, envie *CIDADE*; para parar, envie *SAIR*.`
+        `✅ Pronto! Você receberá os alertas de risco de *${municipio}*.\n\n` +
+          "Mande o nome de qualquer cidade do Vale para ver como ela está. " +
+          "Para trocar a cidade dos alertas, envie *CIDADE*; para parar, envie *SAIR*."
       );
     }
   } catch (error) {

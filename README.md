@@ -123,7 +123,10 @@ sem que o cidadão precise instalar nada ou ter o telefone cadastrado.
    Basta enviar.
 3. O assistente responde e pede o município. A pessoa responde com o nome da cidade (um dos 39 do
    Vale do Paraíba e Litoral Norte).
-4. A partir daí, recebe os alertas daquela cidade. Comandos na conversa:
+4. Na hora, recebe um resumo da cidade com as mesmas informações do Mapa e da página de Clima:
+   situação (tranquila, atenção ou crítica), clima agora, chuva prevista e ocorrências ativas do Feed.
+5. A partir daí, recebe os alertas daquela cidade. Comandos na conversa:
+   * **Nome de uma cidade** (ex.: Ubatuba): mostra o resumo dela, sem trocar a cidade dos alertas
    * **CIDADE**: troca o município acompanhado
    * **SAIR**: para de receber os alertas
    * **"Qual foi o último alerta?"**: mostra o último alerta real do monitoramento climático
